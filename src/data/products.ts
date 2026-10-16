@@ -509,7 +509,7 @@ export const products: Product[] = [
     regularPrice: 20,
     price: 20,
     stock: 1,
-    images: [img('socks-esqueleto-1')],
+    images: [img('socks-esqueleto-1'), look('socks-esqueleto-tee-khaki')],
     description: TAGLINE,
     details: socks,
   },
