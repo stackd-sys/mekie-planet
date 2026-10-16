@@ -488,7 +488,7 @@ export const products: Product[] = [
     stock: 0,
     madeToOrderDays: 10,
     customizable: true,
-    images: [img('scrunchie-rosa-1'), img('scrunchie-dourado-1')],
+    images: [img('scrunchie-personalizado-1'), img('scrunchie-rosa-1'), img('scrunchie-dourado-1')],
     details: scrunchieCustom,
     description: 'Escolhe as tuas cores e nós fazemos o scrunchie à mão.',
   },
