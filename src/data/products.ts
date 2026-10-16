@@ -364,7 +364,7 @@ export const products: Product[] = [
     price: 65,
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 0, L: 0, XL: 0 },
-    images: [look('sweat-planetas-cru'), look('sweat-planetas-duo')],
+    images: [img('sweat-planetas-cru-1'), look('sweat-planetas-cru'), look('sweat-planetas-duo')],
     description: TAGLINE,
     details: sweatshirt('Planetas bordados no peito e logótipo Mekie bordado na manga'),
   },
