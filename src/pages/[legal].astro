@@ -8,14 +8,25 @@ export function getStaticPaths() {
 interface Props { page: LegalPage }
 const { page } = Astro.props;
 ---
-<Base title={page.title}>
+<Base title={page.title} description={page.summary}>
   <article class="container legal">
     <p class="eyebrow legal__kicker">Informação legal</p>
     <h1 class="display legal__title">{page.title}</h1>
     {page.sections.map((s) => (
       <section>
         {s.heading && <h2 class="eyebrow">{s.heading}</h2>}
-        {s.body.map((b) => <p>{b}</p>)}
+        {s.body.map((b) =>
+          typeof b === 'string' ? <p>{b}</p>
+          : 'list' in b ? <ul>{b.list.map((li) => <li>{li}</li>)}</ul>
+          : (
+            <div class="legal__table">
+              <table>
+                <thead><tr>{b.table.head.map((h) => <th>{h}</th>)}</tr></thead>
+                <tbody>{b.table.rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          )
+        )}
       </section>
     ))}
   </article>
@@ -26,5 +37,11 @@ const { page } = Astro.props;
   .legal__kicker { font-size: 10.5px; color: var(--ink-soft); margin: 0; }
   .legal__title { font-size: clamp(30px, 4vw, 48px); margin: 12px 0 40px; }
   .legal h2 { font-size: 12px; font-weight: 600; margin: 36px 0 12px; }
-  .legal p { margin: 0 0 10px; font-size: 15px; line-height: 1.75; color: #3a3a3a; }
+  .legal p, .legal li { margin: 0 0 10px; font-size: 15px; line-height: 1.75; color: #3a3a3a; }
+  .legal ul { margin: 0 0 12px; padding-left: 20px; }
+  .legal__table { overflow-x: auto; margin: 6px 0 16px; }
+  .legal table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .legal th, .legal td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+  .legal th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+  .legal td:first-child { min-width: 140px; }
 </style>

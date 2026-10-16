@@ -9,6 +9,7 @@ import CartDrawer from '../components/CartDrawer.astro';
 import Popup from '../components/Popup.astro';
 import { site } from '../data/site';
 import { products, cartInfo } from '../data/products';
+import { organizationLd, websiteLd } from '../data/seo';
 
 interface Props {
   title?: string;
@@ -17,18 +18,20 @@ interface Props {
   overlayHeader?: boolean;
   popup?: boolean;
   noindex?: boolean;
+  ogType?: 'website' | 'product' | 'article';
 }
 /* Preço e stock atuais, para o carrinho guardado no browser se manter certo */
 const catalog = Object.fromEntries(products.map((p) => [p.id, cartInfo(p)]));
 const {
   title,
-  description = 'Mekie Planet, marca de roupa da Ericeira. T-shirts, hoodies, caps e meias com os bordados Mekie. Envio em 7 dias úteis, grátis acima de 65€.',
+  description = 'Mekie Planet: hoodies e t-shirts bordados, caps, bucket hats, meias, scrunchies e tote bags. Roupa descontraída, sempre com estilo. Envio CTT para Portugal e União Europeia.',
   image = '/images/site/hero.webp',
   overlayHeader = false,
   popup = true,
   noindex = false,
+  ogType = 'website',
 } = Astro.props;
-const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | Loja online`;
+const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | Hoodies, t-shirts e acessórios bordados`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(image, Astro.site);
 ---
@@ -46,27 +49,30 @@ const ogImage = new URL(image, Astro.site);
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'} />
     <link rel="icon" href="/images/site/icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/images/site/icon.png" />
     <meta name="theme-color" content="#f5f5f4" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:locale" content="pt_PT" />
+    <meta property="og:image:alt" content={fullTitle} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="alternate" hreflang="pt-PT" href={canonical} />
+    <link rel="alternate" hreflang="x-default" href={canonical} />
+    <link rel="manifest" href="/site.webmanifest" />
     {Astro.url.pathname === '/' && (
-      <script type="application/ld+json" set:html={JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'OnlineStore',
-        name: site.name,
-        url: site.url,
-        logo: new URL('/images/site/logo.png', site.url).href,
-        email: site.email,
-        sameAs: [site.instagram],
-      })} />
+      <>
+        <script type="application/ld+json" set:html={JSON.stringify(organizationLd)} />
+        <script type="application/ld+json" set:html={JSON.stringify(websiteLd)} />
+      </>
     )}
     <slot name="head" />
   </head>

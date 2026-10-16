@@ -42,7 +42,7 @@ const addOns = products.filter((p) => p.category === 'meias');
 
     <footer class="drawer__foot" data-cart-foot>
       <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>0,00€</strong></div>
-      <p class="drawer__note">IVA incluído. Portes calculados no checkout, grátis acima de {site.freeShippingFrom}€.</p>
+      <p class="drawer__note">IVA incluído. Portes calculados no checkout, grátis em Portugal acima de {site.freeShippingFrom}€.</p>
       <a href="/checkout/" class="pill pill--accent pill--block">Finalizar compra</a>
       <ul class="drawer__pay" aria-label="Métodos de pagamento">
         {['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'].map((m) => <li>{m}</li>)}

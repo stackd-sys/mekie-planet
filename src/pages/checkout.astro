@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
+import { destinations } from '../data/shipping';
 ---
 <Base title="Finalizar compra" noindex popup={false}>
   <div class="container co">
@@ -29,12 +30,10 @@ import { site } from '../data/site';
             <input class="field" name="codigo_postal" placeholder="Código postal" required autocomplete="postal-code" pattern="[0-9]{4}-?[0-9]{3}|.{3,}" />
             <input class="field" name="localidade" placeholder="Localidade" required autocomplete="address-level2" />
           </div>
-          <select class="field" name="pais" required autocomplete="country-name">
-            <option>Portugal Continental</option>
-            <option>Madeira</option>
-            <option>Açores</option>
-            <option>Outro país da Europa</option>
+          <select class="field" name="pais" required autocomplete="country-name" data-country>
+            {destinations.map((d) => <option value={d.name} data-zone={d.zone}>{d.name}</option>)}
           </select>
+          <p class="co__hint">Enviamos para Portugal e para a União Europeia. Para outro país, <a class="link-underline" href="/contactos/">fala connosco</a>.</p>
           <input class="field" name="nif" placeholder="NIF (opcional)" inputmode="numeric" />
           <textarea class="field" name="notas" placeholder="Notas da encomenda (opcional)"></textarea>
         </fieldset>
@@ -51,7 +50,7 @@ import { site } from '../data/site';
           <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
         </label>
         <button type="submit" class="pill pill--accent pill--block co__submit">Enviar encomenda</button>
-        <p class="co__note">Ao enviar, abrimos o teu email com o resumo da encomenda para {site.email}. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão) e o valor dos portes, quando aplicável.</p>
+        <p class="co__note">Ao enviar, abrimos o teu email com o resumo da encomenda para {site.email}. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>
       </form>
 
       <aside class="co__summary">
@@ -69,7 +68,7 @@ import { site } from '../data/site';
 <script>
   import { cart, money, href } from '../scripts/cart';
   import * as newsletter from '../scripts/newsletter';
-  const FREE = Number(document.documentElement.dataset.freeShipping || 65);
+  import { shippingCost, type Zone } from '../data/shipping';
   const CODE = newsletter.CODE;
   const RATE = 0.1;
   let applied = '';
@@ -81,11 +80,16 @@ import { site } from '../data/site';
   const codeInput = document.querySelector<HTMLInputElement>('[data-code-input]')!;
   const codeMsg = document.querySelector<HTMLElement>('[data-code-msg]')!;
   if (applied) codeInput.value = applied;
+  const country = document.querySelector<HTMLSelectElement>('[data-country]')!;
+  const zone = () => (country.selectedOptions[0]?.dataset.zone ?? 'pt') as Zone;
   const totals = () => {
     const sub = cart.subtotal;
     const disc = applied === CODE && CODE ? Math.round(sub * RATE * 100) / 100 : 0;
-    return { sub, disc, after: sub - disc };
+    /* os portes grátis contam pelo subtotal, antes do desconto, tal como o carrinho mostra */
+    const ship = shippingCost(zone(), sub, cart.grams);
+    return { sub, disc, ship, total: sub - disc + ship };
   };
+  country.addEventListener('change', () => render(cart.lines));
   document.querySelector('[data-code-apply]')?.addEventListener('click', () => {
     const value = codeInput.value.trim().toUpperCase();
     codeMsg.hidden = false;
@@ -103,17 +107,15 @@ import { site } from '../data/site';
   });
 
   const render = (lines: typeof cart.lines) => {
-    const { sub, disc, after } = totals();
-    /* os portes grátis contam pelo subtotal, antes do desconto, tal como o carrinho mostra */
-    const free = sub >= FREE;
+    const { sub, disc, ship, total } = totals();
     const discRow = document.querySelector<HTMLElement>('[data-co-discount-row]')!;
     discRow.hidden = disc === 0;
     document.querySelector<HTMLElement>('[data-co-discount-label]')!.textContent = `Desconto ${applied}`;
     document.querySelector<HTMLElement>('[data-co-discount]')!.textContent = `-${money(disc)}`;
     document.querySelector<HTMLElement>('[data-co-empty]')!.hidden = lines.length > 0;
     document.querySelector<HTMLElement>('[data-co-grid]')!.hidden = lines.length === 0;
-    document.querySelector<HTMLElement>('[data-co-ship]')!.textContent = free ? 'Grátis' : 'A confirmar';
-    document.querySelector<HTMLElement>('[data-co-total]')!.textContent = money(after) + (free ? '' : ' + portes');
+    document.querySelector<HTMLElement>('[data-co-ship]')!.textContent = ship === 0 ? 'Grátis' : money(ship);
+    document.querySelector<HTMLElement>('[data-co-total]')!.textContent = money(total);
     document.querySelector<HTMLElement>('[data-co-lines]')!.innerHTML = lines
       .map((l) => `<li><img src="${href(esc(l.image))}" alt="" width="64" height="80" /><span class="q">${l.qty}</span>
         <div><p>${esc(l.name)}</p><small>${esc(l.custom || l.color)}${l.size ? ` · ${esc(l.size)}` : ''}${made(l) ? `<br>${made(l)} por encomenda, entrega em ${l.madeToOrderDays} dias úteis` : ''}</small></div>
@@ -156,8 +158,7 @@ import { site } from '../data/site';
     }
 
     const lines = cart.lines;
-    const { sub, disc, after } = totals();
-    const free = sub >= FREE;
+    const { sub, disc, ship, total } = totals();
     const body = [
       'Olá Mekie! Quero fazer esta encomenda:',
       '',
@@ -165,7 +166,8 @@ import { site } from '../data/site';
       '',
       `Subtotal: ${money(sub)}`,
       disc ? `Desconto ${applied} (10%): -${money(disc)}` : '',
-      `Total: ${money(after)}${free ? ' (envio grátis)' : ' + portes'}`,
+      `Envio (${f.get('pais')}): ${ship === 0 ? 'grátis' : money(ship)}`,
+      `Total: ${money(total)}`,
       '',
       `Nome: ${f.get('nome')} ${f.get('apelido')}`,
       `Email: ${f.get('email')}`,
@@ -196,6 +198,7 @@ import { site } from '../data/site';
   .co__code .pill { min-height: 46px; }
   .co__code-msg { margin: 0; font-size: 12.5px; color: var(--accent); }
   .co__code-msg.is-error { color: var(--sale); }
+  .co__hint { margin: -2px 0 0; font-size: 12px; color: var(--ink-soft); }
   .co__note { margin: -8px 0 0; font-size: 12.5px; color: var(--ink-soft); }
   .co__summary { background: var(--surface); padding: 28px; position: sticky; top: 130px; }
   .co__summary > .eyebrow { margin: 0 0 18px; font-size: 11px; }

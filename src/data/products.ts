@@ -4,6 +4,9 @@ export type Category = {
   /** Categoria-mãe (ex.: Caps dentro de Acessórios). */
   parent?: string;
   image: string;
+  /** Título e texto para o Google e para o topo da página da categoria */
+  seoTitle: string;
+  intro: string;
 };
 
 export type Collection = {
@@ -46,14 +49,46 @@ export type Product = {
 };
 
 export const categories: Category[] = [
-  { slug: 'hoodies-crewnecks', name: 'Hoodies & Crewnecks', image: '/images/lookbook/mushrooms-hoodie-yellow.webp' },
-  { slug: 't-shirts', name: 'T-Shirts', image: '/images/lookbook/mushrooms-black.webp' },
-  { slug: 'acessorios', name: 'Acessórios', image: '/images/lookbook/stack-leaves.webp' },
-  { slug: 'caps', name: 'Caps', parent: 'acessorios', image: '/images/products/cap-black-1.webp' },
-  { slug: 'bucket-hat', name: 'Bucket Hat', parent: 'acessorios', image: '/images/products/bucket-white-1.webp' },
-  { slug: 'meias', name: 'Meias', parent: 'acessorios', image: '/images/products/socks-mekie-1.webp' },
-  { slug: 'scrunchies', name: 'Scrunchies', parent: 'acessorios', image: '/images/products/scrunchie-rosa-1.webp' },
-  { slug: 'tote-bag', name: 'Tote Bag', parent: 'acessorios', image: '/images/products/tote-planetas-black-1.webp' },
+  {
+    slug: 'hoodies-crewnecks', name: 'Hoodies & Crewnecks', image: '/images/lookbook/mushrooms-hoodie-yellow.webp',
+    seoTitle: 'Hoodies bordados',
+    intro: 'Hoodies unissexo com os bordados Mekie de cogumelos e esqueleto. Do XS ao XL, em preto e amarelo pastel.',
+  },
+  {
+    slug: 't-shirts', name: 'T-Shirts', image: '/images/lookbook/mushrooms-black.webp',
+    seoTitle: 'T-shirts oversized bordadas',
+    intro: 'T-shirts oversized unissexo em 100% algodão, com os cogumelos Mekie bordados no peito e o logótipo na manga.',
+  },
+  {
+    slug: 'acessorios', name: 'Acessórios', image: '/images/lookbook/stack-leaves.webp',
+    seoTitle: 'Acessórios: caps, bucket hats, meias, scrunchies e tote bags',
+    intro: 'Caps de bombazina, bucket hat de algodão orgânico, meias, scrunchies de crochet feitos à mão e tote bags bordadas.',
+  },
+  {
+    slug: 'caps', name: 'Caps', parent: 'acessorios', image: '/images/products/cap-black-1.webp',
+    seoTitle: 'Caps de bombazina bordadas',
+    intro: 'Caps de bombazina com o logótipo Mekie bordado. Tamanho único e ajustável.',
+  },
+  {
+    slug: 'bucket-hat', name: 'Bucket Hat', parent: 'acessorios', image: '/images/products/bucket-white-1.webp',
+    seoTitle: 'Bucket hat de algodão orgânico',
+    intro: 'Bucket hat Mekie em sarja de algodão orgânico, com o logótipo bordado.',
+  },
+  {
+    slug: 'meias', name: 'Meias', parent: 'acessorios', image: '/images/products/socks-mekie-1.webp',
+    seoTitle: 'Meias Mekie',
+    intro: 'Meias de cano médio com o logótipo e o esqueleto Mekie.',
+  },
+  {
+    slug: 'scrunchies', name: 'Scrunchies', parent: 'acessorios', image: '/images/products/scrunchie-rosa-1.webp',
+    seoTitle: 'Scrunchies de crochet feitos à mão',
+    intro: 'Scrunchies de crochet feitos à mão por nós. Escolhe um dos prontos ou personaliza as cores do teu.',
+  },
+  {
+    slug: 'tote-bag', name: 'Tote Bag', parent: 'acessorios', image: '/images/products/tote-planetas-black-1.webp',
+    seoTitle: 'Tote bags de algodão orgânico bordadas',
+    intro: 'Tote bags de algodão orgânico com os desenhos Mekie bordados: planetas e cogumelos.',
+  },
 ];
 
 export const collections: Collection[] = [
@@ -529,10 +564,19 @@ export const totalStock = (p: Product) =>
 export const isSoldOut = (p: Product) => !p.madeToOrderDays && totalStock(p) === 0;
 export const lowStock = () =>
   products.filter((p) => { const t = totalStock(p); return t !== undefined && t > 0 && t <= 3 && !p.madeToOrderDays; });
+/** Nome completo com a cor (o personalizado não tem cor fixa) */
+export const fullName = (p: Product) => (p.customizable ? p.name : `${p.name} ${p.color}`);
+
+/** Peso aproximado de cada peça (g), para calcular os portes. Convém pesar e acertar. */
+const gramsByCategory: Record<string, number> = {
+  'hoodies-crewnecks': 700, 't-shirts': 250, caps: 150, 'bucket-hat': 120, meias: 80, scrunchies: 50, 'tote-bag': 180,
+};
+export const weightOf = (p: Product) => gramsByCategory[p.category] ?? 300;
+
 /** Dados que o carrinho precisa de cada produto. */
 export const cartInfo = (p: Product) => ({
   id: p.id, slug: p.slug, name: p.name, color: p.color, price: p.price, image: p.images[0],
-  stock: p.stock, sizeStock: p.sizeStock, madeToOrderDays: p.madeToOrderDays,
+  stock: p.stock, sizeStock: p.sizeStock, madeToOrderDays: p.madeToOrderDays, grams: weightOf(p),
 });
 export const variantsOf = (p: Product) => products.filter((o) => o.name === p.name);
 export const discount = (p: Product) =>

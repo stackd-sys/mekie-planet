@@ -74,7 +74,7 @@ cart.subscribe((lines) => {
   const missing = Math.max(0, FREE_FROM - subtotal);
   const shipText = document.querySelector<HTMLElement>('[data-ship-text]');
   const shipBar = document.querySelector<HTMLElement>('[data-ship-bar]');
-  if (shipText) shipText.innerHTML = missing > 0 ? `Faltam <strong>${money(missing)}</strong> para teres envio gratuito.` : 'Tens <strong>envio gratuito</strong> nesta encomenda.';
+  if (shipText) shipText.innerHTML = missing > 0 ? `Faltam <strong>${money(missing)}</strong> para teres envio gratuito em Portugal.` : 'Tens <strong>envio gratuito</strong> em Portugal.';
   if (shipBar) shipBar.style.width = `${Math.min(100, (subtotal / FREE_FROM) * 100)}%`;
 
   const empty = document.querySelector<HTMLElement>('[data-cart-empty]');

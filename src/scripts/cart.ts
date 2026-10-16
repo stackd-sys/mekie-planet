@@ -9,6 +9,8 @@ export type CartLine = {
   custom?: string;
   price: number;
   image: string;
+  /** peso de uma unidade, em gramas */
+  grams?: number;
   stock?: number;
   madeToOrderDays?: number;
   qty: number;
@@ -39,7 +41,7 @@ function write(lines: CartLine[]) {
 
 /* Catálogo atual (preço, stock, imagem) publicado pelo layout. Um carrinho guardado
    antes de uma mudança de preço ou de stock é corrigido ao abrir o site. */
-type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays'> & {
+type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams'> & {
   sizeStock?: Record<string, number>;
 };
 /** Stock da linha: o do tamanho escolhido quando o produto tem stock por tamanho. */
@@ -80,6 +82,9 @@ export const cart = {
   },
   get subtotal() {
     return memory.reduce((n, l) => n + l.qty * l.price, 0);
+  },
+  get grams() {
+    return memory.reduce((n, l) => n + l.qty * (l.grams ?? 300), 0);
   },
   add(item: Omit<CartLine, 'key' | 'qty'> & { sizeStock?: Record<string, number> }, qty = 1) {
     const { sizeStock, ...rest } = item;

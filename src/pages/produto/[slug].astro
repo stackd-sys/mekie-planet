@@ -2,15 +2,16 @@
 import Base from '../../layouts/Base.astro';
 import Carousel from '../../components/Carousel.astro';
 import Img from '../../components/Img.astro';
-import { products, getCategory, discount, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, type Product } from '../../data/products';
+import { products, discount, fullName, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, type Product } from '../../data/products';
 import { site, formatPrice } from '../../data/site';
+import { shipping } from '../../data/shipping';
+import { productLd, breadcrumbLd, categoryTrail, productSummary } from '../../data/seo';
 
 export function getStaticPaths() {
   return products.map((p) => ({ params: { slug: p.slug }, props: { product: p } }));
 }
 interface Props { product: Product }
 const { product: p } = Astro.props;
-const cat = getCategory(p.category)!;
 const off = discount(p);
 const variants = variantsOf(p);
 const related = [
@@ -22,27 +23,7 @@ const cartData = { ...cartInfo(p), sizeNotes: p.sizeNotes };
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Product',
-  name: `${p.name} ${p.color}`,
-  sku: String(p.id),
-  image: p.images.map((i) => new URL(i, site.url).href),
-  description: p.description,
-  color: p.color,
-  category: cat.name,
-  ...(p.details ? { material: p.details.composition.join(', ') } : {}),
-  brand: { '@type': 'Brand', name: site.name },
-  offers: {
-    '@type': 'Offer',
-    priceCurrency: 'EUR',
-    price: p.price.toFixed(2),
-    availability: soldOut ? 'https://schema.org/OutOfStock' : total !== undefined && total <= 3 ? 'https://schema.org/LimitedAvailability' : 'https://schema.org/InStock',
-    itemCondition: 'https://schema.org/NewCondition',
-    url: new URL(`/produto/${p.slug}/`, site.url).href,
-    seller: { '@type': 'Organization', name: site.name },
-  },
-};
+const trail = [...categoryTrail(p.category), { name: fullName(p), path: `/produto/${p.slug}/` }];
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${c.name}` : c.name);
 /* Pré-visualização do scrunchie: folhos à volta de um aro */
 const ruffles = Array.from({ length: 14 }, (_, i) => {
@@ -51,8 +32,11 @@ const ruffles = Array.from({ length: 14 }, (_, i) => {
 });
 const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test(src);
 ---
-<Base title={`${p.name} ${p.color}`} description={`${p.name} (${p.color}) por ${formatPrice(p.price)}. ${p.description} Envio em ${site.deliveryDays} dias úteis, grátis acima de ${site.freeShippingFrom}€.`} image={p.images[1] ?? p.images[0]}>
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(jsonLd)} />
+<Base title={fullName(p)} description={`${productSummary(p)} ${formatPrice(p.price)}. Envio CTT para Portugal e União Europeia.`} image={p.images[1] ?? p.images[0]} ogType="product">
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd(p))} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd(trail))} />
+  <meta slot="head" property="product:price:amount" content={p.price.toFixed(2)} />
+  <meta slot="head" property="product:price:currency" content="EUR" />
 
   <div class="pdp">
     <div class="gallery" data-gallery>
@@ -162,10 +146,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       <p class="pay__note">Pagamento seguro · MB WAY, Multibanco, cartão, Apple Pay e Google Pay</p>
 
       <ul class="perks eyebrow">
-        <li>Envio grátis acima de {site.freeShippingFrom}€</li>
+        <li>Envio grátis em Portugal acima de {site.freeShippingFrom}€</li>
         <li>Devoluções em 14 dias</li>
         <li>Envio em {site.deliveryDays} dias úteis via CTT</li>
-        <li>Portugal, ilhas e Europa</li>
+        <li>Portugal, ilhas e União Europeia</li>
       </ul>
 
       <div class="acc">
@@ -204,7 +188,9 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         <details>
           <summary class="eyebrow">Envios e devoluções</summary>
           <div class="acc__body">
-            <p>Enviamos para Portugal Continental, Madeira, Açores e Europa através dos CTT. Entrega estimada em {site.deliveryDays} dias úteis após a confirmação do pagamento. Envio gratuito em encomendas acima de {site.freeShippingFrom}€.</p>
+            <p>Enviamos pelos CTT para Portugal Continental, Açores, Madeira e União Europeia.</p>
+            <p>Portugal: {formatPrice(shipping.pt.price)}, grátis acima de {shipping.pt.freeFrom}€. Entrega em {shipping.pt.days}.</p>
+            <p>União Europeia: desde {formatPrice(shipping.eu.bands[0].price)}, grátis acima de {shipping.eu.freeFrom}€. Entrega em {shipping.eu.days}.</p>
             <p>Tens 14 dias após a receção para devolver, sem indicar o motivo. O artigo deve estar nas condições originais, sem sinais de uso e com as etiquetas intactas.</p>
             <p><a class="link-underline" href="/politica-de-envios-e-entregas/">Política de envios</a> · <a class="link-underline" href="/politica-de-devolucoes-e-reembolsos/">Política de devoluções</a></p>
           </div>

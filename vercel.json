@@ -1,0 +1,43 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/categoria-produto/acessorios/caps-acessorios/", "destination": "/loja/caps/", "statusCode": 301 },
+    { "source": "/categoria-produto/acessorios/meias-acessorios/", "destination": "/loja/meias/", "statusCode": 301 },
+    { "source": "/categoria-produto/acessorios/bucket-hat-acessorios/", "destination": "/loja/bucket-hat/", "statusCode": 301 },
+    { "source": "/categoria-produto/:slug/", "destination": "/loja/:slug/", "statusCode": 301 },
+    { "source": "/produto-etiqueta/ultimas-unidades/", "destination": "/loja/ultimas-unidades/", "statusCode": 301 },
+    { "source": "/carrinho/", "destination": "/checkout/", "statusCode": 301 },
+    { "source": "/checkout-2/", "destination": "/checkout/", "statusCode": 301 },
+    { "source": "/finalizar-compra/", "destination": "/checkout/", "statusCode": 301 },
+    { "source": "/minha-conta/:path*", "destination": "/", "statusCode": 301 },
+    { "source": "/form/", "destination": "/contactos/", "statusCode": 301 },
+    { "source": "/sobre-nos/", "destination": "/sobre/", "statusCode": 301 },
+    { "source": "/contacto/", "destination": "/contactos/", "statusCode": 301 },
+    { "source": "/shop/", "destination": "/loja/", "statusCode": 301 },
+    { "source": "/feed/", "destination": "/", "statusCode": 301 },
+    { "source": "/wp-admin/:path*", "destination": "/", "statusCode": 301 },
+    { "source": "/wp-login.php", "destination": "/", "statusCode": 301 }
+  ],
+  "headers": [
+    {
+      "source": "/_astro/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/images/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    }
+  ]
+}
