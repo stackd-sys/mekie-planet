@@ -7,6 +7,7 @@ import { site, formatPrice } from '../../data/site';
 import { shipping, shippingCost } from '../../data/shipping';
 import { reviewsOf, ratingOf } from '../../data/reviews';
 import Stars from '../../components/Stars.astro';
+import Icon from '../../components/Icon.astro';
 import { productLd, breadcrumbLd, categoryTrail, productSummary } from '../../data/seo';
 
 export function getStaticPaths() {
@@ -28,6 +29,8 @@ const total = totalStock(p);
 const soldOut = isSoldOut(p);
 /* Tamanhos esgotados (ou o produto todo) para o "Avisa-me quando voltar" */
 const outSizes = p.sizes ? p.sizes.filter((s) => (soldOut ? true : !!p.sizeStock && !p.sizeStock[s])) : [];
+/* Dias úteis até à entrega em Portugal: peças por encomenda demoram mais */
+const etaDays = p.customizable || (p.madeToOrderDays && !(p.stock && p.stock > 0)) ? p.madeToOrderDays! : site.deliveryDays;
 const canNotify = !p.customizable && !p.madeToOrderDays && (soldOut || outSizes.length > 0);
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category), { name: fullName(p), path: `/produto/${p.slug}/` }];
@@ -148,6 +151,13 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           {soldOut ? 'Esgotado' : 'Adicionar ao carrinho'}
         </button>
       </form>
+
+      {!soldOut && (
+        <p class="eta" data-eta={etaDays} hidden>
+          <Icon name="truck" size={18} />
+          <span>Encomenda hoje e recebe até <strong data-eta-date></strong> em Portugal.</span>
+        </p>
+      )}
 
       {canNotify && (
         <div class="notify" data-notify data-name={fullName(p)}>
@@ -274,6 +284,14 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   import { openCart } from '../../scripts/ui';
   import { track as trackEvent, consentSettled } from '../../scripts/consent';
   import * as newsletter from '../../scripts/newsletter';
+  import { deliveryBy, formatDay } from '../../scripts/eta';
+
+  /* Data de entrega estimada, calculada no dia em que a página é aberta */
+  const eta = document.querySelector<HTMLElement>('[data-eta]');
+  if (eta) {
+    eta.querySelector('[data-eta-date]')!.textContent = formatDay(deliveryBy(Number(eta.dataset.eta)));
+    eta.hidden = false;
+  }
 
   /* Avisa-me quando voltar */
   const notify = document.querySelector<HTMLElement>('[data-notify]');
@@ -533,6 +551,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .info__dot { animation: none; } }
 
+  .eta { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+  .eta[hidden] { display: none; }
+  .eta :global(svg) { flex: none; color: var(--ink); }
+  .eta strong { color: var(--ink); font-weight: 600; }
   .notify { margin: 14px 0 0; }
   .notify__toggle { background: none; border: 0; padding: 0; font-size: 12.5px; color: var(--ink); cursor: pointer; }
   .notify__toggle[hidden] { display: none; }
