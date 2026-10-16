@@ -1,0 +1,8 @@
+---
+import Base from '../../layouts/Base.astro';
+import Collection from '../../components/Collection.astro';
+import { products } from '../../data/products';
+---
+<Base title="Loja" description="Toda a loja Mekie: t-shirts, hoodies, caps, bucket hat e meias.">
+  <Collection title="Loja" products={products} current="" />
+</Base>

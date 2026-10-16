@@ -1,0 +1,60 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../data/site';
+---
+<Base title="Contactos" description={`Fala com a Mekie: ${site.email} ou Instagram @mekie_planet.`}>
+  <section class="container ct">
+    <div>
+      <h1 class="display ct__title">Contactos</h1>
+      <p class="ct__lead">Tens dúvidas sobre tamanhos, encomendas ou devoluções? Manda-nos uma mensagem.</p>
+      <dl class="ct__list">
+        <div><dt class="eyebrow">Email</dt><dd><a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+        <div><dt class="eyebrow">Instagram</dt><dd><a class="link-underline" href={site.instagram} target="_blank" rel="noopener"><Icon name="instagram" size={16} /> @mekie_planet</a></dd></div>
+      </dl>
+    </div>
+
+    <form class="ct__form" data-contact>
+      <div class="two">
+        <label><span class="eyebrow">Nome</span><input class="field" name="nome" required autocomplete="name" /></label>
+        <label><span class="eyebrow">Email</span><input class="field" name="email" type="email" required autocomplete="email" /></label>
+      </div>
+      <label><span class="eyebrow">Assunto</span>
+        <select class="field" name="assunto">
+          <option>Encomenda</option>
+          <option>Tamanhos</option>
+          <option>Devoluções e trocas</option>
+          <option>Parcerias</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <label><span class="eyebrow">Mensagem</span><textarea class="field" name="mensagem" required rows="6"></textarea></label>
+      <button type="submit" class="pill">Enviar mensagem</button>
+    </form>
+  </section>
+</Base>
+
+<script>
+  const EMAIL = document.documentElement.dataset.email || '';
+  document.querySelector<HTMLFormElement>('[data-contact]')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget as HTMLFormElement);
+    const body = `${f.get('mensagem')}\n\n${f.get('nome')} (${f.get('email')})`;
+    window.location.href = `mailto:${EMAIL}?subject=${encodeURIComponent(`${f.get('assunto')}, site Mekie`)}&body=${encodeURIComponent(body)}`;
+  });
+</script>
+
+<style>
+  .ct { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(32px, 6vw, 96px); padding-top: clamp(40px, 6vw, 80px); padding-bottom: clamp(56px, 8vw, 110px); }
+  .ct__title { font-size: clamp(38px, 6vw, 72px); text-transform: uppercase; margin: 0 0 20px; }
+  .ct__lead { font-size: 16px; color: var(--ink-soft); max-width: 440px; }
+  .ct__list { margin: 36px 0 0; display: grid; gap: 22px; }
+  .ct__list dt { font-size: 10.5px; color: var(--ink-soft); margin-bottom: 4px; }
+  .ct__list dd { margin: 0; font-size: 15px; }
+  .ct__list a { display: inline-flex; gap: 8px; align-items: center; }
+  .ct__form { display: grid; gap: 16px; align-content: start; justify-items: start; }
+  .ct__form label { display: grid; gap: 8px; width: 100%; }
+  .ct__form label .eyebrow { font-size: 10.5px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
+  @media (max-width: 860px) { .ct { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,143 @@
+---
+import Base from '../layouts/Base.astro';
+import Carousel from '../components/Carousel.astro';
+import Img from '../components/Img.astro';
+import { products } from '../data/products';
+
+const tiles = [
+  { image: '/images/lookbook/mushrooms-sleeve.webp', alt: 'Logótipo Mekie bordado na manga de uma t-shirt bege' },
+  { image: '/images/lookbook/stack-leaves.webp', alt: 'Hoodies e t-shirts Mekie com cogumelos bordados e um bucket hat, entre folhas' },
+  { image: '/images/lookbook/tee-sky.webp', alt: 'Rapariga com a t-shirt Cogumelos bege, fotografada de baixo contra o céu' },
+];
+const bands = [
+  {
+    href: '/colecoes/cogumelos/',
+    kicker: 'Coleção',
+    title: 'Cogumelos',
+    images: ['/images/lookbook/mushrooms-duo.webp', '/images/lookbook/mushrooms-black.webp'],
+    alts: ['Duas raparigas com as t-shirts Cogumelos preta e khaki', 'Rapariga com a t-shirt Cogumelos preta junto a um lago'],
+  },
+  {
+    href: '/colecoes/esqueleto/',
+    kicker: 'Coleção',
+    title: 'Esqueleto',
+    images: ['/images/lookbook/esqueleto-black-hood.webp', '/images/lookbook/esqueleto-duo.webp'],
+    alts: ['Rapariga de capuz com o hoodie Esqueleto preto, junto ao lago', 'Rapaz com o hoodie Esqueleto amarelo pastel e rapariga com sweatshirt preta Mekie'],
+  },
+];
+/* Um produto de cada modelo: um cap, umas meias, um scrunchie, uma t-shirt e um hoodie de cada bordado */
+const family = (p: (typeof products)[number]) => (['caps', 'meias', 'scrunchies', 'tote-bag'].includes(p.category) ? p.category : p.name);
+const featured = products.filter((p, i) => products.findIndex((o) => family(o) === family(p)) === i);
+
+---
+<Base overlayHeader popup>
+  <section class="hero">
+    <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt="Amigos da Mekie junto a um lago, com hoodie amarelo, sweatshirt preta e t-shirts com cogumelos" width="1536" height="1024" fetchpriority="high" />
+    <div class="hero__shade"></div>
+    <div class="hero__content">
+      <h1 class="hero__title">Bro, o básico nunca falha</h1>
+      <a href="/loja/" class="pill pill--light hero__cta">Comprar agora</a>
+    </div>
+  </section>
+
+  <section class="section browse">
+    <div class="container">
+      <h2 class="sr-only">Produtos</h2>
+      <Carousel products={featured} label="Produtos" />
+      <div class="center"><a href="/loja/" class="pill">Ver tudo</a></div>
+    </div>
+  </section>
+
+  {bands.map((b, i) => (
+    <>
+      <a href={b.href} class="band">
+        {b.images.map((src, n) => (
+          <div class="band__media"><Img src={src} sizes="(max-width: 700px) 100vw, 50vw" alt={b.alts[n]} width="1024" height="1536" loading="lazy" /></div>
+        ))}
+        <div class="band__overlay">
+          <p class="eyebrow">{b.kicker}</p>
+          <p class="band__title display">{b.title}</p>
+          <span class="pill pill--light">Ver coleção</span>
+        </div>
+      </a>
+      {i === bands.length - 1 && (
+        <section class="tiles section">
+          <a href="/loja/" class="tiles__grid" aria-label="Ver loja">
+            {tiles.map((t) => (
+              <div class="tile__media"><Img src={t.image} sizes="(max-width: 800px) 78vw, 33vw" alt={t.alt} width="1024" height="1536" loading="lazy" /></div>
+            ))}
+          </a>
+          <div class="center"><a href="/loja/" class="pill">Ver loja</a></div>
+        </section>
+      )}
+    </>
+  ))}
+
+</Base>
+
+<style>
+  .hero {
+    position: relative;
+    height: clamp(560px, 82vh, 860px);
+    overflow: hidden;
+    color: #fff;
+    background: #1d2318;
+  }
+  .hero :global(.hero__img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+  .hero__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.1) 30%, rgba(0,0,0,.15) 55%, rgba(0,0,0,.55) 100%); }
+  .hero__content {
+    position: absolute; left: 0; right: 0; bottom: clamp(44px, 8vh, 80px);
+    display: grid; justify-items: center; text-align: center; gap: 6px;
+    padding: 0 var(--gutter);
+    animation: heroIn 1.1s var(--ease) both .15s;
+  }
+  .hero__title {
+    margin: 0;
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(30px, 3.6vw, 48px); line-height: 1.05; letter-spacing: -.01em;
+    text-shadow: 0 2px 18px rgba(0,0,0,.25);
+    text-wrap: balance;
+  }
+  .hero__cta { margin-top: 22px; min-height: 46px; padding: 0 32px; }
+  @keyframes heroIn { from { opacity: 0; transform: translateY(14px); } }
+
+  .center { display: flex; justify-content: center; margin-top: 44px; }
+
+  .band { position: relative; display: grid; grid-template-columns: 1fr 1fr; color: #fff; overflow: hidden; }
+  .band__media { aspect-ratio: 4 / 5; max-height: 92vh; width: 100%; overflow: hidden; }
+  .band__media :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; transition: transform 1.2s var(--ease); }
+  .band:hover .band__media :global(img) { transform: scale(1.03); }
+  .band__overlay {
+    position: absolute; inset: 0;
+    display: grid; place-content: end center; justify-items: center; gap: 12px;
+    padding-bottom: clamp(36px, 6vw, 72px);
+    background: linear-gradient(transparent 50%, rgba(0,0,0,.45));
+    text-align: center;
+  }
+  .band__overlay .eyebrow { margin: 0; font-size: 11px; }
+  .band__title { margin: 0 0 10px; font-size: clamp(34px, 8.5vw, 128px); text-transform: uppercase; }
+
+  .band + .band { margin-top: clamp(16px, 2vw, 28px); }
+  .tiles { padding-top: clamp(56px, 8vw, 120px); }
+  .tiles__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 8px; }
+  .tile__media { width: 100%; aspect-ratio: 2 / 3; overflow: hidden; }
+  .tile__media :global(img) { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease); }
+  .tiles__grid:hover .tile__media :global(img) { transform: scale(1.02); }
+
+
+  @media (max-width: 800px) {
+    .tiles__grid {
+      grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 78%;
+      overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    }
+    .tiles__grid::-webkit-scrollbar { display: none; }
+    .tile__media { scroll-snap-align: start; }
+  }
+  @media (max-width: 700px) {
+    .hero { height: min(88svh, 720px); }
+    .band { grid-template-columns: 1fr; }
+    .band__media:nth-child(2) { display: none; }
+    .band__media { max-height: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .hero__content { animation: none; } }
+</style>

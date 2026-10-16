@@ -1,0 +1,237 @@
+---
+import Icon from './Icon.astro';
+import { topCategories, childCategories, productsIn } from '../data/products';
+import { site } from '../data/site';
+interface Props { overlay?: boolean }
+const { overlay = false } = Astro.props;
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/loja/', label: 'Loja', mega: 'shop' },
+  { href: '/loja/ultimas-unidades/', label: 'Últimas unidades' },
+  { href: '/sobre/', label: 'Sobre nós' },
+  { href: '/contactos/', label: 'Contactos' },
+];
+const current = nav
+  .filter((n) => path.startsWith(n.href) || (n.href === '/loja/' && path.startsWith('/produto/')))
+  .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+---
+<div class="announce" role="region" aria-label="Avisos">
+  <div class="announce__track">
+    {site.announcement.map((t, i) => <p class:list={['announce__item eyebrow', { 'is-active': i === 0 }]}>{t}</p>)}
+  </div>
+</div>
+
+<header class:list={['header', { 'header--overlay': overlay }]} data-header>
+  <div class="header__bar container">
+    <div class="header__left">
+      <button class="header__icon header__burger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobile-nav" data-menu-open>
+        <Icon name="menu" size={22} />
+      </button>
+      <a class="header__icon header__ig" href={site.instagram} target="_blank" rel="noopener" aria-label="Instagram da Mekie">
+        <Icon name="instagram" size={20} />
+      </a>
+    </div>
+
+    <a href="/" class="header__logo" aria-label="Mekie Planet, página inicial">
+      <img src="/images/site/logo.png" alt="Mekie" width="800" height="267" />
+    </a>
+
+    <div class="header__right">
+      <button class="header__icon header__cart" type="button" aria-label="Abrir carrinho" data-cart-open>
+        <Icon name="bag" size={22} />
+        <span class="header__count" data-cart-count hidden>0</span>
+      </button>
+    </div>
+  </div>
+
+  <nav class="header__nav" aria-label="Principal">
+    <ul>
+      {nav.map((item) => (
+        <li class:list={{ 'has-mega': !!item.mega }}>
+          <a href={item.href} class:list={['eyebrow', { 'is-current': current === item.href }]} aria-current={current === item.href ? 'page' : undefined}>{item.label}</a>
+          {item.mega === 'shop' && (
+            <div class="mega">
+              <div class="mega__inner container">
+                {topCategories.map((c) => (
+                  <div class="mega__col">
+                    <a href={`/loja/${c.slug}/`} class="mega__heading eyebrow">{c.name}</a>
+                    {childCategories(c.slug).length > 0 ? (
+                      childCategories(c.slug).map((sub) => (
+                        <a href={`/loja/${sub.slug}/`} class="mega__link">
+                          {sub.name}
+                          {productsIn(sub.slug).length === 0 && <span class="mega__soon eyebrow">Em breve</span>}
+                        </a>
+                      ))
+                    ) : (
+                      productsIn(c.slug)
+                        .filter((p, i, all) => all.findIndex((o) => o.name === p.name) === i)
+                        .map((p) => <a href={`/produto/${p.slug}/`} class="mega__link">{p.name}</a>)
+                    )}
+                  </div>
+                ))}
+                <div class="mega__col">
+                  <p class="mega__heading eyebrow">Destaques</p>
+                  <a href="/loja/" class="mega__link">Ver tudo</a>
+                  <a href="/loja/ultimas-unidades/" class="mega__link">Últimas unidades</a>
+                </div>
+              </div>
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  </nav>
+</header>
+
+<div class="mnav" id="mobile-nav" data-mnav hidden>
+  <div class="mnav__backdrop" data-menu-close></div>
+  <aside class="mnav__panel" aria-label="Menu">
+    <div class="mnav__top">
+      <img src="/images/site/logo.png" alt="Mekie" width="120" height="40" />
+      <button type="button" class="header__icon" aria-label="Fechar menu" data-menu-close><Icon name="close" size={22} /></button>
+    </div>
+    <ul class="mnav__list">
+      <li><a href="/loja/">Loja</a></li>
+      {topCategories.map((c) => (
+        <>
+          <li class="mnav__sub"><a href={`/loja/${c.slug}/`}>{c.name}</a></li>
+          {childCategories(c.slug).map((sub) => <li class="mnav__sub mnav__sub--2"><a href={`/loja/${sub.slug}/`}>{sub.name}</a></li>)}
+        </>
+      ))}
+      <li><a href="/loja/ultimas-unidades/">Últimas unidades</a></li>
+      <li><a href="/sobre/">Sobre nós</a></li>
+      <li><a href="/contactos/">Contactos</a></li>
+    </ul>
+    <a href={site.instagram} class="mnav__ig eyebrow" target="_blank" rel="noopener"><Icon name="instagram" size={18} /> @mekie_planet</a>
+  </aside>
+</div>
+
+<style>
+  .announce {
+    background: var(--ink);
+    color: #fff;
+    height: 34px;
+    position: relative;
+    z-index: 60;
+    overflow: hidden;
+  }
+  .announce__track { position: relative; height: 100%; }
+  .announce__item {
+    position: absolute; inset: 0;
+    margin: 0;
+    display: grid; place-items: center;
+    font-size: 10.5px;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .5s var(--ease), transform .5s var(--ease);
+    text-align: center; padding: 0 16px;
+  }
+  .announce__item.is-active { opacity: 1; transform: none; }
+
+  .header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg);
+    color: var(--ink);
+    transition: background .35s var(--ease), color .35s var(--ease), box-shadow .35s var(--ease);
+  }
+  .header--overlay {
+    position: fixed; left: 0; right: 0; top: 34px;
+    background: transparent; color: #fff;
+  }
+  .header--overlay .header__logo img { filter: invert(1); }
+  .header.is-solid, .header--overlay:hover, .header--overlay:focus-within {
+    background: var(--bg); color: var(--ink);
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .header.is-solid .header__logo img,
+  .header--overlay:hover .header__logo img,
+  .header--overlay:focus-within .header__logo img { filter: none; }
+  .header--overlay.is-solid { top: 0; }
+
+  .header__bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: 66px;
+  }
+  .header__left { display: flex; gap: 8px; align-items: center; }
+  .header__right { display: flex; justify-content: flex-end; }
+  .header__logo img { height: 38px; width: auto; transition: filter .35s var(--ease); }
+  .header__icon {
+    position: relative;
+    width: 40px; height: 40px;
+    display: inline-grid; place-items: center;
+  }
+  .header__burger { display: none; }
+  .header__count {
+    position: absolute; top: 4px; right: 2px;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 999px;
+    background: var(--ink); color: #fff;
+    font-size: 10px; line-height: 17px; text-align: center;
+  }
+  .header--overlay:not(.is-solid):not(:hover):not(:focus-within) .header__count { background: #fff; color: var(--ink); }
+
+  .header__nav ul {
+    list-style: none; margin: 0; padding: 0 0 12px;
+    display: flex; justify-content: center; gap: clamp(18px, 3vw, 40px);
+  }
+  .header__nav a.eyebrow { font-size: 11px; padding: 8px 0; display: inline-block; position: relative; }
+  .header__nav a.eyebrow::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 4px;
+    height: 1px; background: currentColor;
+    transform: scaleX(0); transition: transform .3s var(--ease);
+  }
+  .header__nav a.eyebrow:hover::after, .header__nav a.is-current::after { transform: scaleX(1); }
+
+  .mega {
+    position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--bg); color: var(--ink);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 12px 30px rgba(0,0,0,.06);
+    opacity: 0; visibility: hidden; transform: translateY(-6px);
+    transition: opacity .25s var(--ease), transform .25s var(--ease), visibility .25s;
+  }
+  .has-mega:hover .mega, .has-mega:focus-within .mega { opacity: 1; visibility: visible; transform: none; }
+  .mega__inner {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 40px; padding-top: 36px; padding-bottom: 40px;
+  }
+  .mega__col { display: flex; flex-direction: column; gap: 10px; }
+  .mega__heading { margin: 0 0 6px; color: var(--ink-soft); font-size: 10.5px; }
+  a.mega__heading:hover { color: var(--ink); }
+  .mega__link { font-size: 14px; display: flex; gap: 10px; align-items: center; }
+  .mega__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .mega__soon { font-size: 9.5px; color: var(--ink-soft); }
+
+  .mnav { position: fixed; inset: 0; z-index: 100; }
+  .mnav__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.4); }
+  .mnav__panel {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: min(380px, 88vw);
+    background: var(--bg);
+    padding: 16px 24px 32px;
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+    animation: slideIn .35s var(--ease);
+  }
+  .mnav__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .mnav__top img { height: 32px; width: auto; }
+  .mnav__list { list-style: none; margin: 0; padding: 0; }
+  .mnav__list a {
+    display: block; padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .mnav__sub a { padding-left: 16px; font-size: 12px; color: var(--ink-soft); }
+  .mnav__sub--2 a { padding-left: 32px; font-size: 11px; }
+  .mnav__ig { margin-top: auto; padding-top: 28px; display: inline-flex; gap: 10px; align-items: center; }
+  @keyframes slideIn { from { transform: translateX(-100%); } }
+
+  @media (max-width: 900px) {
+    .header__nav { display: none; }
+    .header__burger { display: inline-grid; }
+    .header__ig { display: none; }
+    .header__bar { height: 60px; }
+    .header__logo img { height: 30px; }
+  }
+</style>

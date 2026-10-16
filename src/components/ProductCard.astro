@@ -1,0 +1,107 @@
+---
+import Img from './Img.astro';
+import { type Product, discount, variantsOf, cartInfo, totalStock, isSoldOut } from '../data/products';
+import { formatPrice } from '../data/site';
+interface Props { product: Product; eager?: boolean }
+const { product: p, eager = false } = Astro.props;
+const off = discount(p);
+const colors = variantsOf(p).length;
+const label = p.badge ?? (isSoldOut(p) ? 'Esgotado' : off > 0 ? `-${off}%` : undefined);
+const cartData = JSON.stringify(cartInfo(p));
+const total = totalStock(p);
+const soldOut = isSoldOut(p);
+const sizes = '(max-width: 700px) 50vw, 25vw';
+/* recortes de produto (fundo transparente) ficam inteiros; fotos ocupam o cartão */
+const cutout = /\/products\/.+-1\.webp$/.test(p.images[0]);
+---
+<article class="card" data-card data-product={cartData}>
+  <div class="card__media">
+    <a href={`/produto/${p.slug}/`} class="card__link" aria-label={`${p.name}, ${p.color}`}>
+      {label && <span class="card__tag eyebrow">{label}</span>}
+      <Img src={p.images[0]} sizes={sizes} alt={`${p.name} ${p.color}`} width="600" height="750" loading={eager ? 'eager' : 'lazy'} class:list={['card__img', { 'card__img--photo': !cutout }]} />
+    </a>
+    <div class="quick" aria-label={`Adicionar ${p.name} ao carrinho`}>
+      {soldOut ? (
+        <p class="quick__label eyebrow">Esgotado</p>
+      ) : p.customizable ? (
+        <a href={`/produto/${p.slug}/`} class="quick__one eyebrow">Escolher cores</a>
+      ) : p.sizes ? (
+        <>
+          <p class="quick__label eyebrow">Adicionar rápido</p>
+          <div class="quick__sizes">
+            {p.sizes.map((s) => {
+              const out = !!p.sizeStock && !p.sizeStock[s];
+              return <button type="button" class:list={['quick__size', { 'is-out': out }]} data-quick={s} disabled={out} aria-label={out ? `Tamanho ${s} esgotado` : `Adicionar tamanho ${s}`} title={out ? 'Esgotado' : undefined}>{s}</button>;
+            })}
+          </div>
+        </>
+      ) : (
+        <button type="button" class="quick__one eyebrow" data-quick="">Adicionar ao carrinho</button>
+      )}
+    </div>
+  </div>
+  <div class="card__body">
+    <h3 class="card__title"><a href={`/produto/${p.slug}/`}>{p.name}</a></h3>
+    <p class="price">
+      {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
+      {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
+    </p>
+    <p class="card__meta eyebrow">{colors > 1 ? `${colors} cores disponíveis` : p.color}</p>
+    {!p.madeToOrderDays && total !== undefined && total > 0 && total <= 3 && <p class="card__stock eyebrow">{total === 1 ? 'Última unidade' : `Últimas ${total} unidades`}</p>}
+  </div>
+</article>
+
+<style>
+  .card { position: relative; display: flex; flex-direction: column; text-align: center; }
+  .card__media { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
+  .card__link { position: absolute; inset: 0; display: block; }
+  .card__img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 6%;
+    transition: opacity .5s var(--ease), transform .8s var(--ease);
+  }
+  .card__img--photo { object-fit: cover; padding: 0; }
+  .card__media:hover .card__img { transform: scale(1.03); }
+  .card__tag {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    font-size: 10.5px; color: var(--ink);
+  }
+
+  .quick {
+    position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3;
+    background: rgba(255,255,255,.94);
+    backdrop-filter: blur(6px);
+    padding: 12px;
+    display: grid; gap: 8px; justify-items: center;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .3s var(--ease), transform .3s var(--ease);
+  }
+  .card__media:hover .quick, .quick:focus-within { opacity: 1; transform: none; }
+  .quick__label { margin: 0; font-size: 10px; color: var(--ink-soft); }
+  .quick__sizes { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .quick__size {
+    min-width: 36px; height: 32px; padding: 0 6px;
+    border: 1px solid var(--line); font-size: 12px;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .quick__size:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .quick__size.is-out { color: #b5b5b5; text-decoration: line-through; cursor: not-allowed; }
+  .quick__size.is-out:hover { background: transparent; color: #b5b5b5; border-color: var(--line); }
+  .quick__one { width: 100%; height: 36px; font-size: 10.5px; display: grid; place-items: center; }
+  .quick__one:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .quick.is-added::after {
+    content: 'Adicionado ✓'; position: absolute; inset: 0;
+    display: grid; place-items: center; background: var(--accent); color: #fff;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  }
+
+  .card__body { padding-top: 16px; display: grid; gap: 4px; justify-items: center; }
+  .card__title { margin: 0; font-size: 13.5px; font-weight: 500; }
+  .card__meta { margin: 8px 0 0; font-size: 10px; color: var(--ink-soft); }
+  .card__stock { margin: 0; font-size: 10px; color: var(--sale); }
+  @media (hover: none) {
+    .quick { display: none; }
+  }
+</style>

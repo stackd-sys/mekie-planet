@@ -1,0 +1,12 @@
+---
+/* Imagem com versão pequena (-sm.webp, 640px) para ecrãs estreitos, quando existe. */
+import fs from 'node:fs';
+import path from 'node:path';
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'img'> & { src: string; sizes?: string; largeW?: number };
+const { src, sizes = '100vw', largeW = 1200, ...rest } = Astro.props;
+const small = src.replace(/\.webp$/, '-sm.webp');
+const hasSmall = small !== src && fs.existsSync(path.join(process.cwd(), 'public', small));
+---
+<img src={src} srcset={hasSmall ? `${small} 640w, ${src} ${largeW}w` : undefined} sizes={hasSmall ? sizes : undefined} {...rest} />

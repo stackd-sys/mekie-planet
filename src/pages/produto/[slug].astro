@@ -1,0 +1,444 @@
+---
+import Base from '../../layouts/Base.astro';
+import Carousel from '../../components/Carousel.astro';
+import Img from '../../components/Img.astro';
+import { products, getCategory, discount, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, type Product } from '../../data/products';
+import { site, formatPrice } from '../../data/site';
+
+export function getStaticPaths() {
+  return products.map((p) => ({ params: { slug: p.slug }, props: { product: p } }));
+}
+interface Props { product: Product }
+const { product: p } = Astro.props;
+const cat = getCategory(p.category)!;
+const off = discount(p);
+const variants = variantsOf(p);
+const related = [
+  ...products.filter((o) => o.collection && o.collection === p.collection && o.slug !== p.slug),
+  ...products.filter((o) => o.category === p.category && o.slug !== p.slug && o.collection !== p.collection),
+  ...products.filter((o) => o.category !== p.category && o.collection !== p.collection),
+].slice(0, 8);
+const cartData = { ...cartInfo(p), sizeNotes: p.sizeNotes };
+const total = totalStock(p);
+const soldOut = isSoldOut(p);
+const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: `${p.name} ${p.color}`,
+  sku: String(p.id),
+  image: p.images.map((i) => new URL(i, site.url).href),
+  description: p.description,
+  color: p.color,
+  category: cat.name,
+  ...(p.details ? { material: p.details.composition.join(', ') } : {}),
+  brand: { '@type': 'Brand', name: site.name },
+  offers: {
+    '@type': 'Offer',
+    priceCurrency: 'EUR',
+    price: p.price.toFixed(2),
+    availability: soldOut ? 'https://schema.org/OutOfStock' : total !== undefined && total <= 3 ? 'https://schema.org/LimitedAvailability' : 'https://schema.org/InStock',
+    itemCondition: 'https://schema.org/NewCondition',
+    url: new URL(`/produto/${p.slug}/`, site.url).href,
+    seller: { '@type': 'Organization', name: site.name },
+  },
+};
+const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${c.name}` : c.name);
+/* Pré-visualização do scrunchie: folhos à volta de um aro */
+const ruffles = Array.from({ length: 14 }, (_, i) => {
+  const a = (i / 14) * Math.PI * 2;
+  return { x: +(100 + Math.cos(a) * 62).toFixed(1), y: +(100 + Math.sin(a) * 62).toFixed(1) };
+});
+const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test(src);
+---
+<Base title={`${p.name} ${p.color}`} description={`${p.name} (${p.color}) por ${formatPrice(p.price)}. ${p.description} Envio em ${site.deliveryDays} dias úteis, grátis acima de ${site.freeShippingFrom}€.`} image={p.images[1] ?? p.images[0]}>
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(jsonLd)} />
+
+  <div class="pdp">
+    <div class="gallery" data-gallery>
+      <div class="gallery__track" data-track>
+        {p.images.map((src, i) => (
+          <figure class:list={['gallery__item', { 'gallery__item--lead': i === 0, 'gallery__item--cover': !isCutout(src) }]} data-slide={i}>
+            <Img src={src} sizes={i === 0 ? '(max-width: 900px) 100vw, 58vw' : '(max-width: 900px) 100vw, 29vw'} alt={`${p.name} ${p.color}, imagem ${i + 1} de ${p.images.length}`} width="1000" height="1250" loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
+          </figure>
+        ))}
+      </div>
+      {p.images.length > 1 && (
+        <div class="gallery__dots" aria-hidden="true">
+          {p.images.map((_, i) => <span class:list={{ 'is-active': i === 0 }} data-dot={i}></span>)}
+        </div>
+      )}
+      <p class="gallery__ref eyebrow">Ref. {p.id}</p>
+    </div>
+
+    <div class="info">
+      <h1 class="info__title">{p.name}</h1>
+      <p class="price info__price">
+        {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
+        {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
+        {off > 0 && <span class="info__off">-{off}%</span>}
+      </p>
+      <p class="info__tax">IVA incluído. Portes calculados no checkout.</p>
+      {p.customizable ? (
+        <div class="info__order">
+          <p><strong>Feito à mão por encomenda,</strong> com as cores que escolheres. Entrega em {p.madeToOrderDays} dias úteis.</p>
+        </div>
+      ) : p.madeToOrderDays ? (
+        <div class="info__order">
+          <p><strong>{p.stock === 1 ? '1 unidade pronta a enviar.' : `${p.stock ?? 0} unidades prontas a enviar.`}</strong> Depois disso fazemos por encomenda, com entrega em {p.madeToOrderDays} dias úteis.</p>
+          <a href="/produto/scrunchie-personalizado/" class="link-underline">Queres outras cores? Personaliza o teu</a>
+        </div>
+      ) : soldOut ? (
+        <p class="info__stock info__stock--out">Esgotado</p>
+      ) : !p.sizeStock && total !== undefined && total <= 3 && (
+        <p class="info__stock"><span class="info__dot"></span>{total === 1 ? 'Só resta 1 unidade' : `Só restam ${total} unidades`}</p>
+      )}
+
+      {!p.customizable && <div class="opt">
+        <p class="opt__label">Cor: <span>{p.color}</span></p>
+        <div class="swatches">
+          {variants.map((v) => (
+            <a href={`/produto/${v.slug}/`} class:list={['swatch', { 'is-active': v.slug === p.slug }]} aria-label={`Cor ${v.color}`} aria-current={v.slug === p.slug ? 'page' : undefined} title={v.color}>
+              <img src={v.images[0].replace('.webp', '-sm.webp')} alt="" width="64" height="64" loading="lazy" />
+            </a>
+          ))}
+        </div>
+      </div>}
+
+      <form class="buy" data-buy data-product={JSON.stringify(cartData)} novalidate>
+        {p.customizable && (
+          <div class="custom">
+            <svg class="custom__preview" viewBox="0 0 200 200" aria-hidden="true" data-preview>
+              {ruffles.map((c) => <circle cx={c.x} cy={c.y} r="30" />)}
+              <circle class="custom__hole" cx="100" cy="100" r="36" />
+            </svg>
+            {[['main', 'Cor do corpo'], ['edge', 'Cor do rebordo']].map(([name, label]) => (
+              <fieldset class="opt">
+                <legend class="opt__label">{label}: <span data-pick-label={name}>escolhe uma cor</span></legend>
+                <div class="yarns">
+                  {yarnColors.map((c) => (
+                    <label class="yarn" title={yarnLabel(c)}>
+                      <input type="radio" name={name} value={yarnLabel(c)} data-hex={c.hex} />
+                      <span style={`--c:${c.hex}`}><span class="sr-only">{yarnLabel(c)}</span></span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+            <p class="custom__note">Fio Rosários 4 Bio Love, 100% algodão orgânico. As cores no ecrã podem variar ligeiramente.</p>
+          </div>
+        )}
+        {p.sizes ? (
+          <fieldset class="opt">
+            <legend class="opt__label">Tamanho: <span data-size-label>escolhe o teu tamanho</span></legend>
+            <div class="sizes">
+              {p.sizes.map((s) => {
+                const out = !!p.sizeStock && !p.sizeStock[s];
+                return (
+                  <label class:list={['size', { 'is-out': out }]} title={out ? 'Esgotado' : undefined}>
+                    <input type="radio" name="size" value={s} disabled={out} />
+                    <span>{s}{out && <span class="sr-only"> (esgotado)</span>}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <p class="info__stock size-stock" data-size-stock hidden><span class="info__dot"></span><span data-size-stock-text></span></p>
+            <p class="size-note" data-size-note hidden></p>
+            <a href="/contactos/" class="opt__help link-underline">Dúvidas com o tamanho? Fala connosco</a>
+          </fieldset>
+        ) : (
+          <p class="opt__label">Tamanho: <span>Único</span></p>
+        )}
+
+        <p class="buy__error" role="alert" hidden>{p.customizable ? 'Escolhe as duas cores para continuar.' : 'Escolhe um tamanho para continuar.'}</p>
+        <button type="submit" class="pill pill--accent pill--block buy__btn" data-buy-btn disabled={soldOut}>
+          {soldOut ? 'Esgotado' : 'Adicionar ao carrinho'}
+        </button>
+      </form>
+
+      <ul class="pay" aria-label="Métodos de pagamento">
+        {payments.map((m) => <li>{m}</li>)}
+      </ul>
+      <p class="pay__note">Pagamento seguro · MB WAY, Multibanco, cartão, Apple Pay e Google Pay</p>
+
+      <ul class="perks eyebrow">
+        <li>Envio grátis acima de {site.freeShippingFrom}€</li>
+        <li>Devoluções em 14 dias</li>
+        <li>Envio em {site.deliveryDays} dias úteis via CTT</li>
+        <li>Portugal, ilhas e Europa</li>
+      </ul>
+
+      <div class="acc">
+        <details open>
+          <summary class="eyebrow">Descrição</summary>
+          <div class="acc__body">
+            <p>{p.description}</p>
+            {p.details && (
+              <ul>{p.details.features.map((f) => <li>{f}</li>)}</ul>
+            )}
+            <ul>
+              <li>Cor: {p.color}</li>
+              <li>Tamanhos: {p.sizes ? p.sizes.join(', ') : 'tamanho único'}</li>
+            </ul>
+          </div>
+        </details>
+        {p.details && (p.details.composition.length > 0 || p.details.care) && (
+          <details>
+            <summary class="eyebrow">Composição e cuidados</summary>
+            <div class="acc__body">
+              {p.details.composition.length > 0 && (
+                <>
+                  <p class="acc__label">Composição</p>
+                  <ul>{p.details.composition.map((c) => <li>{c}</li>)}</ul>
+                </>
+              )}
+              {p.details.care && (
+                <>
+                  <p class="acc__label">Cuidados</p>
+                  <ul>{p.details.care.map((c) => <li>{c}</li>)}</ul>
+                </>
+              )}
+            </div>
+          </details>
+        )}
+        <details>
+          <summary class="eyebrow">Envios e devoluções</summary>
+          <div class="acc__body">
+            <p>Enviamos para Portugal Continental, Madeira, Açores e Europa através dos CTT. Entrega estimada em {site.deliveryDays} dias úteis após a confirmação do pagamento. Envio gratuito em encomendas acima de {site.freeShippingFrom}€.</p>
+            <p>Tens 14 dias após a receção para devolver, sem indicar o motivo. O artigo deve estar nas condições originais, sem sinais de uso e com as etiquetas intactas.</p>
+            <p><a class="link-underline" href="/politica-de-envios-e-entregas/">Política de envios</a> · <a class="link-underline" href="/politica-de-devolucoes-e-reembolsos/">Política de devoluções</a></p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky-buy" data-sticky hidden>
+    <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="44" height="55" />
+    <div class="sticky-buy__txt">
+      <p>{p.name}</p>
+      <p class="price">{off > 0 && <del>{formatPrice(p.regularPrice)}</del>}{off > 0 ? <ins>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}</p>
+    </div>
+    <button type="button" class="pill pill--accent" data-sticky-btn disabled={soldOut}>{soldOut ? 'Esgotado' : 'Adicionar'}</button>
+  </div>
+
+  <section class="section related">
+    <div class="container">
+      <h2 class="section-title related__title">Continua a explorar</h2>
+      <Carousel products={related} label="Produtos relacionados" />
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { cart } from '../../scripts/cart';
+  import { openCart } from '../../scripts/ui';
+
+  /* Galeria: pontos no telemóvel */
+  const track = document.querySelector<HTMLElement>('[data-track]');
+  const dots = document.querySelectorAll<HTMLElement>('[data-dot]');
+  track?.addEventListener('scroll', () => {
+    const i = Math.round(track.scrollLeft / track.clientWidth);
+    dots.forEach((d, n) => d.classList.toggle('is-active', n === i));
+  }, { passive: true });
+
+  /* Compra */
+  const form = document.querySelector<HTMLFormElement>('[data-buy]');
+  if (form) {
+    const product = JSON.parse(form.dataset.product!);
+    const error = form.querySelector<HTMLElement>('.buy__error')!;
+    const sizeLabel = form.querySelector<HTMLElement>('[data-size-label]');
+    const btn = form.querySelector<HTMLButtonElement>('[data-buy-btn]')!;
+    const hasSizes = !!form.querySelector('input[name=size]');
+
+    form.addEventListener('change', (e) => {
+      const t = e.target as HTMLInputElement;
+      if (t.name === 'main' || t.name === 'edge') {
+        error.hidden = true;
+        const label = form.querySelector<HTMLElement>(`[data-pick-label=${t.name}]`);
+        if (label) label.textContent = t.value;
+        const preview = form.querySelector<SVGElement>('[data-preview]');
+        preview?.style.setProperty(t.name === 'main' ? '--main' : '--edge', t.dataset.hex!);
+      }
+      if (t.name === 'size') {
+        error.hidden = true;
+        if (sizeLabel) sizeLabel.textContent = t.value;
+        const left = product.sizeStock?.[t.value];
+        const stockBox = form.querySelector<HTMLElement>('[data-size-stock]');
+        if (stockBox) {
+          stockBox.hidden = !(left > 0 && left <= 3);
+          stockBox.querySelector('[data-size-stock-text]')!.textContent =
+            left === 1 ? `Só resta 1 unidade em ${t.value}` : `Só restam ${left} unidades em ${t.value}`;
+        }
+        const note = form.querySelector<HTMLElement>('[data-size-note]');
+        if (note) {
+          note.textContent = product.sizeNotes?.[t.value] ?? '';
+          note.hidden = !note.textContent;
+        }
+      }
+    });
+
+    const add = () => {
+      const data = new FormData(form);
+      const size = (data.get('size') as string | null) ?? undefined;
+      const main = data.get('main') as string | null;
+      const edge = data.get('edge') as string | null;
+      const isCustom = !!form.querySelector('input[name=main]');
+      if (isCustom && (!main || !edge)) {
+        error.hidden = false;
+        form.querySelector('.custom')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (hasSizes && !size) {
+        error.hidden = false;
+        form.querySelector('.sizes')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const { sizeNotes, ...item } = product;
+      cart.add({ ...item, size, ...(isCustom ? { custom: `Corpo ${main}, rebordo ${edge}` } : {}) }, 1);
+      btn.textContent = 'Adicionado ✓';
+      setTimeout(() => (btn.textContent = 'Adicionar ao carrinho'), 1600);
+      openCart();
+    };
+    form.addEventListener('submit', (e) => { e.preventDefault(); add(); });
+    document.querySelector('[data-sticky-btn]')?.addEventListener('click', add);
+
+    /* Barra fixa no telemóvel quando o botão principal sai do ecrã */
+    const sticky = document.querySelector<HTMLElement>('[data-sticky]');
+    if (sticky && 'IntersectionObserver' in window) {
+      new IntersectionObserver(([entry]) => {
+        sticky.hidden = entry.isIntersecting || entry.boundingClientRect.top > 0;
+      }).observe(btn);
+    }
+  }
+</script>
+
+<style>
+  .pdp {
+    display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 72px);
+    max-width: 1440px; margin: 0 auto;
+    padding: clamp(16px, 3vw, 40px) var(--gutter) 0;
+  }
+
+  .gallery__track { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .gallery__item { margin: 0; aspect-ratio: 4 / 5; overflow: hidden; }
+  .gallery__item--lead { grid-column: 1 / -1; aspect-ratio: 1 / 1; }
+  .gallery__item img { width: 100%; height: 100%; object-fit: contain; }
+  .gallery__item--lead img { padding: 4% 12%; }
+  .gallery__item--cover img { object-fit: cover; padding: 0; }
+  .gallery__item:not(.gallery__item--cover):not(.gallery__item--lead) img { padding: 8%; }
+  .gallery__dots { display: none; }
+  .gallery__ref { margin: 20px 0 0; font-size: 10px; color: var(--ink-soft); }
+
+  .info { position: sticky; top: 130px; align-self: start; padding: clamp(8px, 2vw, 32px) 0 24px; max-width: 440px; }
+  .info__col { display: inline-block; font-size: 10.5px; color: var(--ink-soft); margin-bottom: 10px; }
+  .info__col:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .info__title {
+    margin: 0 0 12px;
+    font-family: var(--font-body); font-weight: 400;
+    font-size: clamp(19px, 1.6vw, 22px); letter-spacing: .06em; text-transform: uppercase;
+  }
+  .info__price { font-size: 16px; gap: 10px; align-items: center; }
+  .info__off { font-size: 10px; letter-spacing: .1em; background: var(--sale); color: #fff; padding: 3px 7px; border-radius: 999px; }
+  .info__tax { margin: 8px 0 26px; font-size: 12px; color: var(--ink-soft); }
+
+  .opt { border: 0; margin: 0 0 24px; padding: 0; }
+  .opt__label { margin: 0 0 10px; padding: 0; font-size: 12.5px; }
+  .opt__label span { color: var(--ink-soft); }
+  .opt__help { display: inline-block; margin-top: 12px; font-size: 12px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { width: 58px; height: 58px; border: 1px solid var(--line); transition: border-color .2s; }
+  .swatch:hover { border-color: var(--ink-soft); }
+  .swatch img { width: 100%; height: 100%; object-fit: contain; padding: 5px; }
+  .swatch.is-active { border-color: var(--ink); }
+
+  .sizes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .size input { position: absolute; opacity: 0; pointer-events: none; }
+  .size span {
+    display: grid; place-items: center; min-width: 46px; height: 42px; padding: 0 10px;
+    border: 1px solid var(--line); font-size: 12px; cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s;
+  }
+  .size span:hover { border-color: var(--ink); }
+  .custom { margin-bottom: 8px; }
+  .custom__preview { display: block; width: 132px; height: 132px; margin: 0 0 18px; --main: #e1767e; --edge: #ecd6dc; }
+  .custom__preview circle { fill: var(--main); stroke: var(--edge); stroke-width: 7; transition: fill .25s, stroke .25s; }
+  .custom__preview .custom__hole { fill: var(--bg); stroke: none; }
+  .yarns { display: flex; flex-wrap: wrap; gap: 7px; }
+  .yarn input { position: absolute; opacity: 0; pointer-events: none; }
+  .yarn > span { display: block; width: 28px; height: 28px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer; transition: box-shadow .2s; }
+  .yarn input:checked + span { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+  .yarn input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .custom__note { margin: -8px 0 20px; font-size: 12px; color: var(--ink-soft); }
+  .size.is-out span { color: #b5b5b5; text-decoration: line-through; cursor: not-allowed; background: transparent; }
+  .size.is-out span:hover { border-color: var(--line); }
+  .size-stock { margin: 12px 0 0 !important; }
+  .size-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+  .info__stock--out { color: var(--ink); font-weight: 600; }
+  .buy__btn:disabled { opacity: .45; cursor: not-allowed; }
+  .size input:checked + span { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .size input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .buy__btn { min-height: 48px; }
+  .buy__error { margin: -8px 0 14px; color: var(--sale); font-size: 13px; }
+
+  .pay { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+  .pay li { font-size: 10px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 5px 8px; }
+  .pay__note { margin: 10px 0 0; font-size: 11.5px; text-align: center; color: var(--ink-soft); }
+
+  .perks { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 6px; font-size: 10.5px; }
+
+  .acc { margin-top: 28px; border-top: 1px solid var(--line); }
+  .acc details { border-bottom: 1px solid var(--line); }
+  .acc summary {
+    list-style: none; cursor: pointer; padding: 17px 0; font-size: 10.5px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary::after { content: '+'; font-size: 16px; line-height: 1; font-weight: 300; }
+  .acc details[open] summary::after { content: '−'; }
+  .acc__body { padding-bottom: 18px; font-size: 13.5px; color: var(--ink-soft); }
+  .acc__body p { margin: 0 0 10px; }
+  .acc__body ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 4px; }
+  .acc__label { color: var(--ink); font-size: 12.5px; margin: 4px 0 6px !important; }
+  .info__order { margin: -14px 0 24px; padding: 14px 16px; background: var(--surface); font-size: 13px; }
+  .info__order p { margin: 0 0 8px; }
+  .info__order a { font-size: 12.5px; }
+  .info__stock { display: flex; align-items: center; gap: 8px; margin: -14px 0 24px; font-size: 12.5px; color: var(--sale); }
+  .info__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sale); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .info__dot { animation: none; } }
+
+  .related { margin-top: clamp(40px, 6vw, 80px); }
+  .related__title { font-weight: 400; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
+
+  .sticky-buy {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    display: none; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(0,0,0,.06);
+  }
+  .sticky-buy img { width: 44px; height: 55px; object-fit: contain; }
+  .sticky-buy__txt p { margin: 0; font-size: 12.5px; }
+  .sticky-buy .pill { min-height: 40px; padding: 0 20px; }
+
+  @media (max-width: 900px) {
+    .pdp { grid-template-columns: 1fr; padding: 0; gap: 0; }
+    .gallery { position: relative; }
+    .gallery__track {
+      display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 100%;
+      gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    }
+    .gallery__track::-webkit-scrollbar { display: none; }
+    .gallery__item, .gallery__item--lead { grid-column: auto; aspect-ratio: 4 / 5; scroll-snap-align: start; }
+    .gallery__item--lead img { padding: 8%; }
+    .gallery__dots { display: flex; justify-content: center; gap: 8px; padding: 14px 0 0; }
+    .gallery__dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--line); transition: background .2s; }
+    .gallery__dots span.is-active { background: var(--ink); }
+    .gallery__ref { display: none; }
+    .info { position: static; max-width: none; padding: 24px var(--gutter) 8px; }
+    .sticky-buy:not([hidden]) { display: grid; }
+  }
+</style>

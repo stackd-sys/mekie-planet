@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+import Collection from '../../components/Collection.astro';
+import { collections, productsInCollection, type Collection as Col } from '../../data/products';
+
+export function getStaticPaths() {
+  return collections.map((c) => ({ params: { slug: c.slug }, props: { col: c } }));
+}
+interface Props { col: Col }
+const { col } = Astro.props;
+---
+<Base title={`Coleção ${col.name}`} description={`${col.intro} Coleção ${col.name} da Mekie Planet.`} image={col.image}>
+  <Collection title={col.name} intro={col.intro} image={col.image} products={productsInCollection(col.slug)} current={`col-${col.slug}`} />
+</Base>

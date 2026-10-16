@@ -1,0 +1,214 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+<Base title="Finalizar compra" noindex popup={false}>
+  <div class="container co">
+    <h1 class="display co__title">Finalizar compra</h1>
+
+    <div class="co__empty" data-co-empty hidden>
+      <p>O teu carrinho está vazio.</p>
+      <a href="/loja/" class="pill">Ir para a loja</a>
+    </div>
+
+    <div class="co__grid" data-co-grid>
+      <form class="co__form" data-co-form>
+        <fieldset>
+          <legend class="eyebrow">Contacto</legend>
+          <input class="field" name="email" type="email" placeholder="E-mail" required autocomplete="email" />
+          <input class="field" name="telefone" type="tel" placeholder="Telemóvel" required autocomplete="tel" />
+        </fieldset>
+        <fieldset>
+          <legend class="eyebrow">Entrega</legend>
+          <div class="two">
+            <input class="field" name="nome" placeholder="Nome" required autocomplete="given-name" />
+            <input class="field" name="apelido" placeholder="Apelido" required autocomplete="family-name" />
+          </div>
+          <input class="field" name="morada" placeholder="Morada" required autocomplete="street-address" />
+          <div class="two">
+            <input class="field" name="codigo_postal" placeholder="Código postal" required autocomplete="postal-code" pattern="[0-9]{4}-?[0-9]{3}|.{3,}" />
+            <input class="field" name="localidade" placeholder="Localidade" required autocomplete="address-level2" />
+          </div>
+          <select class="field" name="pais" required autocomplete="country-name">
+            <option>Portugal Continental</option>
+            <option>Madeira</option>
+            <option>Açores</option>
+            <option>Outro país da Europa</option>
+          </select>
+          <input class="field" name="nif" placeholder="NIF (opcional)" inputmode="numeric" />
+          <textarea class="field" name="notas" placeholder="Notas da encomenda (opcional)"></textarea>
+        </fieldset>
+        <fieldset>
+          <legend class="eyebrow">Código de desconto</legend>
+          <div class="co__code">
+            <input class="field" name="codigo" id="co-code" placeholder="Ex.: MEKIE10" autocomplete="off" autocapitalize="characters" data-code-input />
+            <button type="button" class="pill pill--outline" data-code-apply>Aplicar</button>
+          </div>
+          <p class="co__code-msg" data-code-msg hidden></p>
+        </fieldset>
+        <label class="co__terms">
+          <input type="checkbox" required />
+          <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
+        </label>
+        <button type="submit" class="pill pill--accent pill--block co__submit">Enviar encomenda</button>
+        <p class="co__note">Ao enviar, abrimos o teu email com o resumo da encomenda para {site.email}. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão) e o valor dos portes, quando aplicável.</p>
+      </form>
+
+      <aside class="co__summary">
+        <p class="eyebrow">Resumo</p>
+        <ul class="co__lines" data-co-lines></ul>
+        <div class="co__row"><span>Subtotal</span><span data-cart-subtotal></span></div>
+        <div class="co__row" data-co-discount-row hidden><span data-co-discount-label></span><span data-co-discount></span></div>
+        <div class="co__row"><span>Envio</span><span data-co-ship></span></div>
+        <div class="co__row co__total"><span>Total</span><strong data-co-total></strong></div>
+      </aside>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { cart, money, href } from '../scripts/cart';
+  import * as newsletter from '../scripts/newsletter';
+  const FREE = Number(document.documentElement.dataset.freeShipping || 65);
+  const CODE = newsletter.CODE;
+  const RATE = 0.1;
+  let applied = '';
+  try { applied = localStorage.getItem('mekie-code-applied') || ''; } catch {}
+  const EMAIL = document.documentElement.dataset.email || '';
+  const made = (l: (typeof cart.lines)[number]) => (l.madeToOrderDays ? Math.max(0, l.qty - (l.stock ?? 0)) : 0);
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+  const codeInput = document.querySelector<HTMLInputElement>('[data-code-input]')!;
+  const codeMsg = document.querySelector<HTMLElement>('[data-code-msg]')!;
+  if (applied) codeInput.value = applied;
+  const totals = () => {
+    const sub = cart.subtotal;
+    const disc = applied === CODE && CODE ? Math.round(sub * RATE * 100) / 100 : 0;
+    return { sub, disc, after: sub - disc };
+  };
+  document.querySelector('[data-code-apply]')?.addEventListener('click', () => {
+    const value = codeInput.value.trim().toUpperCase();
+    codeMsg.hidden = false;
+    if (value && value === CODE) {
+      applied = value;
+      codeMsg.textContent = 'Código aplicado: 10% de desconto. Não acumulável com outras promoções.';
+      codeMsg.classList.remove('is-error');
+    } else {
+      applied = '';
+      codeMsg.textContent = 'Este código não é válido.';
+      codeMsg.classList.add('is-error');
+    }
+    try { localStorage.setItem('mekie-code-applied', applied); } catch {}
+    render(cart.lines);
+  });
+
+  const render = (lines: typeof cart.lines) => {
+    const { sub, disc, after } = totals();
+    /* os portes grátis contam pelo subtotal, antes do desconto, tal como o carrinho mostra */
+    const free = sub >= FREE;
+    const discRow = document.querySelector<HTMLElement>('[data-co-discount-row]')!;
+    discRow.hidden = disc === 0;
+    document.querySelector<HTMLElement>('[data-co-discount-label]')!.textContent = `Desconto ${applied}`;
+    document.querySelector<HTMLElement>('[data-co-discount]')!.textContent = `-${money(disc)}`;
+    document.querySelector<HTMLElement>('[data-co-empty]')!.hidden = lines.length > 0;
+    document.querySelector<HTMLElement>('[data-co-grid]')!.hidden = lines.length === 0;
+    document.querySelector<HTMLElement>('[data-co-ship]')!.textContent = free ? 'Grátis' : 'A confirmar';
+    document.querySelector<HTMLElement>('[data-co-total]')!.textContent = money(after) + (free ? '' : ' + portes');
+    document.querySelector<HTMLElement>('[data-co-lines]')!.innerHTML = lines
+      .map((l) => `<li><img src="${href(esc(l.image))}" alt="" width="64" height="80" /><span class="q">${l.qty}</span>
+        <div><p>${esc(l.name)}</p><small>${esc(l.custom || l.color)}${l.size ? ` · ${esc(l.size)}` : ''}${made(l) ? `<br>${made(l)} por encomenda, entrega em ${l.madeToOrderDays} dias úteis` : ''}</small></div>
+        <span>${money(l.qty * l.price)}</span></li>`)
+      .join('');
+  };
+  cart.subscribe(render);
+
+  const form = document.querySelector<HTMLFormElement>('[data-co-form]');
+  const submitBtn = form?.querySelector<HTMLButtonElement>('[type=submit]');
+  const codeError = (text: string) => {
+    applied = '';
+    try { localStorage.setItem('mekie-code-applied', ''); } catch {}
+    codeMsg.hidden = false;
+    codeMsg.textContent = text;
+    codeMsg.classList.add('is-error');
+    render(cart.lines);
+    codeInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const email = String(f.get('email') || '');
+
+    /* O código de boas-vindas é de quem subscreveu com este email e só vale uma vez */
+    if (applied && newsletter.hasWebhook()) {
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await newsletter.check(email);
+        if (res.status !== 'unknown' && !res.subscribed) {
+          return codeError(`O código ${CODE} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.`);
+        }
+        if (res.used) return codeError(`O código ${CODE} já foi usado numa encomenda com este email.`);
+      } catch {
+        /* sem resposta do webhook: segue e confirmamos à mão */
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    }
+
+    const lines = cart.lines;
+    const { sub, disc, after } = totals();
+    const free = sub >= FREE;
+    const body = [
+      'Olá Mekie! Quero fazer esta encomenda:',
+      '',
+      ...lines.map((l) => `• ${l.qty}x ${l.name}, ${l.custom || l.color}${l.size ? `, tamanho ${l.size}` : ''}: ${money(l.qty * l.price)}${made(l) ? ` (${made(l)} por encomenda, ${l.madeToOrderDays} dias úteis)` : ''}`),
+      '',
+      `Subtotal: ${money(sub)}`,
+      disc ? `Desconto ${applied} (10%): -${money(disc)}` : '',
+      `Total: ${money(after)}${free ? ' (envio grátis)' : ' + portes'}`,
+      '',
+      `Nome: ${f.get('nome')} ${f.get('apelido')}`,
+      `Email: ${f.get('email')}`,
+      `Telemóvel: ${f.get('telefone')}`,
+      `Morada: ${f.get('morada')}, ${f.get('codigo_postal')} ${f.get('localidade')} (${f.get('pais')})`,
+      f.get('nif') ? `NIF: ${f.get('nif')}` : '',
+      f.get('notas') ? `Notas: ${f.get('notas')}` : '',
+    ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
+    if (applied) newsletter.redeem(email, lines.map((l) => `${l.qty}x ${l.name} ${l.color}`).join(', ')).catch(() => {});
+    window.location.href = `mailto:${EMAIL}?subject=${encodeURIComponent('Nova encomenda no site Mekie')}&body=${encodeURIComponent(body)}`;
+  });
+</script>
+
+<style>
+  .co { padding-top: clamp(32px, 5vw, 64px); padding-bottom: clamp(56px, 8vw, 110px); }
+  .co__title { font-size: clamp(32px, 4vw, 52px); text-transform: uppercase; margin: 0 0 36px; }
+  .co__empty { display: grid; gap: 18px; justify-items: start; }
+  .co__grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+  .co__grid[hidden] { display: none; }
+  .co__form { display: grid; gap: 26px; }
+  .co__form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .co__form legend { font-size: 11px; margin-bottom: 12px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .co__terms { display: flex; gap: 10px; font-size: 13px; align-items: flex-start; }
+  .co__terms input { margin-top: 3px; }
+  .co__submit { min-height: 52px; }
+  .co__code { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .co__code .pill { min-height: 46px; }
+  .co__code-msg { margin: 0; font-size: 12.5px; color: var(--accent); }
+  .co__code-msg.is-error { color: var(--sale); }
+  .co__note { margin: -8px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+  .co__summary { background: var(--surface); padding: 28px; position: sticky; top: 130px; }
+  .co__summary > .eyebrow { margin: 0 0 18px; font-size: 11px; }
+  .co__lines { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 14px; }
+  .co__lines :global(li) { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; position: relative; font-size: 13.5px; }
+  .co__lines :global(img) { width: 64px; height: 80px; object-fit: contain; background: var(--bg); }
+  .co__lines :global(.q) { position: absolute; left: 50px; top: -6px; background: var(--ink); color: #fff; border-radius: 999px; font-size: 10px; min-width: 18px; height: 18px; display: grid; place-items: center; }
+  .co__lines :global(p) { margin: 0; }
+  .co__lines :global(small) { color: var(--ink-soft); }
+  .co__row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-top: 1px solid var(--line); }
+  .co__total { font-size: 16px; padding-top: 14px; }
+  @media (max-width: 900px) {
+    .co__grid { grid-template-columns: 1fr; }
+    .co__summary { position: static; order: -1; }
+  }
+</style>

@@ -1,0 +1,50 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+<Base title="Sobre nós" description="A Mekie começou como uma ideia da Rita Silva e do Rafael Marques. Roupa para quem quer um mood descontraído, mas sempre com estilo." image="/images/lookbook/mushrooms-duo.webp">
+  <section class="ab-hero">
+    <img src="/images/site/hero.webp" alt="Amigos da Mekie junto a um lago" width="1536" height="1024" />
+    <div class="ab-hero__shade"></div>
+    <h1 class="display">Sobre nós</h1>
+  </section>
+
+  <section class="section">
+  <div class="container ab">
+    <aside class="ab__word reveal">
+      <img src="/images/site/logo.png" alt="Mekie" width="160" height="53" class="ab__logo" />
+      <p class="ab__type">(Interjeição, gíria ultra casual)</p>
+      <p>Cumprimento de rua, cheio de atitude e zero formalidade; é como dizer: “Então, como é que é?” mas com muito mais pinta. Esta gíria deve ser utilizada num tom e mood descontraído.</p>
+      <p>Exemplo de uso:<br />Mekie bro ‘ta-se bem?</p>
+      <p><strong>Nota:</strong> Para ser usado só com malta de confiança e nunca com a tia Gertrudes.</p>
+    </aside>
+    <div class="ab__text reveal">
+      <p>A Mekie nasceu de uma ideia da Rita Silva e do Rafael Marques.</p>
+      <p>A Rita é licenciada em Ciências da Comunicação e Design de Moda e foi quem teve a ideia. O Rafael é Web Designer e foi quem a incentivou a avançar com a marca.</p>
+      <p>Lançámos o site a 3 de novembro de 2024. A Mekie é para quem quer vestir e transmitir um mood descontraído, mas sempre com estilo.</p>
+      <p>Queres um bucket hat e um hoodie bordado? Temos. És mais de cap e t-shirt? Também temos. Descobre as nossas peças e os nossos desenhos nas redes sociais.</p>
+      <div class="ab__actions">
+        <a href="/loja/" class="pill">Ver a loja</a>
+        <a href={site.instagram} class="pill pill--outline" target="_blank" rel="noopener">Instagram</a>
+      </div>
+    </div>
+  </div>
+  </section>
+</Base>
+
+<style>
+  .ab-hero { position: relative; height: clamp(320px, 50vw, 560px); display: grid; place-items: center; color: #fff; overflow: hidden; background: #111; }
+  .ab-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ab-hero__shade { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+  .ab-hero h1 { position: relative; font-size: clamp(44px, 8vw, 104px); text-transform: uppercase; margin: 0; }
+  .ab { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+  .ab__word { border-top: 1px solid var(--ink); padding-top: 24px; }
+  .ab__logo { height: clamp(44px, 5vw, 64px); width: auto; display: block; }
+  .ab__type { font-weight: 600; margin: 14px 0 18px; }
+  .ab__word p { font-size: 15px; line-height: 1.65; color: var(--ink-soft); }
+  .ab__word strong { color: var(--ink); }
+  .ab__text { border-top: 1px solid var(--ink); padding-top: 24px; }
+  .ab__text > p { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.65; margin: 0 0 1.1em; max-width: 640px; }
+  .ab__actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+  @media (max-width: 860px) { .ab { grid-template-columns: 1fr; } }
+</style>

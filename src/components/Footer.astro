@@ -1,0 +1,131 @@
+---
+import Icon from './Icon.astro';
+import { topCategories, childCategories } from '../data/products';
+import { legalPages } from '../data/legal';
+import { site } from '../data/site';
+const year = new Date().getFullYear();
+const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
+---
+<section class="perks" aria-label="Vantagens">
+  <div class="perks__inner container">
+    <div class="perk"><Icon name="send" size={22} /><div><p class="eyebrow">Envio em {site.deliveryDays} dias úteis</p><p class="perk__txt">Para Portugal e Europa, via CTT</p></div></div>
+    <div class="perk"><Icon name="truck" size={22} /><div><p class="eyebrow">Envio gratuito</p><p class="perk__txt">Em encomendas acima de {site.freeShippingFrom}€</p></div></div>
+    <div class="perk"><Icon name="return" size={22} /><div><p class="eyebrow">Devoluções em 14 dias</p><p class="perk__txt">Sem necessidade de indicar o motivo</p></div></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer__grid container">
+    <div class="footer__col footer__news" data-newsletter-box>
+      <p class="footer__title eyebrow">Mekie Newsletter</p>
+      <p class="footer__text eyebrow" data-before>Recebe as novidades primeiro e ganha <strong>{site.welcomeDiscount}% de desconto</strong> na primeira compra.</p>
+      <form class="newsletter-form" data-newsletter="footer" novalidate>
+        <label class="sr-only" for="footer-email">Email</label>
+        <input class="field" id="footer-email" type="email" name="email" placeholder="Email" required autocomplete="email" />
+        <label class="newsletter-form__consent">
+          <input type="checkbox" name="consent" value="yes" required />
+          <span>Aceito receber emails da Mekie.</span>
+        </label>
+        <button class="pill" type="submit">Subscrever</button>
+        <p class="newsletter-form__msg" role="alert" data-msg hidden></p>
+      </form>
+      <div class="footer__done" data-success hidden>
+        <p class="footer__text eyebrow"><span data-success-title>Já estás na lista.</span> <span data-success-sub>O teu código de {site.welcomeDiscount}%:</span></p>
+        <p class="footer__code" data-code-wrap><code>{site.welcomeCode}</code></p>
+      </div>
+    </div>
+    <div class="footer__col">
+      <p class="footer__title eyebrow">Loja</p>
+      <ul>
+        <li><a href="/loja/">Ver tudo</a></li>
+        {topCategories.map((c) => (
+          <>
+            <li><a href={`/loja/${c.slug}/`}>{c.name}</a></li>
+            {childCategories(c.slug).map((s) => <li class="footer__sub"><a href={`/loja/${s.slug}/`}>{s.name}</a></li>)}
+          </>
+        ))}
+      </ul>
+    </div>
+    <div class="footer__col">
+      <p class="footer__title eyebrow">Clientes</p>
+      <ul>
+        <li><a href="/contactos/">Contactos</a></li>
+        <li><a href="/politica-de-devolucoes-e-reembolsos/">Devoluções</a></li>
+        <li><a href="/politica-de-envios-e-entregas/">Envios e entregas</a></li>
+        <li><a href={site.instagram} target="_blank" rel="noopener">Instagram</a></li>
+        <li class="footer__plain">Envios para Portugal e Europa</li>
+      </ul>
+    </div>
+    <div class="footer__col">
+      <p class="footer__title eyebrow">Informação legal</p>
+      <ul>
+        {legalPages.map((p) => <li><a href={`/${p.slug}/`}>{p.title}</a></li>)}
+        <li><a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener">Livro de reclamações</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer__bottom container">
+    <div class="footer__brand">
+      <a href={site.instagram} target="_blank" rel="noopener" aria-label="Instagram"><Icon name="instagram" size={18} /></a>
+      <p class="eyebrow">© {year} {site.name}</p>
+    </div>
+    <ul class="footer__pay" aria-label="Métodos de pagamento">
+      {payments.map((p) => <li>{p}</li>)}
+    </ul>
+  </div>
+</footer>
+
+<style>
+  .perks { border-top: 1px solid var(--line); background: var(--bg); }
+  .perks__inner {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 24px; padding-top: 36px; padding-bottom: 36px;
+  }
+  .perk { display: flex; gap: 16px; align-items: flex-start; }
+  .perk p { margin: 0; }
+  .perk .eyebrow { font-size: 11px; margin-bottom: 4px; }
+  .perk__txt { font-size: 13px; color: var(--ink-soft); }
+
+  .footer { border-top: 1px solid var(--line); padding-top: 56px; }
+  .footer__grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.2fr; gap: 40px; }
+  .footer__title { margin: 0 0 22px; font-size: 11px; font-weight: 600; }
+  .footer__text { font-size: 11px; line-height: 2; color: var(--ink-soft); margin: 0 0 18px; max-width: 280px; }
+  .footer__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .footer__col ul a {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .footer__col ul a:hover { color: var(--ink); }
+  .footer__sub { padding-left: 12px; }
+  .footer__plain { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .newsletter-form { display: grid; gap: 14px; max-width: 280px; justify-items: start; }
+  .newsletter-form .pill { background: var(--accent); }
+  .newsletter-form .pill:hover { background: #1f3f27; }
+  .newsletter-form__msg { margin: 0; font-size: 12.5px; color: var(--sale); }
+  .newsletter-form__consent { display: flex; gap: 8px; font-size: 11.5px; color: var(--ink-soft); }
+  .newsletter-form__consent input { accent-color: var(--accent); }
+  .footer__code code { font-family: var(--font-body); font-size: 18px; font-weight: 600; letter-spacing: .12em; border: 1px dashed var(--ink); padding: 8px 14px; display: inline-block; user-select: all; }
+
+  .footer__bottom {
+    display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap;
+    padding-top: 56px; padding-bottom: 36px;
+  }
+  .footer__brand { display: flex; align-items: center; gap: 18px; }
+  .footer__brand p { margin: 0; font-size: 10.5px; }
+  .footer__pay { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .footer__pay li {
+    font-size: 10px; font-weight: 600; letter-spacing: .04em;
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 4px; padding: 5px 8px;
+  }
+
+  @media (max-width: 900px) {
+    .perks__inner { grid-template-columns: 1fr; gap: 20px; }
+    .footer__grid { grid-template-columns: 1fr 1fr; }
+    .footer__news { grid-column: 1 / -1; }
+  }
+  @media (max-width: 520px) {
+    .footer__grid { grid-template-columns: 1fr; }
+  }
+</style>

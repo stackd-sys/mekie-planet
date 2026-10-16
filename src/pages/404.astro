@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Página não encontrada" noindex>
+  <section class="container nf">
+    <p class="display nf__code">404</p>
+    <p>Esta página perdeu-se no planeta Mekie.</p>
+    <a href="/loja/" class="pill">Voltar à loja</a>
+  </section>
+</Base>
+<style>
+  .nf { min-height: 60vh; display: grid; place-content: center; justify-items: center; gap: 16px; text-align: center; }
+  .nf__code { font-size: clamp(90px, 18vw, 200px); margin: 0; }
+  .nf p:not(.nf__code) { margin: 0 0 12px; color: var(--ink-soft); }
+</style>

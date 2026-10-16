@@ -1,0 +1,108 @@
+---
+import Icon from './Icon.astro';
+import { site, formatPrice } from '../data/site';
+import { products, cartInfo } from '../data/products';
+const addOns = products.filter((p) => p.category === 'meias');
+---
+<div class="drawer" data-cart hidden>
+  <div class="drawer__backdrop" data-cart-close></div>
+  <aside class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+    <header class="drawer__head">
+      <h2 id="cart-title" class="eyebrow">Carrinho <span data-cart-count-label></span></h2>
+      <button type="button" class="drawer__close" aria-label="Fechar carrinho" data-cart-close><Icon name="close" size={22} /></button>
+    </header>
+
+    <div class="drawer__ship" data-ship>
+      <p class="drawer__ship-txt" data-ship-text></p>
+      <div class="drawer__bar"><span data-ship-bar></span></div>
+    </div>
+
+    <ul class="drawer__items" data-cart-items></ul>
+
+    <section class="upsell" data-upsell hidden>
+      <p class="upsell__title eyebrow">Completa o teu pedido</p>
+      <ul class="upsell__list">
+        {addOns.map((p) => (
+          <li class="upsell__item" data-upsell-item={p.id} data-product={JSON.stringify(cartInfo(p))}>
+            <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="56" height="70" loading="lazy" />
+            <div>
+              <p class="upsell__name">{p.name}</p>
+              <p class="upsell__price">{formatPrice(p.price)}</p>
+            </div>
+            <button type="button" class="upsell__add" data-quick="" aria-label={`Adicionar ${p.name}`}>+ Adicionar</button>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <div class="drawer__empty" data-cart-empty>
+      <p>O teu carrinho está vazio.</p>
+      <a href="/loja/" class="pill">Ir para a loja</a>
+    </div>
+
+    <footer class="drawer__foot" data-cart-foot>
+      <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>0,00€</strong></div>
+      <p class="drawer__note">IVA incluído. Portes calculados no checkout, grátis acima de {site.freeShippingFrom}€.</p>
+      <a href="/checkout/" class="pill pill--accent pill--block">Finalizar compra</a>
+      <ul class="drawer__pay" aria-label="Métodos de pagamento">
+        {['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'].map((m) => <li>{m}</li>)}
+      </ul>
+    </footer>
+  </aside>
+</div>
+
+<style>
+  .drawer { position: fixed; inset: 0; z-index: 110; }
+  .drawer__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.4); animation: fade .3s; }
+  .drawer__panel {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: min(440px, 100vw);
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    animation: slideR .35s var(--ease);
+  }
+  .drawer__head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-bottom: 1px solid var(--line);
+  }
+  .drawer__head h2 { margin: 0; font-size: 12px; }
+  .drawer__close { width: 40px; height: 40px; display: grid; place-items: center; }
+  .drawer__ship { padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  .drawer__ship-txt { margin: 0 0 10px; font-size: 12.5px; }
+  .drawer__bar { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .drawer__bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s var(--ease); }
+  .drawer__items { list-style: none; margin: 0; padding: 0 24px; overflow-y: auto; flex: 1; min-height: 120px; }
+  .upsell { padding: 16px 24px; border-top: 1px solid var(--line); }
+  .upsell__title { margin: 0 0 12px; font-size: 10.5px; color: var(--ink-soft); }
+  .upsell__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .upsell__item { position: relative; display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; }
+  .upsell__item img { width: 56px; height: 70px; object-fit: contain; background: var(--surface); }
+  .upsell__name { margin: 0; font-size: 13px; }
+  .upsell__price { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+  .upsell__add { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; }
+  .upsell__item.is-added .upsell__add { visibility: hidden; }
+  .drawer__pay { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+  .drawer__pay li { font-size: 9.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); border-radius: 3px; padding: 3px 6px; }
+  .drawer__empty { flex: 1; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+  .drawer__empty p { margin: 0; }
+  .drawer__foot { padding: 20px 24px 24px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+  .drawer__row { display: flex; justify-content: space-between; align-items: center; }
+  .drawer__note { margin: 0; font-size: 12px; color: var(--ink-soft); }
+  @keyframes slideR { from { transform: translateX(100%); } }
+  @keyframes fade { from { opacity: 0; } }
+
+  :global(.line) {
+    display: grid; grid-template-columns: 84px 1fr auto; gap: 16px;
+    padding: 18px 0; border-bottom: 1px solid var(--line);
+  }
+  :global(.line__img) { width: 84px; height: 105px; object-fit: contain; background: var(--surface); }
+  :global(.line__name) { margin: 0; font-size: 13.5px; font-weight: 500; }
+  :global(.line__meta) { margin: 2px 0 10px; font-size: 12px; color: var(--ink-soft); }
+  :global(.qty) { display: inline-flex; align-items: center; border: 1px solid var(--line); height: 34px; }
+  :global(.qty button) { width: 32px; height: 100%; display: grid; place-items: center; }
+  :global(.qty button:disabled) { opacity: .3; cursor: not-allowed; }
+  :global(.qty span) { min-width: 26px; text-align: center; font-size: 13px; }
+  :global(.line__right) { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+  :global(.line__price) { font-size: 13px; }
+  :global(.line__remove) { font-size: 11px; text-decoration: underline; text-underline-offset: 3px; color: var(--ink-soft); }
+</style>
