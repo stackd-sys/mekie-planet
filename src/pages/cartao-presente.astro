@@ -32,7 +32,7 @@ const productLd = {
   <div class="gc">
     <div class="gc__media">
       {giftCatalog.map((g) => (
-        <Img src={g.image} alt={`Cartão presente Mekie de ${g.color}`} width="1200" height="1200" sizes="(max-width: 900px) 100vw, 55vw" loading={g.id === first.id ? 'eager' : 'lazy'} data-gc-img={g.id} hidden={g.id !== first.id} />
+        <Img src={g.image} alt={`Cartão presente Mekie de ${g.value}€, ${g.title}`} width="1200" height="1200" sizes="(max-width: 900px) 100vw, 55vw" loading={g.id === first.id ? 'eager' : 'lazy'} data-gc-img={g.id} hidden={g.id !== first.id} />
       ))}
     </div>
 
@@ -48,7 +48,7 @@ const productLd = {
             {giftCatalog.map((g) => (
               <label class="gc__value">
                 <input type="radio" name="valor" value={g.id} checked={g.id === first.id} data-item={JSON.stringify(g)} />
-                <span>{g.color}</span>
+                <span><b>{g.value}€</b><small>{g.title}</small></span>
               </label>
             ))}
           </div>
@@ -112,7 +112,7 @@ const productLd = {
     }
     error.hidden = true;
     const item = chosen();
-    const custom = [`Para ${to}${email ? ` (${email})` : ''}`, `De ${from}`, msg && `"${msg}"`].filter(Boolean).join(' · ');
+    const custom = [item.title, `Para ${to}${email ? ` (${email})` : ''}`, `De ${from}`, msg && `"${msg}"`].filter(Boolean).join(' · ');
     cart.add({ ...item, custom }, 1);
     track('add_to_cart', [{ id: item.id, name: `${item.name} ${item.color}`, price: item.price }]);
     btn.textContent = 'Adicionado ✓';
@@ -142,7 +142,10 @@ const productLd = {
   .gc__label small { color: var(--ink-soft); font-size: 11.5px; }
   .gc__values { display: flex; flex-wrap: wrap; gap: 8px; }
   .gc__value input { position: absolute; opacity: 0; pointer-events: none; }
-  .gc__value span { display: grid; place-items: center; min-width: 64px; height: 44px; padding: 0 14px; border: 1px solid var(--line); font-size: 13px; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+  .gc__values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gc__value span b { font-weight: 600; font-size: 15px; }
+  .gc__value span small { font-size: 11.5px; opacity: .75; }
+  .gc__value span { display: grid; justify-items: start; align-content: center; gap: 2px; min-height: 58px; padding: 8px 14px; border: 1px solid var(--line); font-size: 13px; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
   .gc__value:hover span { border-color: var(--ink); }
   .gc__value input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
   .gc__value input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
