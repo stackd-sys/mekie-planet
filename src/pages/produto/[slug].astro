@@ -26,6 +26,9 @@ const related = [
 const cartData = { ...cartInfo(p), sizeNotes: p.sizeNotes };
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
+/* Tamanhos esgotados (ou o produto todo) para o "Avisa-me quando voltar" */
+const outSizes = p.sizes ? p.sizes.filter((s) => (soldOut ? true : !!p.sizeStock && !p.sizeStock[s])) : [];
+const canNotify = !p.customizable && !p.madeToOrderDays && (soldOut || outSizes.length > 0);
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category), { name: fullName(p), path: `/produto/${p.slug}/` }];
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${c.name}` : c.name);
@@ -125,7 +128,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
               {p.sizes.map((s) => {
                 const out = !!p.sizeStock && !p.sizeStock[s];
                 return (
-                  <label class:list={['size', { 'is-out': out }]} title={out ? 'Esgotado' : undefined}>
+                  <label class:list={['size', { 'is-out': out }]} title={out ? 'Esgotado. Toca para seres avisado quando voltar' : undefined}>
                     <input type="radio" name="size" value={s} disabled={out} />
                     <span>{s}{out && <span class="sr-only"> (esgotado)</span>}</span>
                   </label>
@@ -145,6 +148,28 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           {soldOut ? 'Esgotado' : 'Adicionar ao carrinho'}
         </button>
       </form>
+
+      {canNotify && (
+        <div class="notify" data-notify data-name={fullName(p)}>
+          <button type="button" class="notify__toggle link-underline" data-notify-toggle aria-expanded={soldOut ? 'true' : 'false'} hidden={soldOut}>
+            Esgotado no teu tamanho? Avisa-me quando voltar
+          </button>
+          <form class="notify__form" data-notify-form novalidate hidden={!soldOut}>
+            <p class="notify__title">Avisa-me quando voltar</p>
+            <div class="notify__row">
+              {outSizes.length > 0 && (
+                <select class="field notify__size" name="size" aria-label="Tamanho">
+                  {outSizes.map((s) => <option value={s}>{s}</option>)}
+                </select>
+              )}
+              <input class="field" type="email" name="email" placeholder="O teu email" required autocomplete="email" aria-label="O teu email" />
+            </div>
+            <button type="submit" class="pill pill--block">Avisar-me</button>
+            <p class="notify__fine">Só usamos o teu email para te avisar desta peça, uma vez.</p>
+            <p class="notify__msg" role="status" data-notify-msg hidden></p>
+          </form>
+        </div>
+      )}
 
       <ul class="pay" aria-label="Métodos de pagamento">
         {payments.map((m) => <li>{m}</li>)}
@@ -248,6 +273,49 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   import { cart } from '../../scripts/cart';
   import { openCart } from '../../scripts/ui';
   import { track as trackEvent, consentSettled } from '../../scripts/consent';
+  import * as newsletter from '../../scripts/newsletter';
+
+  /* Avisa-me quando voltar */
+  const notify = document.querySelector<HTMLElement>('[data-notify]');
+  if (notify) {
+    const nForm = notify.querySelector<HTMLFormElement>('[data-notify-form]')!;
+    const toggle = notify.querySelector<HTMLButtonElement>('[data-notify-toggle]')!;
+    const nMsg = notify.querySelector<HTMLElement>('[data-notify-msg]')!;
+    const sizeSel = nForm.querySelector<HTMLSelectElement>('[name=size]');
+    const open = (size?: string) => {
+      nForm.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      if (size && sizeSel) sizeSel.value = size;
+      nForm.querySelector<HTMLInputElement>('[name=email]')!.focus({ preventScroll: true });
+      nForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    toggle.addEventListener('click', () => (nForm.hidden ? open() : ((nForm.hidden = true), toggle.setAttribute('aria-expanded', 'false'))));
+    /* clicar num tamanho esgotado abre o aviso com esse tamanho */
+    document.querySelectorAll<HTMLElement>('.size.is-out').forEach((el) =>
+      el.addEventListener('click', () => open(el.querySelector('input')?.value)),
+    );
+    nForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailEl = nForm.querySelector<HTMLInputElement>('[name=email]')!;
+      const email = emailEl.value.trim();
+      const show = (text: string, error = false) => { nMsg.hidden = false; nMsg.textContent = text; nMsg.classList.toggle('is-error', error); };
+      if (!email || !emailEl.checkValidity()) return show('Escreve um email válido.', true);
+      const size = sizeSel?.value ?? '';
+      const btn = nForm.querySelector<HTMLButtonElement>('[type=submit]')!;
+      btn.disabled = true;
+      try {
+        const res = await newsletter.notify(email, notify.dataset.name || '', size);
+        show(res.status === 'exists'
+          ? `Já tínhamos o teu pedido${size ? ` para o ${size}` : ''}. Avisamos-te em ${email}.`
+          : `Combinado. Avisamos-te em ${email} quando ${size ? `o ${size} voltar` : 'voltar'}.`);
+        emailEl.value = '';
+      } catch {
+        show('Não conseguimos guardar o pedido. Tenta outra vez daqui a pouco.', true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
 
   /* Galeria: pontos no telemóvel */
   const track = document.querySelector<HTMLElement>('[data-track]');
@@ -426,7 +494,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   .yarn input:checked + span { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
   .yarn input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
   .custom__note { margin: -8px 0 20px; font-size: 12px; color: var(--ink-soft); }
-  .size.is-out span { color: #b5b5b5; text-decoration: line-through; cursor: not-allowed; background: transparent; }
+  .size.is-out span { color: #b5b5b5; text-decoration: line-through; cursor: pointer; background: transparent; }
   .size.is-out span:hover { border-color: var(--line); }
   .size-stock { margin: 12px 0 0 !important; }
   .size-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); }
@@ -465,6 +533,18 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .info__dot { animation: none; } }
 
+  .notify { margin: 14px 0 0; }
+  .notify__toggle { background: none; border: 0; padding: 0; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+  .notify__toggle[hidden] { display: none; }
+  .notify__form { display: grid; gap: 10px; margin-top: 12px; padding: 18px; background: var(--surface); }
+  .notify__form[hidden] { display: none; }
+  .notify__title { margin: 0; font-size: 13px; font-weight: 600; }
+  .notify__row { display: flex; gap: 8px; }
+  .notify__row .field { flex: 1; min-width: 0; }
+  .notify__row .notify__size { flex: 0 0 84px; }
+  .notify__fine { margin: 0; font-size: 11.5px; color: var(--ink-soft); }
+  .notify__msg { margin: 0; font-size: 12.5px; color: var(--ink); }
+  .notify__msg.is-error { color: var(--sale); }
   .info__rating { display: flex; width: max-content; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 12.5px; color: var(--ink-soft); text-decoration: none; }
   .info__rating:hover span { text-decoration: underline; }
   .reviews { margin-top: clamp(40px, 6vw, 80px); }

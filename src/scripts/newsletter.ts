@@ -29,7 +29,7 @@ export const rememberLocally = (email: string) => {
   } catch {}
 };
 
-async function call(params: Record<string, string>): Promise<Status> {
+async function call<T extends { status: string } = Status>(params: Record<string, string>): Promise<T | ({ status: 'unknown' } & Partial<T>)> {
   if (!ENDPOINT) {
     console.warn('[Mekie] Sem webhook configurado em site.newsletterWebhook: o email não foi guardado.');
     return { status: 'unknown' };
@@ -46,7 +46,7 @@ async function call(params: Record<string, string>): Promise<Status> {
   if (!res.ok) throw new Error(`Webhook respondeu ${res.status}`);
   try {
     const data = await res.json();
-    if (data && typeof data.status === 'string') return data as Status;
+    if (data && typeof data.status === 'string') return data as T;
   } catch {}
   return { status: 'unknown' };
 }
@@ -64,6 +64,27 @@ export const subscribe = (email: string, source: string) =>
 
 /** Confirma se o email pode usar o código de boas-vindas. */
 export const check = (email: string) => call({ action: 'check', email: normalise(email) });
+
+export type GiftStatus = {
+  /** ok: válido com saldo; empty: sem saldo; expired: fora de prazo; invalid: não existe */
+  status: 'ok' | 'empty' | 'expired' | 'invalid';
+  balance?: number;
+  expires?: string;
+};
+
+/** Saldo de um cartão presente. Só consulta: o saldo é descontado à mão quando a encomenda é paga. */
+export const giftCheck = (code: string) => call<GiftStatus>({ action: 'gift', code: code.trim().toUpperCase() });
+
+/** Pedido de aviso quando um tamanho ou produto esgotado voltar. */
+export const notify = (email: string, product: string, size: string) =>
+  call<{ status: 'new' | 'exists' }>({
+    action: 'notify',
+    email: normalise(email),
+    product,
+    size,
+    page: location.pathname,
+    created_at: new Date().toISOString(),
+  });
 
 /** Marca o código como usado por este email. */
 export const redeem = (email: string, order: string) =>

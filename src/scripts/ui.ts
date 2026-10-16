@@ -72,18 +72,20 @@ cart.subscribe((lines) => {
   document.querySelectorAll<HTMLElement>('[data-cart-count-label]').forEach((el) => (el.textContent = count ? `(${count})` : ''));
   document.querySelectorAll<HTMLElement>('[data-cart-subtotal]').forEach((el) => (el.textContent = money(subtotal)));
 
-  const missing = Math.max(0, FREE_FROM - subtotal);
+  /* o cartão presente não conta para o envio grátis */
+  const goods = lines.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0);
+  const missing = Math.max(0, FREE_FROM - goods);
   const shipText = document.querySelector<HTMLElement>('[data-ship-text]');
   const shipBar = document.querySelector<HTMLElement>('[data-ship-bar]');
   if (shipText) shipText.innerHTML = missing > 0 ? `Faltam <strong>${money(missing)}</strong> para teres envio gratuito em Portugal.` : 'Tens <strong>envio gratuito</strong> em Portugal.';
-  if (shipBar) shipBar.style.width = `${Math.min(100, (subtotal / FREE_FROM) * 100)}%`;
+  if (shipBar) shipBar.style.width = `${Math.min(100, (goods / FREE_FROM) * 100)}%`;
 
   const empty = document.querySelector<HTMLElement>('[data-cart-empty]');
   const foot = document.querySelector<HTMLElement>('[data-cart-foot]');
   const ship = document.querySelector<HTMLElement>('[data-ship]');
   if (empty) empty.hidden = count > 0;
   if (foot) foot.hidden = count === 0;
-  if (ship) ship.hidden = count === 0;
+  if (ship) ship.hidden = !lines.some((l) => !l.digital);
 
   document.querySelectorAll<HTMLElement>('[data-upsell-item]').forEach((el) => {
     el.hidden = lines.some((l) => String(l.id) === el.dataset.upsellItem);
@@ -96,9 +98,9 @@ cart.subscribe((lines) => {
       .map(
         (l) => `
       <li class="line" data-key="${esc(l.key)}">
-        <a href="${href(`/produto/${esc(l.slug)}/`)}"><img class="line__img" src="${href(esc(l.image))}" alt="" width="84" height="105" /></a>
+        <a href="${href(esc(l.href || `/produto/${l.slug}/`))}"><img class="line__img" src="${href(esc(l.image))}" alt="" width="84" height="105" /></a>
         <div>
-          <p class="line__name"><a href="${href(`/produto/${esc(l.slug)}/`)}">${esc(l.name)}</a></p>
+          <p class="line__name"><a href="${href(esc(l.href || `/produto/${l.slug}/`))}">${esc(l.name)}</a></p>
           <p class="line__meta">${esc(l.custom || l.color)}${l.size ? ` · Tamanho ${esc(l.size)}` : ''}${l.madeToOrderDays && l.qty > (l.stock ?? 0) ? `<br>${l.qty - (l.stock ?? 0)} por encomenda, entrega em ${l.madeToOrderDays} dias úteis` : ''}</p>
           <div class="qty">
             <button type="button" data-qty="-1" aria-label="Diminuir quantidade">−</button>

@@ -44,12 +44,14 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
             {childCategories(c.slug).map((s) => <li class="footer__sub"><a href={`/loja/${s.slug}/`}>{s.name}</a></li>)}
           </>
         ))}
+        <li><a href="/cartao-presente/">Cartão presente</a></li>
       </ul>
     </div>
     <div class="footer__col">
       <p class="footer__title eyebrow">Clientes</p>
       <ul>
         <li><a href="/contactos/">Contactos</a></li>
+        <li><a href="/perguntas-frequentes/">Perguntas frequentes</a></li>
         <li><a href="/blog/">Blog</a></li>
         <li><a href="/politica-de-devolucoes-e-reembolsos/">Devoluções</a></li>
         <li><a href="/politica-de-envios-e-entregas/">Envios e entregas</a></li>

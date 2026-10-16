@@ -13,6 +13,10 @@ export type CartLine = {
   grams?: number;
   stock?: number;
   madeToOrderDays?: number;
+  /** página da linha quando não é /produto/slug/ (cartão presente) */
+  href?: string;
+  /** artigo digital: sem portes, sem desconto de boas-vindas */
+  digital?: boolean;
   qty: number;
 };
 
@@ -41,7 +45,7 @@ function write(lines: CartLine[]) {
 
 /* Catálogo atual (preço, stock, imagem) publicado pelo layout. Um carrinho guardado
    antes de uma mudança de preço ou de stock é corrigido ao abrir o site. */
-type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams'> & {
+type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams' | 'href' | 'digital'> & {
   sizeStock?: Record<string, number>;
 };
 /** Stock da linha: o do tamanho escolhido quando o produto tem stock por tamanho. */
@@ -82,6 +86,13 @@ export const cart = {
   },
   get subtotal() {
     return memory.reduce((n, l) => n + l.qty * l.price, 0);
+  },
+  /** Subtotal dos artigos físicos: conta para o envio grátis e para o desconto de boas-vindas */
+  get goodsSubtotal() {
+    return memory.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0);
+  },
+  get hasPhysical() {
+    return memory.some((l) => !l.digital);
   },
   get grams() {
     return memory.reduce((n, l) => n + l.qty * (l.grams ?? 300), 0);

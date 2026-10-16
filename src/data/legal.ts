@@ -1,4 +1,5 @@
 import { site, formatPrice } from './site';
+import { giftCard } from './giftcard';
 import { shipping, packagingGrams } from './shipping';
 
 /* Cada bloco é um parágrafo, uma lista ou uma tabela */
@@ -76,7 +77,23 @@ export const legalPages: LegalPage[] = [
         heading: 'Códigos de desconto',
         body: [
           `O código ${site.welcomeCode} dá ${site.welcomeDiscount}% de desconto na primeira encomenda a quem subscreve a newsletter. Só pode ser usado uma vez por pessoa e com o email com que subscreveste.`,
-          'Os códigos não se acumulam entre si nem com outras promoções, não se aplicam aos portes de envio e não podem ser trocados por dinheiro.',
+          'Os códigos não se acumulam entre si nem com outras promoções, não se aplicam aos portes de envio nem à compra de cartões presente e não podem ser trocados por dinheiro.',
+        ],
+      },
+      {
+        heading: 'Cartões presente',
+        body: [
+          {
+            list: [
+              `O cartão presente é digital, existe nos valores de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' e $1')}€ e é enviado por email, com um código único, no prazo de ${giftCard.sendDays} dia útil após o pagamento. Não tem portes.`,
+              `É válido durante ${giftCard.validityYears} anos a contar da data de compra, indicada no email.`,
+              'Pode ser usado em várias encomendas na loja online até acabar o saldo, e também em conjunto com um código de desconto. Se a encomenda custar mais do que o saldo, pagas a diferença.',
+              'Não pode ser trocado por dinheiro nem usado para comprar outros cartões presente. O saldo que sobrar no fim da validade não é reembolsado.',
+              'Guarda bem o código: funciona como dinheiro e não respondemos pelo uso de um código que tenhas partilhado ou perdido. Se achares que alguém o usou indevidamente, fala connosco logo.',
+              'Se devolveres uma peça paga com cartão presente, o valor pago com o cartão volta para o saldo do cartão.',
+              'Tens 14 dias para desistir da compra de um cartão presente, desde que ainda não tenha sido usado. Nesse caso reembolsamos o valor total.',
+            ],
+          },
         ],
       },
       {
@@ -240,6 +257,8 @@ export const legalPages: LegalPage[] = [
                 ['Encomenda', 'Nome, email, telemóvel, morada, NIF (opcional) e artigos', 'Processar, faturar e enviar a encomenda. Execução do contrato e obrigações fiscais.'],
                 ['Newsletter', 'Email e data de subscrição', 'Enviar novidades e o código de boas-vindas, e confirmar que o código só é usado uma vez. Consentimento.'],
                 ['Contacto', 'Nome, email e mensagem', 'Responder ao teu pedido. Diligências pedidas por ti.'],
+                ['Aviso de reposição', 'Email, produto e tamanho', 'Avisar-te uma vez quando a peça voltar a ter stock. Diligências pedidas por ti.'],
+                ['Cartão presente', 'Nome de quem oferece, nome e email de quem recebe (opcional) e mensagem', 'Enviar o cartão e controlar o saldo. Execução do contrato.'],
                 ['Estatísticas', 'Páginas vistas, peças vistas e adicionadas ao carrinho, tipo de aparelho, cidade aproximada', 'Perceber como o site é usado e melhorá-lo. Consentimento, dado no aviso de cookies.'],
                 ['Publicidade', 'Identificador do browser, páginas e peças vistas, compras iniciadas', 'Medir os anúncios da Mekie e mostrá-los a quem já visitou o site. Consentimento, dado no aviso de cookies.'],
               ],
@@ -274,6 +293,8 @@ export const legalPages: LegalPage[] = [
               'Dados das encomendas e faturas: 10 anos, como exige a lei fiscal.',
               'Newsletter: até cancelares a subscrição. Cada email tem um link para o fazer.',
               'Mensagens de contacto: até 2 anos depois do último contacto.',
+              'Avisos de reposição: apagamos depois de enviar o aviso ou ao fim de 1 ano.',
+              'Cartões presente: até ao fim da validade do cartão, e depois o necessário para a faturação.',
               'Estatísticas (Google Analytics): 14 meses.',
               'A tua escolha no aviso de cookies: 6 meses, depois perguntamos outra vez.',
             ],

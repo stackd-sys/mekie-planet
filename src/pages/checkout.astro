@@ -20,11 +20,12 @@ import { destinations } from '../data/shipping';
           <input class="field" name="telefone" type="tel" placeholder="Telemóvel" required autocomplete="tel" />
         </fieldset>
         <fieldset>
-          <legend class="eyebrow">Entrega</legend>
+          <legend class="eyebrow" data-ship-legend>Entrega</legend>
           <div class="two">
             <input class="field" name="nome" placeholder="Nome" required autocomplete="given-name" />
             <input class="field" name="apelido" placeholder="Apelido" required autocomplete="family-name" />
           </div>
+          <div class="co__ship" data-ship-fields>
           <input class="field" name="morada" placeholder="Morada" required autocomplete="street-address" />
           <div class="two">
             <input class="field" name="codigo_postal" placeholder="Código postal" required autocomplete="postal-code" pattern="[0-9]{4}-?[0-9]{3}|.{3,}" />
@@ -34,6 +35,8 @@ import { destinations } from '../data/shipping';
             {destinations.map((d) => <option value={d.name} data-zone={d.zone}>{d.name}</option>)}
           </select>
           <p class="co__hint">Enviamos para Portugal e para a União Europeia. Para outro país, <a class="link-underline" href="/contactos/">fala connosco</a>.</p>
+          </div>
+          <p class="co__hint" data-digital-note hidden>O cartão presente segue por email, por isso não precisamos de morada.</p>
           <input class="field" name="nif" placeholder="NIF (opcional)" inputmode="numeric" />
           <textarea class="field" name="notas" placeholder="Notas da encomenda (opcional)"></textarea>
         </fieldset>
@@ -44,6 +47,14 @@ import { destinations } from '../data/shipping';
             <button type="button" class="pill pill--outline" data-code-apply>Aplicar</button>
           </div>
           <p class="co__code-msg" data-code-msg hidden></p>
+        </fieldset>
+        <fieldset>
+          <legend class="eyebrow">Cartão presente</legend>
+          <div class="co__code">
+            <input class="field" name="cartao" placeholder="Código do cartão" autocomplete="off" autocapitalize="characters" data-gift-input />
+            <button type="button" class="pill pill--outline" data-gift-apply>Usar</button>
+          </div>
+          <p class="co__code-msg" data-gift-msg hidden></p>
         </fieldset>
         <label class="co__terms">
           <input type="checkbox" required />
@@ -58,7 +69,8 @@ import { destinations } from '../data/shipping';
         <ul class="co__lines" data-co-lines></ul>
         <div class="co__row"><span>Subtotal</span><span data-cart-subtotal></span></div>
         <div class="co__row" data-co-discount-row hidden><span data-co-discount-label></span><span data-co-discount></span></div>
-        <div class="co__row"><span>Envio</span><span data-co-ship></span></div>
+        <div class="co__row" data-co-ship-row><span>Envio</span><span data-co-ship></span></div>
+        <div class="co__row" data-co-gift-row hidden><span>Cartão presente</span><span data-co-gift></span></div>
         <div class="co__row co__total"><span>Total</span><strong data-co-total></strong></div>
       </aside>
     </div>
@@ -83,12 +95,17 @@ import { destinations } from '../data/shipping';
   if (applied) codeInput.value = applied;
   const country = document.querySelector<HTMLSelectElement>('[data-country]')!;
   const zone = () => (country.selectedOptions[0]?.dataset.zone ?? 'pt') as Zone;
+  /* Cartão presente usado nesta encomenda: o saldo é confirmado pelo webhook quando existe */
+  let gift = { code: '', balance: 0, verified: false };
   const totals = () => {
     const sub = cart.subtotal;
-    const disc = applied === CODE && CODE ? Math.round(sub * RATE * 100) / 100 : 0;
-    /* os portes grátis contam pelo subtotal, antes do desconto, tal como o carrinho mostra */
-    const ship = shippingCost(zone(), sub, cart.grams);
-    return { sub, disc, ship, total: sub - disc + ship };
+    /* o desconto e o envio grátis contam só os artigos físicos, antes do desconto */
+    const goods = cart.goodsSubtotal;
+    const disc = applied === CODE && CODE ? Math.round(goods * RATE * 100) / 100 : 0;
+    const ship = shippingCost(zone(), goods, cart.grams);
+    const before = Math.round((sub - disc + ship) * 100) / 100;
+    const giftUsed = gift.verified ? Math.min(gift.balance, before) : 0;
+    return { sub, disc, ship, giftUsed, total: before - giftUsed };
   };
   country.addEventListener('change', () => render(cart.lines));
   document.querySelector('[data-code-apply]')?.addEventListener('click', () => {
@@ -107,8 +124,56 @@ import { destinations } from '../data/shipping';
     render(cart.lines);
   });
 
+  /* Só cartões presente no carrinho: sem morada nem portes */
+  const shipFields = document.querySelector<HTMLElement>('[data-ship-fields]')!;
+  shipFields.querySelectorAll<HTMLInputElement>('[required]').forEach((el) => (el.dataset.req = ''));
+  const giftInput = document.querySelector<HTMLInputElement>('[data-gift-input]')!;
+  const giftMsg = document.querySelector<HTMLElement>('[data-gift-msg]')!;
+  const say = (el: HTMLElement, text: string, isError = false) => {
+    el.hidden = false;
+    el.textContent = text;
+    el.classList.toggle('is-error', isError);
+  };
+  const dateOf = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-PT') : '');
+  document.querySelector('[data-gift-apply]')?.addEventListener('click', async () => {
+    const code = giftInput.value.trim().toUpperCase();
+    gift = { code: '', balance: 0, verified: false };
+    if (!code) { giftMsg.hidden = true; render(cart.lines); return; }
+    if (!newsletter.hasWebhook()) {
+      gift = { code, balance: 0, verified: false };
+      say(giftMsg, 'Recebemos o código. Confirmamos o saldo e descontamos no pagamento.');
+      render(cart.lines);
+      return;
+    }
+    say(giftMsg, 'A verificar o cartão...');
+    try {
+      const res = await newsletter.giftCheck(code);
+      if (res.status === 'ok' && (res.balance ?? 0) > 0) {
+        gift = { code, balance: res.balance!, verified: true };
+        say(giftMsg, `Cartão aplicado. Saldo disponível: ${money(res.balance!)}${res.expires ? `, válido até ${dateOf(res.expires)}` : ''}.`);
+      } else if (res.status === 'unknown') {
+        gift = { code, balance: 0, verified: false };
+        say(giftMsg, 'Recebemos o código. Confirmamos o saldo e descontamos no pagamento.');
+      } else {
+        say(giftMsg, res.status === 'empty' ? 'Este cartão já não tem saldo.' : res.status === 'expired' ? 'Este cartão já passou a validade.' : 'Não encontrámos este cartão. Confirma o código.', true);
+      }
+    } catch {
+      gift = { code, balance: 0, verified: false };
+      say(giftMsg, 'Não conseguimos verificar agora. Confirmamos o saldo e descontamos no pagamento.');
+    }
+    render(cart.lines);
+  });
+
   const render = (lines: typeof cart.lines) => {
-    const { sub, disc, ship, total } = totals();
+    const { sub, disc, ship, giftUsed, total } = totals();
+    const physical = cart.hasPhysical;
+    shipFields.hidden = !physical;
+    shipFields.querySelectorAll<HTMLInputElement>('[data-req]').forEach((el) => (el.required = physical));
+    document.querySelector<HTMLElement>('[data-digital-note]')!.hidden = physical || lines.length === 0;
+    document.querySelector<HTMLElement>('[data-ship-legend]')!.textContent = physical ? 'Entrega' : 'Os teus dados';
+    document.querySelector<HTMLElement>('[data-co-ship-row]')!.hidden = !physical;
+    document.querySelector<HTMLElement>('[data-co-gift-row]')!.hidden = giftUsed === 0;
+    document.querySelector<HTMLElement>('[data-co-gift]')!.textContent = `-${money(giftUsed)}`;
     const discRow = document.querySelector<HTMLElement>('[data-co-discount-row]')!;
     discRow.hidden = disc === 0;
     document.querySelector<HTMLElement>('[data-co-discount-label]')!.textContent = `Desconto ${applied}`;
@@ -164,7 +229,8 @@ import { destinations } from '../data/shipping';
     }
 
     const lines = cart.lines;
-    const { sub, disc, ship, total } = totals();
+    const { sub, disc, ship, giftUsed, total } = totals();
+    const physical = cart.hasPhysical;
     const body = [
       'Olá Mekie! Quero fazer esta encomenda:',
       '',
@@ -172,13 +238,14 @@ import { destinations } from '../data/shipping';
       '',
       `Subtotal: ${money(sub)}`,
       disc ? `Desconto ${applied} (10%): -${money(disc)}` : '',
-      `Envio (${f.get('pais')}): ${ship === 0 ? 'grátis' : money(ship)}`,
+      physical ? `Envio (${f.get('pais')}): ${ship === 0 ? 'grátis' : money(ship)}` : 'Envio: cartão presente por email',
+      gift.code ? `Cartão presente ${gift.code}: ${gift.verified ? `-${money(giftUsed)}` : 'saldo por confirmar'}` : '',
       `Total: ${money(total)}`,
       '',
       `Nome: ${f.get('nome')} ${f.get('apelido')}`,
       `Email: ${f.get('email')}`,
       `Telemóvel: ${f.get('telefone')}`,
-      `Morada: ${f.get('morada')}, ${f.get('codigo_postal')} ${f.get('localidade')} (${f.get('pais')})`,
+      physical ? `Morada: ${f.get('morada')}, ${f.get('codigo_postal')} ${f.get('localidade')} (${f.get('pais')})` : '',
       f.get('nif') ? `NIF: ${f.get('nif')}` : '',
       f.get('notas') ? `Notas: ${f.get('notas')}` : '',
     ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
@@ -196,6 +263,8 @@ import { destinations } from '../data/shipping';
   .co__form { display: grid; gap: 26px; }
   .co__form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
   .co__form legend { font-size: 11px; margin-bottom: 12px; }
+  .co__ship { display: grid; gap: 10px; }
+  .co__ship[hidden] { display: none; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .co__terms { display: flex; gap: 10px; font-size: 13px; align-items: flex-start; }
   .co__terms input { margin-top: 3px; }

@@ -49,6 +49,25 @@ Também funciona com Make, Zapier ou n8n. Se o webhook não responder em JSON, o
 
 O código e a percentagem estão em `welcomeCode` e `welcomeDiscount`. O código tem de ser criado também no sistema de pagamento, com uso único por cliente e sem acumular com outras promoções.
 
+## Cartão presente
+
+Página em `/cartao-presente/` (valores e validade em `src/data/giftcard.ts`). O cartão é digital: não tem portes, não conta para o envio grátis e o código de 10% não se aplica a ele.
+
+1. O cliente compra o cartão. A encomenda chega por email com o nome de quem recebe, o email (se o deu) e a mensagem.
+2. Depois do pagamento, na Google Sheet do webhook, usa o menu **Mekie > Criar cartão presente**. O código (ex.: `MEKIE-7KQ2-XH9D`) fica na folha `Cartoes`, com valor, saldo e validade de 2 anos.
+3. Envia o código por email a quem recebe.
+4. No checkout, o cliente escreve o código e o site mostra o saldo e desconta-o do total. Quando a encomenda for paga, baixa o saldo na coluna `saldo` da folha `Cartoes`.
+
+Com a Stripe ligada, os passos 2 a 4 passam a ser automáticos.
+
+## Avisa-me quando voltar
+
+Nos tamanhos esgotados (e nos produtos esgotados) o cliente deixa o email. Os pedidos ficam na folha `Avisos` da Google Sheet, com produto e tamanho. Quando repuseres stock, envia o aviso e preenche a coluna `avisado_em`.
+
+## Perguntas frequentes
+
+Em `src/data/faq.ts`. Os preços e prazos vêm dos mesmos dados do resto do site, por isso mudam sozinhos.
+
 ## Portes de envio
 
 Os valores estão em `src/data/shipping.ts` e o peso de cada peça em `src/data/products.ts` (`gramsByCategory`, valores padrão para este tipo de roupa). A cada encomenda somam-se 100 g de embalagem. O checkout calcula os portes conforme o país e o peso.

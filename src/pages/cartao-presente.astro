@@ -1,0 +1,160 @@
+---
+import Base from '../layouts/Base.astro';
+import Img from '../components/Img.astro';
+import { site, formatPrice } from '../data/site';
+import { giftCard, giftCatalog, giftImage } from '../data/giftcard';
+import { breadcrumbLd } from '../data/seo';
+
+const first = giftCatalog[1];
+const url = new URL(`/${giftCard.slug}/`, site.url).href;
+const productLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: `${giftCard.name} ${site.name}`,
+  url,
+  image: giftCard.values.map((v) => new URL(giftImage(v), site.url).href),
+  description: `Cartão presente digital da Mekie Planet, de ${giftCard.values[0]}€ a ${giftCard.values.at(-1)}€. Enviado por email, válido durante ${giftCard.validityYears} anos em toda a loja online.`,
+  brand: { '@type': 'Brand', name: site.name },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'EUR',
+    lowPrice: giftCard.values[0].toFixed(2),
+    highPrice: giftCard.values.at(-1)!.toFixed(2),
+    offerCount: giftCard.values.length,
+    availability: 'https://schema.org/InStock',
+  },
+};
+---
+<Base title="Cartão Presente" description={`Oferece Mekie a quem quiseres. Cartão presente digital de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€, enviado por email e válido durante ${giftCard.validityYears} anos.`} image={giftImage(first.price)} ogType="product">
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd)} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: giftCard.name, path: `/${giftCard.slug}/` }]))} />
+
+  <div class="gc">
+    <div class="gc__media">
+      {giftCatalog.map((g) => (
+        <Img src={g.image} alt={`Cartão presente Mekie de ${g.color}`} width="1200" height="1200" sizes="(max-width: 900px) 100vw, 55vw" loading={g.id === first.id ? 'eager' : 'lazy'} data-gc-img={g.id} hidden={g.id !== first.id} />
+      ))}
+    </div>
+
+    <div class="gc__info">
+      <h1 class="gc__title">{giftCard.name}</h1>
+      <p class="price gc__price" data-gc-price>{formatPrice(first.price)}</p>
+      <p class="gc__lead">Não sabes o tamanho ou a cor? Oferece um cartão e deixa a escolha a quem o recebe. Enviamos por email, sem portes.</p>
+
+      <form class="gc__form" data-gc-form novalidate>
+        <fieldset class="gc__set">
+          <legend class="gc__label">Valor</legend>
+          <div class="gc__values">
+            {giftCatalog.map((g) => (
+              <label class="gc__value">
+                <input type="radio" name="valor" value={g.id} checked={g.id === first.id} data-item={JSON.stringify(g)} />
+                <span>{g.color}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div class="gc__two">
+          <label><span class="gc__label">Para</span><input class="field" name="para" required maxlength="60" placeholder="Nome de quem recebe" autocomplete="off" /></label>
+          <label><span class="gc__label">De</span><input class="field" name="de" required maxlength="60" placeholder="O teu nome" autocomplete="given-name" /></label>
+        </div>
+        <label><span class="gc__label">Email de quem recebe <small>(opcional)</small></span><input class="field" name="email" type="email" maxlength="120" placeholder="Se ficar em branco, enviamos para ti" autocomplete="off" /></label>
+        <label><span class="gc__label">Mensagem <small>(opcional)</small></span><textarea class="field" name="mensagem" maxlength="250" rows="3" placeholder="Parabéns, bro!"></textarea></label>
+
+        <p class="gc__error" role="alert" data-gc-error hidden>Preenche o nome de quem recebe e o teu.</p>
+        <button type="submit" class="pill pill--accent pill--block" data-gc-btn>Adicionar ao carrinho</button>
+      </form>
+
+      <div class="gc__how">
+        <h2 class="gc__label">Como funciona</h2>
+        <ol>
+          <li>Escolhes o valor e escreves uma mensagem.</li>
+          <li>Depois do pagamento, enviamos o cartão por email com um código único, no prazo de {giftCard.sendDays} dia útil. Vai para quem o recebe ou para ti, se preferires entregar em mão.</li>
+          <li>Quem o recebe usa o código no checkout. Se não gastar tudo de uma vez, o saldo fica para a próxima.</li>
+        </ol>
+        <p>Válido durante {giftCard.validityYears} anos em toda a loja online. Não é trocável por dinheiro. Vê as condições nos <a href="/termos-e-condicoes-de-servico/" class="link-underline">Termos e Condições</a>.</p>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { cart, money } from '../scripts/cart';
+  import { openCart } from '../scripts/ui';
+  import { track } from '../scripts/consent';
+
+  const form = document.querySelector<HTMLFormElement>('[data-gc-form]')!;
+  const price = document.querySelector<HTMLElement>('[data-gc-price]')!;
+  const error = document.querySelector<HTMLElement>('[data-gc-error]')!;
+  const btn = document.querySelector<HTMLButtonElement>('[data-gc-btn]')!;
+  const chosen = () => JSON.parse(form.querySelector<HTMLInputElement>('input[name=valor]:checked')!.dataset.item!);
+
+  form.addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    if (t.name !== 'valor') return;
+    const item = chosen();
+    price.textContent = money(item.price);
+    document.querySelectorAll<HTMLElement>('[data-gc-img]').forEach((img) => (img.hidden = img.dataset.gcImg !== String(item.id)));
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const to = String(data.get('para') || '').trim();
+    const from = String(data.get('de') || '').trim();
+    const email = String(data.get('email') || '').trim();
+    const msg = String(data.get('mensagem') || '').trim().replace(/\s+/g, ' ');
+    const emailField = form.querySelector<HTMLInputElement>('[name=email]')!;
+    if (!to || !from || (email && !emailField.checkValidity())) {
+      error.textContent = !to || !from ? 'Preenche o nome de quem recebe e o teu.' : 'O email de quem recebe não parece válido.';
+      error.hidden = false;
+      return;
+    }
+    error.hidden = true;
+    const item = chosen();
+    const custom = [`Para ${to}${email ? ` (${email})` : ''}`, `De ${from}`, msg && `"${msg}"`].filter(Boolean).join(' · ');
+    cart.add({ ...item, custom }, 1);
+    track('add_to_cart', [{ id: item.id, name: `${item.name} ${item.color}`, price: item.price }]);
+    btn.textContent = 'Adicionado ✓';
+    setTimeout(() => (btn.textContent = 'Adicionar ao carrinho'), 1600);
+    openCart();
+  });
+</script>
+
+<style>
+  .gc {
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: clamp(28px, 5vw, 80px); align-items: start;
+    padding: clamp(24px, 4vw, 56px) var(--gutter) clamp(56px, 8vw, 110px);
+  }
+  .gc__media { aspect-ratio: 1; display: grid; place-items: center; }
+  .gc__media :global(img) { width: 100%; height: auto; display: block; }
+  .gc__media :global(img[hidden]) { display: none; }
+  .gc__info { max-width: 460px; position: sticky; top: 24px; }
+  .gc__title { font-weight: 400; font-size: 22px; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 14px; }
+  .gc__price { font-size: 16px; margin: 0 0 14px; }
+  .gc__lead { font-size: 14px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 26px; }
+  .gc__form { display: grid; gap: 16px; }
+  .gc__form label { display: grid; gap: 6px; }
+  .gc__set { border: 0; margin: 0; padding: 0; }
+  .gc__label { display: block; font-size: 12.5px; color: var(--ink); margin: 0 0 8px; font-weight: 400; }
+  .gc__form label .gc__label { margin: 0; }
+  .gc__label small { color: var(--ink-soft); font-size: 11.5px; }
+  .gc__values { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gc__value input { position: absolute; opacity: 0; pointer-events: none; }
+  .gc__value span { display: grid; place-items: center; min-width: 64px; height: 44px; padding: 0 14px; border: 1px solid var(--line); font-size: 13px; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+  .gc__value:hover span { border-color: var(--ink); }
+  .gc__value input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .gc__value input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .gc__two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .gc__error { margin: 0; font-size: 12.5px; color: var(--sale); }
+  .gc__how { margin-top: 34px; border-top: 1px solid var(--line); padding-top: 22px; }
+  .gc__how h2 { margin-bottom: 10px; font-weight: 600; }
+  .gc__how ol { margin: 0 0 12px; padding-left: 18px; }
+  .gc__how li, .gc__how p { font-size: 13.5px; line-height: 1.65; color: var(--ink-soft); margin: 0 0 8px; }
+  @media (max-width: 900px) {
+    .gc { grid-template-columns: 1fr; }
+    .gc__info { position: static; max-width: none; }
+  }
+  @media (max-width: 480px) { .gc__two { grid-template-columns: 1fr; } }
+</style>

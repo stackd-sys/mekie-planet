@@ -58,6 +58,8 @@ export const fromPrice = (zone: Zone) => shipping[zone].bands[0].price;
  *  Acima do último escalão a encomenda segue em mais de um volume. */
 export function shippingCost(zone: Zone, subtotal: number, grams: number): number {
   const z = shipping[zone];
+  /* só artigos digitais (cartão presente): nada para enviar */
+  if (grams <= 0) return 0;
   if (z.freeFrom !== null && subtotal >= z.freeFrom) return 0;
   const max = z.bands[z.bands.length - 1];
   let left = grams + packagingGrams;
