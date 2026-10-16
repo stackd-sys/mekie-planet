@@ -51,27 +51,43 @@ O código e a percentagem estão em `welcomeCode` e `welcomeDiscount`. O código
 
 ## Portes de envio
 
-Os valores estão em `src/data/shipping.ts` e o peso de cada peça em `src/data/products.ts` (`gramsByCategory`). O checkout calcula os portes conforme o país e o peso.
+Os valores estão em `src/data/shipping.ts` e o peso de cada peça em `src/data/products.ts` (`gramsByCategory`, valores padrão para este tipo de roupa). A cada encomenda somam-se 100 g de embalagem. O checkout calcula os portes conforme o país e o peso.
 
-| Destino | Cliente paga | Grátis a partir de |
-| --- | --- | --- |
-| Portugal (Continente, Açores e Madeira) | 4,90€ | 65€ |
-| União Europeia, até 1 kg | 12,90€ | 150€ |
-| União Europeia, mais de 1 kg | 19,90€ | 150€ |
+| Destino | Peso da encomenda | Cliente paga | Envio grátis |
+| --- | --- | --- | --- |
+| Portugal (Continente, Açores e Madeira) | até 500 g | 5,90€ | acima de 65€ |
+| Portugal | 500 g a 2 kg | 9,90€ | acima de 65€ |
+| União Europeia | até 250 g | 9,90€ | não há |
+| União Europeia | 250 a 500 g | 12,90€ | não há |
+| União Europeia | 500 g a 1 kg | 16,90€ | não há |
+| União Europeia | 1 a 2 kg | 24,90€ | não há |
 
-Custo real com os preços de balcão dos CTT 2026 (tarifário de 3 de fevereiro de 2026):
+Acima de 2 kg a encomenda segue em mais de um volume e os portes somam-se.
 
-| Envio | Opção CTT | Custo |
-| --- | --- | --- |
-| Portugal, qualquer peça ou conjunto que caiba | Correio Verde, saqueta L (23,5 × 34 cm) | 6,85€ |
-| Portugal, qualquer peça ou conjunto que caiba | Correio Verde, caixa L (31 × 22 × 5 cm) | 6,65€ |
-| Portugal, até 500 g | Correio Registado, pacote postal | 5,40€ |
-| Portugal, 500 g a 2 kg | Correio Registado, pacote postal | 8,93€ |
-| Europa, 250 a 500 g | Correio Registado internacional | 11,10€ |
-| Europa, 500 g a 1 kg | Correio Registado internacional | 15,55€ |
-| Europa, 1 a 2 kg | Correio Registado internacional | 23,35€ |
+Custo real com os preços de balcão dos CTT 2026 (tarifário de 3 de fevereiro de 2026), mais cerca de 0,50€ de embalagem quando não é pré-paga:
 
-O Correio Verde e o Correio Registado nacional custam o mesmo para os Açores e a Madeira, por isso as ilhas pagam o mesmo que o Continente.
+| Envio | Opção CTT | Custo | Cliente paga |
+| --- | --- | --- | --- |
+| Portugal, acessórios pequenos | Correio Verde, saqueta M (17,5 × 26,5 cm) | 4,50€ | 5,90€ |
+| Portugal, até 500 g (t-shirt, boné) | Correio Registado, pacote postal | 5,40€ + embalagem | 5,90€ |
+| Portugal, hoodie | Correio Verde, caixa L (31 × 22 × 5 cm) | 6,65€ | 9,90€ ou grátis |
+| Portugal, 500 g a 2 kg | Correio Registado, pacote postal | 8,93€ + embalagem | 9,90€ |
+| Europa, até 250 g | Correio Registado internacional | 8,60€ + embalagem | 9,90€ |
+| Europa, 250 a 500 g | Correio Registado internacional | 11,10€ + embalagem | 12,90€ |
+| Europa, 500 g a 1 kg | Correio Registado internacional | 15,55€ + embalagem | 16,90€ |
+| Europa, 1 a 2 kg | Correio Registado internacional | 23,35€ + embalagem | 24,90€ |
+
+Os portes cobrados cobrem sempre o custo. O Correio Verde e o Correio Registado nacional custam o mesmo para os Açores e a Madeira, por isso as ilhas pagam o mesmo que o Continente.
+
+O envio grátis em Portugal acima de 65€ custa à Mekie entre 5,90€ e 9,40€ por encomenda (9% a 14% de uma encomenda de 65€). Na União Europeia não há envio grátis, porque os portes reais passam facilmente de 15% da venda.
+
+## Estatísticas e publicidade
+
+O Google Analytics 4 (`G-1ZM3W7QS2T`) e o Meta Pixel (`4063958257255357`) são os mesmos do site antigo e estão em `site.analytics`, em `src/data/site.ts`. Só carregam depois de a pessoa aceitar no aviso de cookies (`src/components/CookieBanner.astro` e `src/scripts/consent.ts`). Se os dois campos ficarem vazios, o aviso desaparece.
+
+Eventos enviados: `view_item` / `ViewContent`, `add_to_cart` / `AddToCart`, `begin_checkout` / `InitiateCheckout` e `sign_up` / `Lead` (newsletter). O `purchase` / `Purchase` entra quando o pagamento Stripe estiver ligado, na página de encomenda confirmada.
+
+O site antigo carregava também o Google Tag Manager (`GTM-T8HV3THK`) com estas mesmas tags. O site novo não usa o GTM, para não contar tudo a dobrar.
 
 ## Deploy na Vercel
 

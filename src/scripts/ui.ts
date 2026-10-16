@@ -1,5 +1,6 @@
 import { cart, money, href, maxQty } from './cart';
 import * as newsletter from './newsletter';
+import { track, consentSettled } from './consent';
 
 const FREE_FROM = Number(document.documentElement.dataset.freeShipping || 65);
 
@@ -178,6 +179,7 @@ document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) =
       const before = newsletter.knownLocally(email);
       const res = await newsletter.subscribe(email, form.dataset.newsletter || 'site');
       const outcome: Outcome = res.used ? 'used' : res.status === 'exists' || (res.status === 'unknown' && before) ? 'exists' : 'new';
+      if (outcome === 'new') track('sign_up', [], { method: form.dataset.newsletter || 'site' });
       newsletter.rememberLocally(email);
       store.set('mekie-newsletter', 'subscribed');
       store.set('mekie-newsletter-outcome', outcome);
@@ -231,7 +233,10 @@ if (popup) {
 
   if (!subscribed()) {
     if (!snoozed) {
-      setTimeout(() => show(true), 10000);
+      /* o pop up espera que o aviso de cookies esteja respondido */
+      const later = () => setTimeout(() => show(true), 10000);
+      if (consentSettled()) later();
+      else document.addEventListener('mekie:consent', later, { once: true });
     } else if (tab) {
       tab.hidden = false;
     }
@@ -271,6 +276,7 @@ document.addEventListener('click', (e) => {
   const product = JSON.parse(holder.dataset.product!);
   const size = btn.dataset.quick || undefined;
   cart.add({ ...product, size }, 1);
+  track('add_to_cart', [{ id: product.id, name: `${product.name} ${product.color}`, price: product.price, variant: size }]);
   const box = btn.closest<HTMLElement>('.quick, .upsell__item');
   box?.classList.add('is-added');
   setTimeout(() => box?.classList.remove('is-added'), 1400);

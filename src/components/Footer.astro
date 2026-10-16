@@ -60,6 +60,7 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
       <p class="footer__title eyebrow">Informação legal</p>
       <ul>
         {legalPages.map((p) => <li><a href={`/${p.slug}/`}>{p.title}</a></li>)}
+        {(site.analytics.ga4 || site.analytics.metaPixel) && <li><a href="/politica-de-cookies/" data-consent-open>Definições de cookies</a></li>}
         <li><a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener">Livro de reclamações</a></li>
       </ul>
     </div>

@@ -1,5 +1,5 @@
 import { site, formatPrice } from './site';
-import { shipping } from './shipping';
+import { shipping, packagingGrams } from './shipping';
 
 /* Cada bloco é um parágrafo, uma lista ou uma tabela */
 export type Block = string | { list: string[] } | { table: { head: string[]; rows: string[][] } };
@@ -15,11 +15,21 @@ export type LegalPage = {
 export const legalUpdated = '16 de outubro de 2026';
 
 const { company, email } = site;
-const seller = [company.legalName, company.nif && `NIF ${company.nif}`, `com sede na ${company.address}`]
+const seller = [company.legalName, company.kind, company.nif && `NIF ${company.nif}`, `com sede na ${company.address}`]
   .filter(Boolean)
   .join(', ');
 const pt = shipping.pt;
 const eu = shipping.eu;
+const kg = (g: number) => (g >= 1000 ? `${String(g / 1000).replace('.', ',')} kg` : `${g} g`);
+/* Linhas da tabela de portes: um escalão por linha */
+const rateRows = (dest: string, z: typeof pt) =>
+  z.bands.map((b, i) => [
+    i === 0 ? dest : '',
+    i === 0 ? `até ${kg(b.upTo)}` : `${kg(z.bands[i - 1].upTo)} a ${kg(b.upTo)}`,
+    formatPrice(b.price),
+    i === 0 ? (z.freeFrom === null ? 'sem envio grátis' : `grátis acima de ${z.freeFrom}€`) : '',
+  ]);
+const analytics = site.analytics;
 
 export const legalPages: LegalPage[] = [
   {
@@ -95,7 +105,7 @@ export const legalPages: LegalPage[] = [
   {
     slug: 'politica-de-envios-e-entregas',
     title: 'Política de Envios e Entregas',
-    summary: `Envios CTT para Portugal (${formatPrice(pt.price)}, grátis acima de ${pt.freeFrom}€) e União Europeia (grátis acima de ${eu.freeFrom}€). Prazos e seguimento.`,
+    summary: `Envios CTT para Portugal, Açores e Madeira desde ${formatPrice(pt.bands[0].price)}, grátis acima de ${pt.freeFrom}€, e para a União Europeia desde ${formatPrice(eu.bands[0].price)}. Prazos e seguimento.`,
     sections: [
       {
         heading: 'Para onde enviamos',
@@ -108,16 +118,12 @@ export const legalPages: LegalPage[] = [
         body: [
           {
             table: {
-              head: ['Destino', 'Portes', 'Envio grátis'],
-              rows: [
-                ['Portugal Continental, Açores e Madeira', formatPrice(pt.price), `acima de ${pt.freeFrom}€`],
-                ['União Europeia, até 1 kg', formatPrice(eu.bands[0].price), `acima de ${eu.freeFrom}€`],
-                ['União Europeia, mais de 1 kg', formatPrice(eu.bands[1].price), `acima de ${eu.freeFrom}€`],
-              ],
+              head: ['Destino', 'Peso da encomenda', 'Portes', 'Envio grátis'],
+              rows: [...rateRows('Portugal Continental, Açores e Madeira', pt), ...rateRows('União Europeia', eu)],
             },
           },
           'O valor exato aparece no checkout quando escolhes o país. O envio grátis conta pelo valor dos artigos antes de descontos. Os Açores e a Madeira pagam o mesmo que o Continente.',
-          'Para referência, uma t-shirt ou um acessório pesam menos de 300 g e um hoodie cerca de 700 g.',
+          `O peso inclui a embalagem (cerca de ${packagingGrams} g). Para referência, uma t-shirt pesa cerca de 250 g, um acessório entre 50 e 180 g e um hoodie cerca de 700 g. Acima de ${kg(eu.bands[eu.bands.length - 1].upTo)} a encomenda segue em mais de um volume e os portes somam-se.`,
         ],
       },
       {
@@ -234,10 +240,12 @@ export const legalPages: LegalPage[] = [
                 ['Encomenda', 'Nome, email, telemóvel, morada, NIF (opcional) e artigos', 'Processar, faturar e enviar a encomenda. Execução do contrato e obrigações fiscais.'],
                 ['Newsletter', 'Email e data de subscrição', 'Enviar novidades e o código de boas-vindas, e confirmar que o código só é usado uma vez. Consentimento.'],
                 ['Contacto', 'Nome, email e mensagem', 'Responder ao teu pedido. Diligências pedidas por ti.'],
+                ['Estatísticas', 'Páginas vistas, peças vistas e adicionadas ao carrinho, tipo de aparelho, cidade aproximada', 'Perceber como o site é usado e melhorá-lo. Consentimento, dado no aviso de cookies.'],
+                ['Publicidade', 'Identificador do browser, páginas e peças vistas, compras iniciadas', 'Medir os anúncios da Mekie e mostrá-los a quem já visitou o site. Consentimento, dado no aviso de cookies.'],
               ],
             },
           },
-          'Não usamos os teus dados para decisões automáticas nem para criar perfis.',
+          'Não tomamos decisões automáticas sobre ti. As estatísticas e a publicidade só funcionam se aceitares no aviso de cookies, e podes mudar de ideias a qualquer momento em Definições de cookies, no fundo de todas as páginas.',
         ],
       },
       {
@@ -249,12 +257,13 @@ export const legalPages: LegalPage[] = [
               'CTT, para entregar a encomenda.',
               'O prestador de pagamentos (Stripe), para processar o pagamento com segurança.',
               'Vercel, que aloja o site.',
-              'Google, onde guardamos a lista da newsletter (Google Sheets).',
+              'Google, onde guardamos a lista da newsletter (Google Sheets) e, se aceitares, para as estatísticas (Google Analytics).',
+              'Meta (Facebook e Instagram), se aceitares cookies de publicidade (Meta Pixel).',
               'O nosso contabilista, para a faturação.',
             ],
           },
           'Alguns destes serviços podem tratar dados fora da União Europeia. Nesses casos, a transferência está protegida pelo Quadro de Privacidade de Dados UE-EUA ou por cláusulas contratuais-tipo aprovadas pela Comissão Europeia.',
-          'Neste momento não usamos ferramentas de estatísticas nem de publicidade no site. Se passarmos a usar, pedimos o teu consentimento antes e atualizamos esta política e a Política de Cookies.',
+          'A Google e a Meta tratam os dados de estatísticas e publicidade também para os seus próprios fins, nos termos das políticas de privacidade delas. Os detalhes de cada cookie estão na Política de Cookies.',
         ],
       },
       {
@@ -265,6 +274,8 @@ export const legalPages: LegalPage[] = [
               'Dados das encomendas e faturas: 10 anos, como exige a lei fiscal.',
               'Newsletter: até cancelares a subscrição. Cada email tem um link para o fazer.',
               'Mensagens de contacto: até 2 anos depois do último contacto.',
+              'Estatísticas (Google Analytics): 14 meses.',
+              'A tua escolha no aviso de cookies: 6 meses, depois perguntamos outra vez.',
             ],
           },
         ],
@@ -288,7 +299,7 @@ export const legalPages: LegalPage[] = [
   {
     slug: 'politica-de-cookies',
     title: 'Política de Cookies',
-    summary: 'O site da Mekie não usa cookies de publicidade nem de estatísticas. Vê o que guardamos no teu browser e porquê.',
+    summary: 'Que cookies usa o site da Mekie, para quê, durante quanto tempo e como aceitas, recusas ou mudas de ideias.',
     sections: [
       {
         heading: 'O que são cookies',
@@ -297,15 +308,22 @@ export const legalPages: LegalPage[] = [
         ],
       },
       {
-        heading: 'O que usamos',
+        heading: 'Como escolhes',
         body: [
-          'O site da Mekie não usa cookies de publicidade, de estatísticas nem de redes sociais, e não partilha nada do que guarda no teu browser com outras empresas. As fontes e as imagens são servidas pelo nosso próprio site.',
-          'Guardamos apenas o necessário para a loja funcionar e para lembrar as tuas escolhas:',
+          'Na primeira visita mostramos um aviso onde podes aceitar, recusar ou escolher por tipo. Os cookies de estatísticas e de publicidade só são ativados se aceitares. Se recusares, o site funciona igual.',
+          'Podes mudar a tua escolha a qualquer momento em Definições de cookies, no fundo de todas as páginas. Guardamos a tua escolha durante 6 meses e depois voltamos a perguntar.',
+        ],
+      },
+      {
+        heading: 'Necessários',
+        body: [
+          'Servem para a loja funcionar e para lembrar escolhas tuas. Não precisam de consentimento e não são partilhados com ninguém.',
           {
             table: {
               head: ['Nome', 'Para quê', 'Duração'],
               rows: [
                 ['mekie-cart-v1', 'Guardar o teu carrinho', 'Até esvaziares o carrinho'],
+                ['mekie-consent', 'Guardar a tua escolha sobre cookies', '6 meses'],
                 ['mekie-code-applied', 'Lembrar o código de desconto que aplicaste', 'Até o removeres'],
                 ['mekie-newsletter, mekie-newsletter-outcome, mekie-newsletter-emails', 'Saber que já subscreveste a newsletter, para não voltar a mostrar o pop up', 'Até limpares os dados do browser'],
                 ['mekie-popup-closed', 'Não voltar a mostrar o pop up durante 7 dias depois de o fechares', '7 dias'],
@@ -313,7 +331,37 @@ export const legalPages: LegalPage[] = [
               ],
             },
           },
-          'Como são todos necessários ou ligados a escolhas tuas, não precisam de consentimento e por isso não mostramos um aviso de cookies.',
+        ],
+      },
+      {
+        heading: 'Estatísticas (só com o teu consentimento)',
+        body: [
+          'Usamos o Google Analytics, da Google, para saber quantas pessoas visitam o site, que páginas e peças veem e de onde vêm. O endereço IP não é guardado.',
+          {
+            table: {
+              head: ['Nome', 'De quem', 'Para quê', 'Duração'],
+              rows: [
+                ['_ga', 'Google', 'Distinguir visitantes', '2 anos'],
+                [`_ga_${analytics.ga4.replace(/^G-/, '') || 'ID'}`, 'Google', 'Guardar o estado da visita', '2 anos'],
+              ],
+            },
+          },
+        ],
+      },
+      {
+        heading: 'Publicidade (só com o teu consentimento)',
+        body: [
+          'Usamos o Meta Pixel, da Meta (Facebook e Instagram), para medir os resultados dos nossos anúncios e mostrá-los a quem já visitou a loja. Se aceitares, a Google também pode usar os dados das estatísticas para medir anúncios.',
+          {
+            table: {
+              head: ['Nome', 'De quem', 'Para quê', 'Duração'],
+              rows: [
+                ['_fbp', 'Meta', 'Identificar o browser para medir e mostrar anúncios', '3 meses'],
+                ['_fbc', 'Meta', 'Guardar o anúncio em que clicaste para chegar ao site', '3 meses'],
+              ],
+            },
+          },
+          'A Google e a Meta podem tratar estes dados fora da União Europeia, ao abrigo do Quadro de Privacidade de Dados UE-EUA. Mais informação em policies.google.com/privacy e em facebook.com/privacy/policy.',
         ],
       },
       {
@@ -325,8 +373,8 @@ export const legalPages: LegalPage[] = [
       {
         heading: 'Como apagar',
         body: [
-          'Podes apagar os cookies e os dados do site nas definições do teu browser, em Privacidade ou Dados de navegação. Se o fizeres, o carrinho fica vazio.',
-          `Se um dia passarmos a usar cookies de estatísticas ou de publicidade, pedimos o teu consentimento antes e atualizamos esta página. Última atualização: ${legalUpdated}.`,
+          'Além das Definições de cookies, podes apagar os cookies e os dados do site nas definições do teu browser, em Privacidade ou Dados de navegação. Se o fizeres, o carrinho fica vazio e voltamos a perguntar a tua escolha.',
+          `Última atualização: ${legalUpdated}.`,
         ],
       },
     ],

@@ -7,6 +7,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CartDrawer from '../components/CartDrawer.astro';
 import Popup from '../components/Popup.astro';
+import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
 import { products, cartInfo } from '../data/products';
 import { organizationLd, websiteLd } from '../data/seo';
@@ -42,6 +43,8 @@ const ogImage = new URL(image, Astro.site);
   data-newsletter-endpoint={site.newsletterWebhook}
   data-welcome-code={site.welcomeCode}
   data-email={site.email}
+  data-ga4={site.analytics.ga4 || undefined}
+  data-pixel={site.analytics.metaPixel || undefined}
 >
   <head>
     <meta charset="utf-8" />
@@ -85,6 +88,7 @@ const ogImage = new URL(image, Astro.site);
     <Footer />
     <CartDrawer />
     {popup && <Popup />}
+    {(site.analytics.ga4 || site.analytics.metaPixel) && <CookieBanner />}
     <script type="application/json" id="mekie-catalog" set:html={JSON.stringify(catalog)} />
     <script>
       import '../scripts/ui';

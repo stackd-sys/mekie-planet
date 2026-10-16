@@ -1,7 +1,7 @@
 /* Dados estruturados (schema.org) para o Google: produtos, envios, devoluções e navegação */
 import { site } from './site';
-import { shipping } from './shipping';
-import { getCategory, totalStock, isSoldOut, fullName, type Product } from './products';
+import { shippingCost, type Zone } from './shipping';
+import { getCategory, totalStock, isSoldOut, fullName, weightOf, type Product } from './products';
 
 const abs = (path: string) => new URL(path, site.url).href;
 
@@ -45,14 +45,19 @@ export const returnPolicyLd = {
   merchantReturnLink: abs('/politica-de-devolucoes-e-reembolsos/'),
 };
 
-const shippingLd = (price: number) => ({
+const euCountries = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'RO', 'SE', 'SI', 'SK'];
+const transit: Record<Zone, [number, number]> = { pt: [2, 4], eu: [6, 12] };
+
+const shippingLd = (zone: Zone, price: number) => ({
   '@type': 'OfferShippingDetails',
   shippingRate: { '@type': 'MonetaryAmount', value: price.toFixed(2), currency: 'EUR' },
-  shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'PT' },
+  shippingDestination: zone === 'pt'
+    ? { '@type': 'DefinedRegion', addressCountry: 'PT' }
+    : euCountries.map((c) => ({ '@type': 'DefinedRegion', addressCountry: c })),
   deliveryTime: {
     '@type': 'ShippingDeliveryTime',
     handlingTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 3, unitCode: 'DAY' },
-    transitTime: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 4, unitCode: 'DAY' },
+    transitTime: { '@type': 'QuantitativeValue', minValue: transit[zone][0], maxValue: transit[zone][1], unitCode: 'DAY' },
   },
 });
 
@@ -81,7 +86,6 @@ export const productSummary = (p: Product) => {
 
 export const productLd = (p: Product) => {
   const total = totalStock(p);
-  const freePt = p.price >= shipping.pt.freeFrom;
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -109,7 +113,7 @@ export const productLd = (p: Product) => {
       itemCondition: 'https://schema.org/NewCondition',
       url: abs(`/produto/${p.slug}/`),
       seller: { '@id': abs('/#org') },
-      shippingDetails: shippingLd(freePt ? 0 : shipping.pt.price),
+      shippingDetails: (['pt', 'eu'] as Zone[]).map((z) => shippingLd(z, shippingCost(z, p.price, weightOf(p)))),
       hasMerchantReturnPolicy: returnPolicyLd,
     },
   };

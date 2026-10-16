@@ -4,13 +4,19 @@ export const site = {
   tagline: 'Bro, o básico nunca falha.',
   url: 'https://mekie-planet.com',
   email: 'geral@mekie-planet.com',
-  // Identificação do vendedor nos Termos e Condições (obrigatória por lei). Preencher com os dados da empresa.
+  // Identificação do vendedor nos Termos e Condições (obrigatória por lei)
   company: {
     legalName: 'Mekie Planet',
-    nif: '',
+    kind: 'empresário em nome individual',
+    nif: '185359922',
     address: 'Rua Dr. Eduardo Burnay 26B, 2655-420 Ericeira',
   },
   instagram: 'https://www.instagram.com/mekie_planet/',
+  // Medição: só carregam depois de a pessoa aceitar no aviso de cookies. Vazio = desligado (e sem aviso).
+  analytics: {
+    ga4: 'G-1ZM3W7QS2T',
+    metaPixel: '4063958257255357',
+  },
   // Portes: valores em src/data/shipping.ts
   freeShippingFrom: 65,
   deliveryDays: 7,

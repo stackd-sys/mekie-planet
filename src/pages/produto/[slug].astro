@@ -2,9 +2,9 @@
 import Base from '../../layouts/Base.astro';
 import Carousel from '../../components/Carousel.astro';
 import Img from '../../components/Img.astro';
-import { products, discount, fullName, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, type Product } from '../../data/products';
+import { products, discount, fullName, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, weightOf, type Product } from '../../data/products';
 import { site, formatPrice } from '../../data/site';
-import { shipping } from '../../data/shipping';
+import { shipping, shippingCost } from '../../data/shipping';
 import { productLd, breadcrumbLd, categoryTrail, productSummary } from '../../data/seo';
 
 export function getStaticPaths() {
@@ -189,8 +189,9 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           <summary class="eyebrow">Envios e devoluções</summary>
           <div class="acc__body">
             <p>Enviamos pelos CTT para Portugal Continental, Açores, Madeira e União Europeia.</p>
-            <p>Portugal: {formatPrice(shipping.pt.price)}, grátis acima de {shipping.pt.freeFrom}€. Entrega em {shipping.pt.days}.</p>
-            <p>União Europeia: desde {formatPrice(shipping.eu.bands[0].price)}, grátis acima de {shipping.eu.freeFrom}€. Entrega em {shipping.eu.days}.</p>
+            <p>Portugal, Açores e Madeira: {formatPrice(shippingCost('pt', 0, weightOf(p)))} para esta peça, grátis acima de {shipping.pt.freeFrom}€. Entrega em {shipping.pt.days}.</p>
+            <p>União Europeia: {formatPrice(shippingCost('eu', 0, weightOf(p)))} para esta peça. Entrega em {shipping.eu.days}.</p>
+            <p>Com mais peças o valor muda conforme o peso. Vê a <a href="/politica-de-envios-e-entregas/" class="link-underline">tabela de portes</a>.</p>
             <p>Tens 14 dias após a receção para devolver, sem indicar o motivo. O artigo deve estar nas condições originais, sem sinais de uso e com as etiquetas intactas.</p>
             <p><a class="link-underline" href="/politica-de-envios-e-entregas/">Política de envios</a> · <a class="link-underline" href="/politica-de-devolucoes-e-reembolsos/">Política de devoluções</a></p>
           </div>
@@ -219,6 +220,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 <script>
   import { cart } from '../../scripts/cart';
   import { openCart } from '../../scripts/ui';
+  import { track as trackEvent, consentSettled } from '../../scripts/consent';
 
   /* Galeria: pontos no telemóvel */
   const track = document.querySelector<HTMLElement>('[data-track]');
@@ -232,6 +234,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   const form = document.querySelector<HTMLFormElement>('[data-buy]');
   if (form) {
     const product = JSON.parse(form.dataset.product!);
+    const item = (size?: string) => ({ id: product.id, name: product.customizable ? product.name : `${product.name} ${product.color}`, price: product.price, variant: size });
+    const viewed = () => trackEvent('view_item', [item()]);
+    if (consentSettled()) viewed();
+    else document.addEventListener('mekie:consent', viewed, { once: true });
     const error = form.querySelector<HTMLElement>('.buy__error')!;
     const sizeLabel = form.querySelector<HTMLElement>('[data-size-label]');
     const btn = form.querySelector<HTMLButtonElement>('[data-buy-btn]')!;
@@ -280,8 +286,9 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         form.querySelector('.sizes')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-      const { sizeNotes, ...item } = product;
-      cart.add({ ...item, size, ...(isCustom ? { custom: `Corpo ${main}, rebordo ${edge}` } : {}) }, 1);
+      const { sizeNotes, ...info } = product;
+      cart.add({ ...info, size, ...(isCustom ? { custom: `Corpo ${main}, rebordo ${edge}` } : {}) }, 1);
+      trackEvent('add_to_cart', [item(size)]);
       btn.textContent = 'Adicionado ✓';
       setTimeout(() => (btn.textContent = 'Adicionar ao carrinho'), 1600);
       openCart();

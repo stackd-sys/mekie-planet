@@ -1,0 +1,62 @@
+---
+/* Aviso de cookies: só aparece quando há Google Analytics ou Meta Pixel configurados em site.ts */
+---
+<section class="ck" data-consent hidden aria-labelledby="ck-title">
+  <p id="ck-title" class="ck__title">Cookies</p>
+  <p class="ck__text">
+    Usamos cookies para perceber como o site é usado e para mostrar a Mekie a quem possa gostar, no Instagram e no Facebook. Só os ativamos se aceitares.{' '}
+    <a href="/politica-de-cookies/" class="link-underline">Saber mais</a>
+  </p>
+
+  <div class="ck__prefs" data-consent-prefs hidden>
+    <label class="ck__opt">
+      <input type="checkbox" checked disabled />
+      <span><b>Necessários</b> Carrinho e escolhas no site. Sempre ativos.</span>
+    </label>
+    <label class="ck__opt">
+      <input type="checkbox" name="consent-analytics" />
+      <span><b>Estatísticas</b> Google Analytics, para sabermos que páginas e peças são mais vistas.</span>
+    </label>
+    <label class="ck__opt">
+      <input type="checkbox" name="consent-marketing" />
+      <span><b>Publicidade</b> Meta Pixel e Google, para medir e mostrar anúncios da Mekie.</span>
+    </label>
+    <button type="button" class="pill pill--block" data-consent-save>Guardar escolhas</button>
+  </div>
+
+  <div class="ck__actions">
+    <button type="button" class="pill" data-consent-none>Recusar</button>
+    <button type="button" class="pill" data-consent-all>Aceitar</button>
+  </div>
+  <button type="button" class="ck__custom link-underline" data-consent-custom>Escolher</button>
+</section>
+
+<style>
+  .ck {
+    position: fixed; z-index: 130; left: 16px; bottom: 16px;
+    width: min(400px, calc(100vw - 32px));
+    max-height: calc(100svh - 32px); overflow: auto;
+    background: var(--surface); color: var(--ink);
+    padding: 20px; box-shadow: 0 18px 50px rgba(0,0,0,.22);
+    display: grid; gap: 12px;
+    animation: ckIn .35s var(--ease);
+  }
+  .ck[hidden] { display: none; }
+  .ck__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+  .ck__text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+  .ck__prefs { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .ck__prefs[hidden] { display: none; }
+  .ck__opt { display: flex; gap: 10px; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); }
+  .ck__opt b { display: block; color: var(--ink); font-weight: 600; }
+  .ck__opt input { margin-top: 3px; accent-color: var(--accent); flex: none; }
+  .ck__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ck__custom { justify-self: center; background: none; border: 0; padding: 2px; font-size: 12px; color: var(--ink); cursor: pointer; }
+  @keyframes ckIn { from { opacity: 0; transform: translateY(12px); } }
+  @media (max-width: 600px) {
+    .ck { left: 8px; bottom: 8px; width: calc(100vw - 16px); padding: 16px; }
+  }
+</style>
+
+<script>
+  import '../scripts/consent';
+</script>

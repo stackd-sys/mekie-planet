@@ -69,6 +69,7 @@ import { destinations } from '../data/shipping';
   import { cart, money, href } from '../scripts/cart';
   import * as newsletter from '../scripts/newsletter';
   import { shippingCost, type Zone } from '../data/shipping';
+  import { track, consentSettled } from '../scripts/consent';
   const CODE = newsletter.CODE;
   const RATE = 0.1;
   let applied = '';
@@ -123,6 +124,11 @@ import { destinations } from '../data/shipping';
       .join('');
   };
   cart.subscribe(render);
+
+  const items = () => cart.lines.map((l) => ({ id: l.id, name: `${l.name} ${l.color}`, price: l.price, qty: l.qty, variant: l.size }));
+  const started = () => { if (cart.lines.length) track('begin_checkout', items()); };
+  if (consentSettled()) started();
+  else document.addEventListener('mekie:consent', started, { once: true });
 
   const form = document.querySelector<HTMLFormElement>('[data-co-form]');
   const submitBtn = form?.querySelector<HTMLButtonElement>('[type=submit]');
