@@ -1,5 +1,5 @@
 import { site, formatPrice } from './site';
-import { giftCard } from './giftcard';
+import { giftCard, giftValidity } from './giftcard';
 import { shipping, packagingGrams } from './shipping';
 
 /* Cada bloco é um parágrafo, uma lista ou uma tabela */
@@ -86,7 +86,7 @@ export const legalPages: LegalPage[] = [
           {
             list: [
               `O cartão presente é digital, existe nos valores de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' e $1')}€ e é enviado por email, com um código único, no prazo de ${giftCard.sendDays} dia útil após o pagamento. Não tem portes.`,
-              `É válido durante ${giftCard.validityYears} anos a contar da data de compra, indicada no email.`,
+              `É válido durante ${giftValidity} a contar da data de compra, indicada no email.`,
               'Pode ser usado em várias encomendas na loja online até acabar o saldo, e também em conjunto com um código de desconto. Se a encomenda custar mais do que o saldo, pagas a diferença.',
               'Não pode ser trocado por dinheiro nem usado para comprar outros cartões presente. O saldo que sobrar no fim da validade não é reembolsado.',
               'Guarda bem o código: funciona como dinheiro e não respondemos pelo uso de um código que tenhas partilhado ou perdido. Se achares que alguém o usou indevidamente, fala connosco logo.',

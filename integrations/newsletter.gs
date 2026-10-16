@@ -42,7 +42,7 @@ const NOTIFY_HEADERS = ['email', 'produto', 'tamanho', 'pagina', 'pedido_em', 'a
 
 const GIFT_SHEET = 'Cartoes';
 const GIFT_HEADERS = ['codigo', 'valor', 'saldo', 'criado_em', 'valido_ate', 'comprado_por', 'para', 'notas'];
-const GIFT_YEARS = 2;
+const GIFT_MONTHS = 12;
 
 function sheetOf_(name, headers) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -172,7 +172,7 @@ function criarCartao() {
 
   const hoje = new Date();
   const validade = new Date(hoje);
-  validade.setFullYear(validade.getFullYear() + GIFT_YEARS);
+  validade.setMonth(validade.getMonth() + GIFT_MONTHS);
   const nota = quem.getSelectedButton() === ui.Button.OK ? quem.getResponseText() : '';
   sh.appendRow([codigo, valor, valor, hoje, validade, nota, '', '']);
   ui.alert('Cartão criado', 'Código: ' + codigo + '\nValor: ' + valor + '€\nVálido até ' + Utilities.formatDate(validade, 'Europe/Lisbon', 'dd/MM/yyyy'), ui.ButtonSet.OK);

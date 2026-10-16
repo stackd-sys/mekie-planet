@@ -4,8 +4,8 @@
 export const giftCard = {
   name: 'Cartão Presente',
   slug: 'cartao-presente',
-  /** validade a contar da data de compra */
-  validityYears: 2,
+  /** validade em meses, a contar da data de compra (tem de bater com GIFT_MONTHS em integrations/newsletter.gs) */
+  validityMonths: 12,
   /** prazo para enviarmos o cartão por email depois do pagamento */
   sendDays: 1,
   values: [25, 50, 75, 100],
@@ -15,6 +15,13 @@ export const giftCard = {
 
 const slugify = (t: string) => t.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 /** O nome do cartão vai no nome do ficheiro: se a imagem mudar, muda também o nome (e a cache) */
+/** Validade em texto: 12 → "1 ano", 9 → "9 meses", 24 → "2 anos" */
+export const giftValidity = (() => {
+  const m = giftCard.validityMonths;
+  if (m % 12) return `${m} meses`;
+  return m === 12 ? '1 ano' : `${m / 12} anos`;
+})();
+
 export const giftImage = (value: number) => `/images/products/cartao-presente-${value}-${slugify(giftCard.names[value])}.webp`;
 
 /** Entradas do catálogo do carrinho, uma por valor (o id fixa o preço). */

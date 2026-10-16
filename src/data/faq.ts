@@ -1,7 +1,7 @@
 /* Perguntas frequentes. As respostas podem ter links em HTML. Os valores vêm dos mesmos dados do resto do site. */
 import { site, formatPrice } from './site';
 import { shipping } from './shipping';
-import { giftCard } from './giftcard';
+import { giftCard, giftValidity } from './giftcard';
 import { products } from './products';
 
 const pt = shipping.pt;
@@ -97,7 +97,7 @@ export const faqGroups: FaqGroup[] = [
       },
       {
         q: 'O cartão presente tem validade?',
-        a: `Sim, ${giftCard.validityYears} anos a contar da compra. Pode ser usado em várias encomendas até acabar o saldo.`,
+        a: `Sim, ${giftValidity} a contar da compra. Pode ser usado em várias encomendas até acabar o saldo.`,
       },
     ],
   },

@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Img from '../components/Img.astro';
 import { site, formatPrice } from '../data/site';
-import { giftCard, giftCatalog, giftImage } from '../data/giftcard';
+import { giftCard, giftValidity, giftCatalog, giftImage } from '../data/giftcard';
 import { breadcrumbLd } from '../data/seo';
 
 const first = giftCatalog[1];
@@ -13,7 +13,7 @@ const productLd = {
   name: `${giftCard.name} ${site.name}`,
   url,
   image: giftCard.values.map((v) => new URL(giftImage(v), site.url).href),
-  description: `Cartão presente digital da Mekie Planet, de ${giftCard.values[0]}€ a ${giftCard.values.at(-1)}€. Enviado por email, válido durante ${giftCard.validityYears} anos em toda a loja online.`,
+  description: `Cartão presente digital da Mekie Planet, de ${giftCard.values[0]}€ a ${giftCard.values.at(-1)}€. Enviado por email, válido durante ${giftValidity} em toda a loja online.`,
   brand: { '@type': 'Brand', name: site.name },
   offers: {
     '@type': 'AggregateOffer',
@@ -25,7 +25,7 @@ const productLd = {
   },
 };
 ---
-<Base title="Cartão Presente" description={`Oferece Mekie a quem quiseres. Cartão presente digital de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€, enviado por email e válido durante ${giftCard.validityYears} anos.`} image={giftImage(first.price)} ogType="product">
+<Base title="Cartão Presente" description={`Oferece Mekie a quem quiseres. Cartão presente digital de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€, enviado por email e válido durante ${giftValidity}.`} image={giftImage(first.price)} ogType="product">
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd)} />
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: giftCard.name, path: `/${giftCard.slug}/` }]))} />
 
@@ -72,7 +72,7 @@ const productLd = {
           <li>Depois do pagamento, enviamos o cartão por email com um código único, no prazo de {giftCard.sendDays} dia útil. Vai para quem o recebe ou para ti, se preferires entregar em mão.</li>
           <li>Quem o recebe usa o código no checkout. Se não gastar tudo de uma vez, o saldo fica para a próxima.</li>
         </ol>
-        <p>Válido durante {giftCard.validityYears} anos em toda a loja online. Não é trocável por dinheiro. Vê as condições nos <a href="/termos-e-condicoes-de-servico/" class="link-underline">Termos e Condições</a>.</p>
+        <p>Válido durante {giftValidity} em toda a loja online. Não é trocável por dinheiro. Vê as condições nos <a href="/termos-e-condicoes-de-servico/" class="link-underline">Termos e Condições</a>.</p>
       </div>
     </div>
   </div>

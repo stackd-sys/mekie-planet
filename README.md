@@ -54,7 +54,7 @@ O código e a percentagem estão em `welcomeCode` e `welcomeDiscount`. O código
 Página em `/cartao-presente/` (valores e validade em `src/data/giftcard.ts`). O cartão é digital: não tem portes, não conta para o envio grátis e o código de 10% não se aplica a ele.
 
 1. O cliente compra o cartão. A encomenda chega por email com o nome de quem recebe, o email (se o deu) e a mensagem.
-2. Depois do pagamento, na Google Sheet do webhook, usa o menu **Mekie > Criar cartão presente**. O código (ex.: `MEKIE-7KQ2-XH9D`) fica na folha `Cartoes`, com valor, saldo e validade de 2 anos.
+2. Depois do pagamento, na Google Sheet do webhook, usa o menu **Mekie > Criar cartão presente**. O código (ex.: `MEKIE-7KQ2-XH9D`) fica na folha `Cartoes`, com valor, saldo e validade de 1 ano.
 3. Envia o código por email a quem recebe.
 4. No checkout, o cliente escreve o código e o site mostra o saldo e desconta-o do total. Quando a encomenda for paga, baixa o saldo na coluna `saldo` da folha `Cartoes`.
 
