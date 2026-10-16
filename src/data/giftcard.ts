@@ -13,7 +13,9 @@ export const giftCard = {
   names: { 25: 'Não sejas fuinha', 50: 'Tá-se bem', 75: 'Mekie bro', 100: 'Estás um mãos largas' } as Record<number, string>,
 };
 
-export const giftImage = (value: number) => `/images/products/cartao-presente-${value}.webp`;
+const slugify = (t: string) => t.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+/** O nome do cartão vai no nome do ficheiro: se a imagem mudar, muda também o nome (e a cache) */
+export const giftImage = (value: number) => `/images/products/cartao-presente-${value}-${slugify(giftCard.names[value])}.webp`;
 
 /** Entradas do catálogo do carrinho, uma por valor (o id fixa o preço). */
 export const giftCatalog = giftCard.values.map((value, i) => ({
