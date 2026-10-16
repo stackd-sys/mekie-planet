@@ -1,0 +1,32 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../data/site';
+---
+<Base title="Encomenda recebida" noindex popup={false}>
+  <section class="container ok">
+    <p class="eyebrow ok__kicker">Obrigado</p>
+    <h1 class="display ok__title">Recebemos a tua encomenda</h1>
+    <p class="ok__num" data-ok-num hidden>Número da encomenda: <strong data-n></strong> · Total: <strong data-t></strong></p>
+    <p>Enviámos-te um email com o resumo. Em breve respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão). Assim que o pagamento estiver confirmado, preparamos tudo e avisamos-te quando seguir pelos CTT.</p>
+    <p>Alguma dúvida? Escreve para <a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a>.</p>
+    <a href="/loja/" class="pill">Continuar a ver a loja</a>
+  </section>
+</Base>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const n = q.get('n'), t = q.get('t');
+  if (n) {
+    document.querySelector('[data-n]')!.textContent = n;
+    document.querySelector('[data-t]')!.textContent = t || '';
+    document.querySelector<HTMLElement>('[data-ok-num]')!.hidden = false;
+  }
+</script>
+
+<style>
+  .ok { max-width: 640px; padding-top: clamp(48px, 8vw, 110px); padding-bottom: clamp(56px, 8vw, 110px); }
+  .ok__kicker { font-size: 11px; color: var(--ink-soft); margin: 0; }
+  .ok__title { font-size: clamp(30px, 4vw, 48px); margin: 12px 0 22px; }
+  .ok p { font-size: 15.5px; line-height: 1.7; margin: 0 0 14px; }
+  .ok .pill { margin-top: 14px; }
+</style>

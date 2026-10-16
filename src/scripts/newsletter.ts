@@ -75,6 +75,14 @@ export type GiftStatus = {
 /** Saldo de um cartão presente. Só consulta: o saldo é descontado à mão quando a encomenda é paga. */
 export const giftCheck = (code: string) => call<GiftStatus>({ action: 'gift', code: code.trim().toUpperCase() });
 
+export type CodeStatus =
+  | { status: 'ok'; code: string; kind: 'percent' | 'fixed'; value: number; welcome: boolean }
+  | { status: 'invalid'; message: string };
+
+/** Valida um código de desconto no CRM (goods: valor dos artigos físicos). */
+export const codeCheck = (code: string, email: string, goods: number) =>
+  call<CodeStatus>({ action: 'code', code: code.trim().toUpperCase(), email: normalise(email), goods: goods.toFixed(2) });
+
 /** Pedido de aviso quando um tamanho ou produto esgotado voltar. */
 export const notify = (email: string, product: string, size: string) =>
   call<{ status: 'new' | 'exists' }>({

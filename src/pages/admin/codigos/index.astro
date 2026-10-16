@@ -1,0 +1,156 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+import { postForm, done, str, num } from '../../../lib/server/admin';
+import { site } from '../../../data/site';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  const action = str(f, 'action');
+  const code = str(f, 'code', 30).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+  if (action === 'save') {
+    if (code.length < 3) return done(Astro, 'O código precisa de pelo menos 3 letras ou números.', undefined, true);
+    const value = num(f, 'value');
+    const kind = str(f, 'kind') === 'fixed' ? 'fixed' : 'percent';
+    if (!value || value <= 0 || (kind === 'percent' && value > 100)) return done(Astro, 'Indica um valor de desconto válido.', undefined, true);
+    const row = {
+      code, kind, value,
+      active: f.get('active') === 'on',
+      starts_at: str(f, 'starts_at') || null,
+      ends_at: str(f, 'ends_at') || null,
+      max_uses: num(f, 'max_uses') || null,
+      once_per_email: f.get('once_per_email') === 'on',
+      min_subtotal: num(f, 'min_subtotal') ?? 0,
+      notes: str(f, 'notes'),
+    };
+    await sql`
+      insert into discount_codes ${sql(row as Record<string, unknown>)}
+      on conflict (code) do update set kind = excluded.kind, value = excluded.value, active = excluded.active, starts_at = excluded.starts_at,
+        ends_at = excluded.ends_at, max_uses = excluded.max_uses, once_per_email = excluded.once_per_email, min_subtotal = excluded.min_subtotal, notes = excluded.notes`;
+    return done(Astro, `Código ${code} guardado.`);
+  }
+  if (action === 'toggle') {
+    await sql`update discount_codes set active = not active where code = ${code}`;
+    return done(Astro, 'Atualizado.');
+  }
+}
+const codes = await sql<any[]>`
+  select d.*, count(u.id)::int as uses,
+    coalesce(sum(o.total) filter (where o.status in ('paga','enviada','entregue')), 0) as revenue,
+    coalesce(sum(o.discount) filter (where o.status in ('paga','enviada','entregue')), 0) as given
+  from discount_codes d
+  left join code_uses u on u.code = d.code
+  left join orders o on o.number = u.order_number
+  group by d.code order by d.welcome desc, d.created_at desc`;
+const sources = await sql<any[]>`
+  select coalesce(utm->>'source', '(direto ou sem consentimento)') as source, coalesce(utm->>'campaign', '') as campaign,
+    count(*)::int as orders, coalesce(sum(total), 0) as revenue
+  from orders where status in ('paga','enviada','entregue') and created_at > now() - interval '90 days'
+  group by 1, 2 order by revenue desc limit 30`;
+const edit = codes.find((c) => c.code === (Astro.url.searchParams.get('editar') || '').toUpperCase());
+const d = (v: unknown) => (v ? new Date(v as string).toISOString().slice(0, 10) : '');
+---
+<Admin title="Códigos e links">
+  <h1>Códigos e links</h1>
+  <p class="sub">Códigos de desconto (influencers, campanhas, amigos) e links para saber de onde vêm as vendas.</p>
+  <Flash />
+
+  <div class="table">
+    <table>
+      <thead><tr><th>Código</th><th>Desconto</th><th>Regras</th><th class="num">Usos</th><th class="num">Vendas</th><th class="num">Descontado</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        {codes.map((c) => (
+          <tr>
+            <td><strong>{c.code}</strong>{c.notes && <><br /><span class="muted">{c.notes}</span></>}</td>
+            <td>{c.kind === 'percent' ? `${Number(c.value)}%` : euro(c.value)}</td>
+            <td class="muted">{[c.welcome && 'Só subscritores', c.once_per_email && '1 por cliente', c.max_uses && `máx. ${c.max_uses}`, Number(c.min_subtotal) > 0 && `mín. ${euro(c.min_subtotal)}`, c.starts_at && `desde ${date(c.starts_at)}`, c.ends_at && `até ${date(c.ends_at)}`].filter(Boolean).join(' · ') || '—'}</td>
+            <td class="num">{c.uses}</td>
+            <td class="num">{euro(c.revenue)}</td>
+            <td class="num">{euro(c.given)}</td>
+            <td>{c.active ? <span class="badge ok">Ativo</span> : <span class="badge off">Parado</span>}</td>
+            <td class="num" style="white-space:nowrap">
+              <a class="btn ghost small" href={`?editar=${c.code}#form`}>Editar</a>
+              <form method="post" class="inline"><input type="hidden" name="action" value="toggle" /><input type="hidden" name="code" value={c.code} /><button class="btn ghost small">{c.active ? 'Parar' : 'Ativar'}</button></form>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <section class="card" id="form" style="margin-top:14px">
+    <h2 style="margin-top:0">{edit ? `Editar ${edit.code}` : 'Novo código'}</h2>
+    <form method="post" class="stack">
+      <input type="hidden" name="action" value="save" />
+      <div class="fields">
+        <label>Código<input name="code" value={edit?.code ?? ''} required readonly={Boolean(edit)} placeholder="Ex.: JOANA15" style="text-transform:uppercase" /></label>
+        <label>Tipo<select name="kind"><option value="percent" selected={edit?.kind !== 'fixed'}>Percentagem</option><option value="fixed" selected={edit?.kind === 'fixed'}>Valor fixo (€)</option></select></label>
+        <label>Desconto<input name="value" value={edit ? Number(edit.value) : ''} inputmode="decimal" required placeholder="15" /></label>
+        <label>Compra mínima (€)<input name="min_subtotal" value={edit ? Number(edit.min_subtotal) || '' : ''} inputmode="decimal" placeholder="0" /></label>
+        <label>Máximo de usos<input name="max_uses" type="number" min="1" value={edit?.max_uses ?? ''} placeholder="Sem limite" /></label>
+        <label>Começa<input name="starts_at" type="date" value={d(edit?.starts_at)} /></label>
+        <label>Acaba<input name="ends_at" type="date" value={d(edit?.ends_at)} /></label>
+      </div>
+      <label>Notas<input name="notes" value={edit?.notes ?? ''} placeholder="Ex.: parceria com @joana, 10% de comissão" /></label>
+      <div class="bar" style="margin:0">
+        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="active" checked={edit ? edit.active : true} /> Ativo</label>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="once_per_email" checked={edit ? edit.once_per_email : true} /> Uma vez por cliente</label>
+      </div>
+      <div><button class="btn">Guardar código</button> {edit && <a class="btn ghost" href="/admin/codigos/">Cancelar</a>}</div>
+      <p class="note">Os códigos não se juntam entre si, não descontam portes e não se aplicam a cartões presente.</p>
+    </form>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Criar link com etiqueta</h2>
+    <p class="note" style="margin-top:0">Usa estes links nas bios, publicações, anúncios e parcerias. As vendas que vierem de cada link aparecem na tabela abaixo (de quem aceitou as estatísticas no aviso de cookies) e no Google Analytics.</p>
+    <div class="fields" data-utm>
+      <label>Página<input data-k="url" value={`${site.url}/`} /></label>
+      <label>Onde vai estar<select data-k="source"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option><option value="newsletter">Newsletter</option><option value="influencer">Influencer</option><option value="google">Google</option><option value="qr">QR code / papel</option></select></label>
+      <label>Formato<select data-k="medium"><option value="bio">Bio</option><option value="story">Story</option><option value="post">Publicação</option><option value="paid">Anúncio pago</option><option value="email">Email</option><option value="parceria">Parceria</option></select></label>
+      <label>Nome da campanha<input data-k="campaign" placeholder="Ex.: drop-outubro, joana" /></label>
+    </div>
+    <div class="bar" style="margin-top:12px">
+      <input data-out readonly style="flex:1;min-width:260px" />
+      <button type="button" class="btn small" data-copy>Copiar</button>
+    </div>
+  </section>
+
+  <h2>Vendas por origem (90 dias)</h2>
+  <div class="table">
+    {sources.length ? (
+      <table>
+        <thead><tr><th>Origem</th><th>Campanha</th><th class="num">Encomendas</th><th class="num">Vendas</th></tr></thead>
+        <tbody>{sources.map((s) => <tr><td>{s.source}</td><td>{s.campaign || '—'}</td><td class="num">{s.orders}</td><td class="num">{euro(s.revenue)}</td></tr>)}</tbody>
+      </table>
+    ) : <p class="empty">Ainda sem vendas pagas.</p>}
+  </div>
+</Admin>
+
+<script>
+  const box = document.querySelector<HTMLElement>('[data-utm]')!;
+  const out = document.querySelector<HTMLInputElement>('[data-out]')!;
+  const slug = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const build = () => {
+    const v = (k: string) => box.querySelector<HTMLInputElement>(`[data-k=${k}]`)!.value;
+    try {
+      const u = new URL(v('url'));
+      u.searchParams.set('utm_source', v('source'));
+      u.searchParams.set('utm_medium', v('medium'));
+      if (slug(v('campaign'))) u.searchParams.set('utm_campaign', slug(v('campaign')));
+      out.value = u.toString();
+    } catch { out.value = 'Página inválida'; }
+  };
+  box.addEventListener('input', build);
+  box.addEventListener('change', build);
+  build();
+  document.querySelector('[data-copy]')!.addEventListener('click', async (e) => {
+    await navigator.clipboard.writeText(out.value).catch(() => out.select());
+    (e.target as HTMLElement).textContent = 'Copiado ✓';
+    setTimeout(() => ((e.target as HTMLElement).textContent = 'Copiar'), 1500);
+  });
+</script>

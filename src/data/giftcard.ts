@@ -1,10 +1,9 @@
-/* Cartão presente: digital, enviado por email. Os códigos e o saldo vivem na Google Sheet do webhook
-   (folha "Cartoes"), ver integrations/newsletter.gs. */
+/* Cartão presente: digital, enviado por email. Os códigos e o saldo vivem no CRM (/admin/cartoes/). */
 
 export const giftCard = {
   name: 'Cartão Presente',
   slug: 'cartao-presente',
-  /** validade em meses, a contar da data de compra (tem de bater com GIFT_MONTHS em integrations/newsletter.gs) */
+  /** validade em meses, a contar da data de compra */
   validityMonths: 12,
   /** prazo para enviarmos o cartão por email depois do pagamento */
   sendDays: 1,

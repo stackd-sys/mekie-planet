@@ -25,48 +25,61 @@ Para adicionar um produto: coloca as imagens em `public/images/products/` (de pr
 
 ## Carrinho e encomendas
 
-O carrinho funciona no browser (guardado em `localStorage`). Por agora, o checkout recolhe os dados do cliente e abre o email com o resumo da encomenda para `geral@mekie-planet.com`. Na fase seguinte liga-se um pagamento online (Stripe com MB WAY, Multibanco, cartão, Apple Pay e Google Pay).
+O carrinho funciona no browser (guardado em `localStorage`). No checkout, a encomenda é gravada no CRM (`/api/encomenda/`): o servidor volta a calcular preços, stock, portes, códigos e cartões presente, o cliente recebe um email com o resumo e a Mekie recebe um aviso. Respondem depois com os dados de pagamento. Se o CRM não estiver disponível, o checkout abre o email do cliente com o resumo, como antes.
+
+Na fase seguinte liga-se o pagamento online (Stripe com MB WAY, Multibanco, cartão, Apple Pay e Google Pay).
 
 ## Newsletter e 10% de boas-vindas
 
-O popup (e o formulário do rodapé) pede o email e o consentimento e mostra o código `MEKIE10`.
+O pop up e o formulário do rodapé guardam o email no CRM (`/api/newsletter/`) e mostram o código `MEKIE10`. O CRM não deixa o mesmo email entrar duas vezes e, no checkout, confirma que o código de boas-vindas é usado por quem subscreveu e só uma vez.
 
-Para guardar os emails, põe o URL de um webhook em `newsletterWebhook` (`src/data/site.ts`) ou na Vercel, em Settings > Environment Variables, com o nome `PUBLIC_NEWSLETTER_WEBHOOK` (depois é preciso fazer Redeploy). O mais simples é o Google Apps Script em `integrations/newsletter.gs`, que escreve numa Google Sheet (as instruções estão no topo do ficheiro). Esse script:
-
-- não deixa o mesmo email entrar duas vezes e avisa a pessoa que já estava na lista;
-- no checkout, confirma que o email da encomenda subscreveu a newsletter e ainda não usou o código;
-- marca na folha quando o código é usado e em que encomenda.
-
-O site envia `POST` (`application/x-www-form-urlencoded`) com o campo `action`:
-
-| `action` | Campos | Resposta (JSON) |
-| --- | --- | --- |
-| `subscribe` | `email`, `consent`, `source` (`popup` ou `footer`), `page`, `code`, `created_at` | `{ "status": "new" \| "exists", "used": false }` |
-| `check` | `email` | `{ "subscribed": true, "used": false }` |
-| `redeem` | `email`, `code`, `order`, `created_at` | `{ "used": true }` |
-
-Também funciona com Make, Zapier ou n8n. Se o webhook não responder em JSON, o email é guardado na mesma mas o site não consegue saber se já estava inscrito. Enquanto o campo estiver vazio, o código aparece mas o email **não fica guardado**.
-
-O código e a percentagem estão em `welcomeCode` e `welcomeDiscount`. O código tem de ser criado também no sistema de pagamento, com uso único por cliente e sem acumular com outras promoções.
+O código e a percentagem iniciais estão em `welcomeCode` e `welcomeDiscount` (`src/data/site.ts`); depois gerem-se em CRM > Códigos e links.
 
 ## Cartão presente
 
-Página em `/cartao-presente/` (valores e validade em `src/data/giftcard.ts`). O cartão é digital: não tem portes, não conta para o envio grátis e o código de 10% não se aplica a ele.
+Página em `/cartao-presente/` (valores, nomes e validade em `src/data/giftcard.ts`). O cartão é digital: não tem portes, não conta para o envio grátis e os códigos de desconto não se aplicam a ele.
 
-1. O cliente compra o cartão. A encomenda chega por email com o nome de quem recebe, o email (se o deu) e a mensagem.
-2. Depois do pagamento, na Google Sheet do webhook, usa o menu **Mekie > Criar cartão presente**. O código (ex.: `MEKIE-7KQ2-XH9D`) fica na folha `Cartoes`, com valor, saldo e validade de 1 ano.
-3. Envia o código por email a quem recebe.
-4. No checkout, o cliente escreve o código e o site mostra o saldo e desconta-o do total. Quando a encomenda for paga, baixa o saldo na coluna `saldo` da folha `Cartoes`.
-
-Com a Stripe ligada, os passos 2 a 4 passam a ser automáticos.
+Quando uma encomenda com cartões é marcada como paga no CRM, cada cartão é criado com um código único (ex.: `MEKIE-7KQ2-XH9D`) e enviado por email a quem o recebe. No checkout, o cliente escreve o código, o site mostra o saldo e desconta-o; o saldo baixa quando essa encomenda é marcada como paga. Em CRM > Cartões presente criam-se cartões à mão e ajustam-se saldos.
 
 ## Avisa-me quando voltar
 
-Nos tamanhos esgotados (e nos produtos esgotados) o cliente deixa o email. Os pedidos ficam na folha `Avisos` da Google Sheet, com produto e tamanho. Quando repuseres stock, envia o aviso e preenche a coluna `avisado_em`.
+Nos tamanhos esgotados (e nos produtos esgotados) o cliente deixa o email. Os pedidos aparecem em CRM > Newsletter e avisos e no Stock. Quando houver reposição, o botão "Enviar aviso agora" manda o email a todos os que pediram aquele tamanho.
 
 ## Perguntas frequentes
 
 Em `src/data/faq.ts`. Os preços e prazos vêm dos mesmos dados do resto do site, por isso mudam sozinhos.
+
+## CRM
+
+Painel privado em `/admin/` (login por link enviado por email, só para os emails em `ADMIN_EMAILS`). Tem:
+
+- **Painel**: vendas, encomendas, valor médio, visitas, conversão, vendas por dia, mais vendidos, esgotados e o que falta tratar.
+- **Encomendas**: lista por estado, detalhe, mudança de estado (paga tira do stock, cancelada devolve), número de seguimento CTT com email ao cliente, folha de envio para imprimir, notas internas, vendas registadas à mão (Instagram, feiras, em mão).
+- **Clientes**: histórico, total gasto, grupos (uma compra, voltaram a comprar, sem comprar há 6 meses, só newsletter), notas, exportação CSV.
+- **Stock e produtos**: preço e stock por tamanho, pedidos de aviso; ao guardar, o site volta a ser construído com os valores novos.
+- **Trocas e devoluções**: registo a partir da encomenda; as peças voltam ao stock quando chegam.
+- **Newsletter e avisos**, **Cartões presente**, **Códigos e links** (códigos de desconto com regras, gerador de links com `utm_*` e vendas por origem).
+- **Analytics e campanhas**: Google Analytics 4 (visitas, origem, funil até à compra, peças mais vistas), campanhas Meta e campanhas Google (via Analytics).
+
+O código está em `src/pages/admin/`, `src/pages/api/` e `src/lib/server/`. As tabelas da base de dados são criadas sozinhas no primeiro acesso.
+
+### Configurar na Vercel
+
+Tudo em Vercel > projeto `mekie-planet` > Settings > Environment Variables. Depois de juntar variáveis, faz Deployments > Redeploy.
+
+1. **Base de dados (obrigatório).** Vercel > Storage > Create Database > Neon (Postgres), região Frankfurt, ligada ao projeto. Cria sozinha a variável `DATABASE_URL`. Em Settings > Functions, põe a Function Region em Frankfurt (`fra1`), perto da base de dados.
+2. **Acessos (obrigatório).** `ADMIN_EMAILS` = os emails da Rita e do Rafael, separados por vírgula.
+3. **Emails (recomendado).** Cria conta em [resend.com](https://resend.com), junta o domínio `mekie-planet.com` (registos DNS que a Resend indica) e cria uma API key. Variáveis: `RESEND_API_KEY` e `MAIL_FROM` (ex.: `Mekie Planet <geral@mekie-planet.com>`). Opcional: `ORDERS_EMAIL`, para onde vão os avisos de nova encomenda (por omissão, `geral@mekie-planet.com`).
+   Enquanto a Resend não estiver ligada, podes entrar com `ADMIN_PASSWORD` (12 caracteres ou mais): a página de entrada mostra o campo da palavra-passe.
+4. **Atualização automática do site (recomendado).** Settings > Git > Deploy Hooks > criar um hook para o ramo `main`. Variável: `VERCEL_DEPLOY_HOOK` com o URL.
+5. **Google Analytics (opcional).** Na [Google Cloud](https://console.cloud.google.com/), cria um projeto, ativa a "Google Analytics Data API", cria uma conta de serviço e uma chave JSON. No Google Analytics, Administração > Gestão de acessos à propriedade, junta o email da conta de serviço como Leitor. Variáveis: `GA4_PROPERTY_ID` (o número da propriedade, em Administração > Detalhes da propriedade) e `GOOGLE_SERVICE_ACCOUNT` (o conteúdo do ficheiro JSON).
+6. **Campanhas Google (opcional).** No Google Analytics, Administração > Ligações de produtos > Ligações do Google Ads, liga a conta do Google Ads. Os custos e cliques aparecem no CRM através do Analytics.
+7. **Meta (opcional).** No [Meta Business](https://business.facebook.com/), Definições > Utilizadores do sistema: cria um utilizador de sistema, dá-lhe acesso à conta de anúncios e gera um token com a permissão `ads_read`. Variáveis: `META_ACCESS_TOKEN` e `META_AD_ACCOUNT_ID` (o número da conta de anúncios).
+8. Opcional: `CTT_TRACK_URL`, se o link de seguimento dos CTT mudar (usa `{code}` no sítio do número).
+
+### Correr o CRM localmente
+
+Com um Postgres local: `DATABASE_URL=postgres://... ADMIN_EMAILS=eu@x.pt npm run build && node dist/server/entry.mjs`. Sem `RESEND_API_KEY`, o link de entrada aparece no terminal.
 
 ## Portes de envio
 
@@ -119,15 +132,15 @@ O site antigo carregava também o Google Tag Manager (`GTM-T8HV3THK`) com estas 
 
 Pendente da Mekie:
 
-- [ ] Atualizar o script da Google Sheet: colar `integrations/newsletter.gs` no Apps Script e fazer Implementar > Gerir implementações > Nova versão. Sem isto, o cartão presente e o "Avisa-me quando voltar" não ficam guardados.
-- [ ] Ligar o webhook: pôr o URL `/exec` em `PUBLIC_NEWSLETTER_WEBHOOK` na Vercel (e fazer Redeploy) ou em `newsletterWebhook` em `src/data/site.ts`.
+- [ ] Configurar o CRM na Vercel: base de dados Neon e `ADMIN_EMAILS` (obrigatórios); Resend, Deploy Hook, Google Analytics e Meta (ver "Configurar na Vercel").
 - [ ] Enviar as fotos das peças vestidas e a foto e o preço do crewneck.
+- [ ] Se já tinham emails na Google Sheet da newsletter, importá-los em CRM > Newsletter e avisos > Importar.
 
-Fechado: preço das totes (25€), textos das opiniões confirmados por cada pessoa, preço e cores do scrunchie personalizado.
+Fechado: preço das totes (25€), textos das opiniões confirmados por cada pessoa, preço e cores do scrunchie personalizado. A Google Sheet e o Apps Script já não são precisos (substituídos pelo CRM).
 
 Próximas fases do site:
 
-1. Pagamento Stripe (MB WAY, Multibanco, cartão), com página de encomenda confirmada, emails automáticos, cartões presente criados e enviados sozinhos e evento `purchase` no Analytics e no Pixel.
+1. Pagamento Stripe (MB WAY, Multibanco, cartão): a encomenda passa a "paga" sozinha, com evento `purchase` no Analytics e no Pixel.
 2. Domínio mekie-planet.com na Vercel, Google Search Console (enviar o sitemap) e Google Merchant Center.
 3. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
-4. Mais tarde: CRM (stock, encomendas, clientes) e conta de cliente com login por email. Campanha de Natal quando fizer sentido.
+4. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.

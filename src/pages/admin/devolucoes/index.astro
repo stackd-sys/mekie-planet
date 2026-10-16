@@ -1,0 +1,73 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+import { postForm, done, str, num } from '../../../lib/server/admin';
+import { moveStock } from '../../../lib/server/orders';
+import { rebuildSite } from '../../../lib/server/deploy';
+
+const STEPS: Record<string, string> = { pedido: 'Pedido', recebido: 'Peças recebidas', concluido: 'Concluído', recusado: 'Recusado' };
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  const id = num(f, 'id');
+  const status = str(f, 'status');
+  if (!id || !STEPS[status]) return done(Astro, 'Pedido inválido.', undefined, true);
+  let restocked = false;
+  await sql.begin(async (tx: any) => {
+    const [r] = await tx`select * from returns where id = ${id} for update`;
+    if (!r) return;
+    await tx`update returns set status = ${status}, refund = ${num(f, 'refund') ?? r.refund}, notes = ${str(f, 'notes', 1000)} where id = ${id}`;
+    /* as peças voltam ao stock quando chegam */
+    if ((status === 'recebido' || status === 'concluido') && r.restock && !r.restocked) {
+      restocked = await moveStock(tx, r.items, 1);
+      await tx`update returns set restocked = true where id = ${id}`;
+    }
+    await tx`insert into order_events (order_id, text, by) values (${r.order_id}, ${`${r.kind === 'troca' ? 'Troca' : 'Devolução'}: ${STEPS[status]}`}, ${Astro.locals.admin ?? ''})`;
+    if (status === 'concluido' && r.kind === 'devolucao') {
+      const [o] = await tx`select lines from orders where id = ${r.order_id}`;
+      const all = (o.lines as any[]).filter((l) => !l.digital).reduce((n, l) => n + l.qty, 0);
+      const back = (await tx`select items from returns where order_id = ${r.order_id} and kind = 'devolucao' and status = 'concluido'`).flatMap((x: any) => x.items).reduce((n: number, l: any) => n + l.qty, 0);
+      if (back >= all) await tx`update orders set status = 'devolvida' where id = ${r.order_id}`;
+    }
+  });
+  if (restocked) await rebuildSite('Peças devolvidas ao stock');
+  return done(Astro, restocked ? 'Atualizado. As peças voltaram ao stock e o site vai atualizar.' : 'Atualizado.');
+}
+const filter = Astro.url.searchParams.get('estado') || 'abertas';
+const rows = await sql<any[]>`
+  select r.*, o.number, o.name, o.email from returns r join orders o on o.id = r.order_id
+  where (${filter} = 'todas' or (${filter} = 'abertas' and r.status in ('pedido','recebido')))
+  order by r.created_at desc limit 300`;
+---
+<Admin title="Trocas e devoluções">
+  <h1>Trocas e devoluções</h1>
+  <p class="sub">Regista-se a partir da página da encomenda. Quando as peças chegam, marca "Peças recebidas" e elas voltam ao stock.</p>
+  <Flash />
+  <nav class="tabs">
+    <a href="?estado=abertas" class:list={{ 'is-on': filter === 'abertas' }}>Por tratar</a>
+    <a href="?estado=todas" class:list={{ 'is-on': filter === 'todas' }}>Todas</a>
+  </nav>
+  {rows.length ? (
+    <div class="stack">
+      {rows.map((r) => (
+        <form method="post" class="card stack">
+          <input type="hidden" name="id" value={r.id} />
+          <div class="bar" style="justify-content:space-between;margin:0">
+            <strong>{r.kind === 'troca' ? 'Troca' : 'Devolução'} · <a href={`/admin/encomendas/${r.number}/`}>{r.number}</a> · {r.name}</strong>
+            <span class="muted">{date(r.created_at)}</span>
+          </div>
+          <p style="margin:0">{(r.items as any[]).map((i) => `${i.qty}× ${i.name}${i.color ? `, ${i.color}` : ''}${i.size ? ` ${i.size}` : ''}`).join(' · ')}{r.reason && <span class="muted"> · Motivo: {r.reason}</span>}</p>
+          <div class="fields">
+            <label>Estado<select name="status">{Object.entries(STEPS).map(([k, v]) => <option value={k} selected={r.status === k}>{v}</option>)}</select></label>
+            <label>Reembolso (€)<input name="refund" value={Number(r.refund).toFixed(2)} inputmode="decimal" /></label>
+            <label>Notas<input name="notes" value={r.notes} /></label>
+          </div>
+          <div class="bar" style="margin:0"><button class="btn small">Guardar</button>{r.restocked && <span class="badge ok">De volta ao stock</span>}{!r.restock && <span class="muted">Não volta ao stock</span>}{Number(r.refund) > 0 && <span class="muted">Reembolsar {euro(r.refund)} pelo meio de pagamento original</span>}</div>
+        </form>
+      ))}
+    </div>
+  ) : <p class="empty card">Nada por tratar.</p>}
+</Admin>

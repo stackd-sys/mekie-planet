@@ -1,0 +1,76 @@
+---
+export const prerender = false;
+import Admin from '../../../../layouts/Admin.astro';
+import Flash from '../../../../components/admin/Flash.astro';
+import Status from '../../../../components/admin/Status.astro';
+import { db } from '../../../../lib/server/db';
+import { euro, date } from '../../../../lib/server/format';
+import { postForm, done, str } from '../../../../lib/server/admin';
+
+const sql = await db();
+const id = Number(Astro.params.id);
+const f = await postForm(Astro);
+if (f) {
+  await sql`update customers set name = ${str(f, 'name', 160)}, phone = ${str(f, 'phone', 40)}, nif = ${str(f, 'nif', 20)}, notes = ${str(f, 'notes', 3000)}, updated_at = now() where id = ${id}`;
+  return done(Astro, 'Cliente guardado.');
+}
+const [c] = await sql<any[]>`select * from customers where id = ${id}`;
+if (!c) return Astro.redirect('/admin/clientes/');
+const orders = await sql<any[]>`select number, created_at, total, status, lines from orders where customer_id = ${id} order by created_at desc`;
+const [sub] = await sql<any[]>`select * from subscribers where email = ${c.email}`;
+const codes = await sql<any[]>`select code, order_number, at from code_uses where email = ${c.email} order by at desc`;
+const gifts = await sql<any[]>`select g.code, g.value, g.balance, g.recipient_name from gift_cards g join orders o on o.number = g.order_number where o.customer_id = ${id}`;
+const paid = orders.filter((o) => ['paga', 'enviada', 'entregue'].includes(o.status));
+const spent = paid.reduce((n, o) => n + Number(o.total), 0);
+const fav = Object.entries(paid.flatMap((o) => o.lines as any[]).reduce((m: Record<string, number>, l) => ((m[l.name] = (m[l.name] ?? 0) + l.qty), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 3);
+---
+<Admin title={c.name || c.email}>
+  <p><a href="/admin/clientes/" class="muted">← Clientes</a></p>
+  <h1>{c.name || c.email}</h1>
+  <p class="sub">{c.email} · cliente desde {date(c.created_at)}</p>
+  <Flash />
+  <div class="grid kpis" style="margin-bottom:14px">
+    <div class="card kpi"><p>Encomendas pagas</p><strong>{paid.length}</strong></div>
+    <div class="card kpi"><p>Total gasto</p><strong>{euro(spent)}</strong></div>
+    <div class="card kpi"><p>Newsletter</p><strong>{sub && !sub.unsubscribed_at ? 'Sim' : 'Não'}</strong>{sub && <small>desde {date(sub.created_at)}</small>}</div>
+    <div class="card kpi"><p>Mais comprado</p><strong style="font-size:15px">{fav.length ? fav.map(([n, q]) => `${n} (${q})`).join(', ') : '—'}</strong></div>
+  </div>
+  <div class="grid two">
+    <section class="card">
+      <h2 style="margin-top:0">Dados e notas</h2>
+      <form method="post" class="stack">
+        <div class="fields">
+          <label>Nome<input name="name" value={c.name} /></label>
+          <label>Telemóvel<input name="phone" value={c.phone} /></label>
+          <label>NIF<input name="nif" value={c.nif} /></label>
+        </div>
+        <label>Notas<textarea name="notes" rows="4" placeholder="Ex.: prefere tamanho L, amiga da Rita">{c.notes}</textarea></label>
+        <div><button class="btn">Guardar</button> <a class="btn ghost" href={`mailto:${c.email}`}>Enviar email</a></div>
+      </form>
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0">Códigos e cartões</h2>
+      {codes.length ? <ul>{codes.map((u) => <li>{u.code} na {u.order_number || 'encomenda'} ({date(u.at)})</li>)}</ul> : <p class="muted">Nunca usou códigos.</p>}
+      {gifts.length > 0 && <ul>{gifts.map((g) => <li>Comprou o cartão {g.code} de {euro(g.value)}{g.recipient_name && ` para ${g.recipient_name}`}</li>)}</ul>}
+    </section>
+  </div>
+  <h2>Encomendas</h2>
+  <div class="table">
+    {orders.length ? (
+      <table>
+        <thead><tr><th>Nº</th><th>Data</th><th>Peças</th><th class="num">Total</th><th>Estado</th></tr></thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr>
+              <td><a class="row-link" href={`/admin/encomendas/${o.number}/`}>{o.number}</a></td>
+              <td>{date(o.created_at)}</td>
+              <td>{(o.lines as any[]).map((l) => `${l.qty}× ${l.name}${l.size ? ` ${l.size}` : ''}`).join(', ')}</td>
+              <td class="num">{euro(o.total)}</td>
+              <td><Status status={o.status} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p class="empty">Sem encomendas.</p>}
+  </div>
+</Admin>

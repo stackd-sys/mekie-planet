@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /checkout/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /encomenda-recebida/
 
 Sitemap: https://mekie-planet.com/sitemap-index.xml

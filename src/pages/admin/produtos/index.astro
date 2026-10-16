@@ -1,0 +1,90 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { products } from '../../../data/products';
+import { postForm, done, num } from '../../../lib/server/admin';
+import { rebuildSite, hasDeployHook } from '../../../lib/server/deploy';
+import { date } from '../../../lib/server/format';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  let changed = 0;
+  const state = new Map((await sql<any[]>`select * from products_state`).map((r) => [r.id, r]));
+  for (const p of products) {
+    const cur = state.get(p.id);
+    if (!cur) continue;
+    const price = num(f, `price-${p.id}`);
+    let stock: number | null = cur.stock, sizeStock = cur.size_stock;
+    if (p.sizeStock) {
+      sizeStock = Object.fromEntries((p.sizes ?? []).map((s) => [s, Math.max(0, Math.floor(num(f, `s-${p.id}-${s}`) ?? 0))]));
+    } else if (!p.customizable) {
+      const v = num(f, `stock-${p.id}`);
+      stock = v === null ? null : Math.max(0, Math.floor(v));
+    }
+    const priceOk = price !== null && price > 0 ? price : Number(cur.price);
+    const same = (a: Record<string, number> | null, b: Record<string, number> | null) =>
+      JSON.stringify(Object.entries(a ?? {}).sort()) === JSON.stringify(Object.entries(b ?? {}).sort());
+    if (priceOk !== Number(cur.price) || stock !== cur.stock || !same(sizeStock, cur.size_stock)) {
+      await sql`update products_state set price = ${priceOk}, stock = ${stock}, size_stock = ${sizeStock ? sql.json(sizeStock) : null}, updated_at = now() where id = ${p.id}`;
+      changed++;
+    }
+  }
+  if (!changed) return done(Astro, 'Nada mudou.');
+  const rebuilt = await rebuildSite(`${changed} produtos atualizados no CRM`);
+  return done(Astro, rebuilt
+    ? `${changed} ${changed === 1 ? 'produto atualizado' : 'produtos atualizados'}. O site está a ser atualizado (cerca de 1 a 2 minutos).`
+    : `${changed} ${changed === 1 ? 'produto guardado' : 'produtos guardados'}. Falta ligar a atualização automática do site (VERCEL_DEPLOY_HOOK), vê o README.`);
+}
+
+const state = new Map((await sql<any[]>`select * from products_state`).map((r) => [r.id, r]));
+const waiting = await sql<any[]>`select product, size, count(*)::int as n from notify_requests where notified_at is null group by product, size`;
+const waitFor = (name: string, size = '') => waiting.find((w) => w.product === name && w.size === size)?.n ?? 0;
+const lastUpdate = Math.max(...[...state.values()].map((r) => new Date(r.updated_at).getTime()));
+const hook = hasDeployHook();
+const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+---
+<Admin title="Stock e produtos" wide>
+  <h1>Stock e produtos</h1>
+  <p class="sub">Muda o preço e o stock e carrega em Guardar. {hook ? 'O site atualiza sozinho em 1 ou 2 minutos.' : 'Para o site atualizar sozinho, falta o VERCEL_DEPLOY_HOOK (vê o README).'} Última alteração: {date(new Date(lastUpdate), true)}.</p>
+  <Flash />
+  <form method="post">
+    <div class="table">
+      <table>
+        <thead><tr><th>Produto</th><th class="num">Preço (€)</th>{sizes.map((s) => <th class="num">{s}</th>)}<th class="num">Stock</th><th>Avisa-me</th></tr></thead>
+        <tbody>
+          {products.map((p) => {
+            const s = state.get(p.id);
+            const ss = s?.size_stock ?? p.sizeStock;
+            const fullName = p.customizable ? p.name : `${p.name} ${p.color}`;
+            const total = ss ? Object.values(ss as Record<string, number>).reduce((a, b) => a + b, 0) : s?.stock;
+            const waits = p.sizes ? p.sizes.map((z) => [z, waitFor(fullName, z)]).filter(([, n]) => n) : waitFor(fullName) ? [['', waitFor(fullName)]] : [];
+            return (
+              <tr>
+                <td style="display:flex;gap:10px;align-items:center;min-width:240px">
+                  <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="44" height="44" style="object-fit:contain;background:#f5f5f4;border-radius:6px" />
+                  <span><a href={`/produto/${p.slug}/`} target="_blank"><strong>{p.name}</strong></a><br /><span class="muted">{p.customizable ? 'Feito por encomenda' : p.color}{p.madeToOrderDays && !p.customizable ? ' · depois do stock, por encomenda' : ''}</span></span>
+                </td>
+                <td class="num"><input name={`price-${p.id}`} value={Number(s?.price ?? p.price).toFixed(2)} inputmode="decimal" style="width:80px;text-align:right" /></td>
+                {sizes.map((z) => (
+                  <td class="num">{p.sizeStock && p.sizes?.includes(z)
+                    ? <input type="number" min="0" name={`s-${p.id}-${z}`} value={(ss as any)?.[z] ?? 0} style={`width:58px;text-align:right;${!((ss as any)?.[z]) ? 'color:var(--bad)' : ''}`} />
+                    : ''}</td>
+                ))}
+                <td class="num">{p.sizeStock
+                  ? <strong style={!total ? 'color:var(--bad)' : ''}>{total}</strong>
+                  : p.customizable ? <span class="muted">—</span>
+                  : <input type="number" min="0" name={`stock-${p.id}`} value={s?.stock ?? ''} placeholder="∞" style={`width:64px;text-align:right;${s?.stock === 0 ? 'color:var(--bad)' : ''}`} />}</td>
+                <td>{waits.length ? waits.map(([z, n]) => <span class="badge warn" style="margin:0 4px 4px 0">{z ? `${z}: ` : ''}{n}</span>) : <span class="muted">—</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <p class="bar" style="margin-top:14px;position:sticky;bottom:0;background:var(--bg);padding:12px 0"><button class="btn">Guardar e atualizar o site</button> <a class="btn ghost" href="/admin/newsletter/?ver=avisos">Ver pedidos de aviso</a></p>
+  </form>
+  <p class="note">Produtos novos, fotos e textos continuam a ser alterados no código do site. O stock sai sozinho quando uma encomenda é marcada como paga e volta quando é cancelada ou devolvida.</p>
+</Admin>

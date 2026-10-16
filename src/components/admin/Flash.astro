@@ -1,0 +1,6 @@
+---
+import { flash } from '../../lib/server/admin';
+const { ok, error } = flash(Astro);
+---
+{ok && <p class="msg">{ok}</p>}
+{error && <p class="msg err">{error}</p>}

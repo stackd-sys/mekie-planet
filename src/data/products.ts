@@ -1,3 +1,5 @@
+import { applyOverrides } from '../lib/server/overrides';
+
 export type Category = {
   slug: string;
   name: string;
@@ -547,6 +549,9 @@ export const products: Product[] = [
     details: toteDetails,
   },
 ];
+
+/* Preço e stock atuais, geridos no CRM (quando há base de dados). Sem base de dados ficam os valores acima. */
+await applyOverrides(products);
 
 export const getCategory = (slug: string) => categories.find((c) => c.slug === slug);
 export const getCollection = (slug: string) => collections.find((c) => c.slug === slug);

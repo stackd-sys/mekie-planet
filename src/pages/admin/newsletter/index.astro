@@ -1,0 +1,110 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { date } from '../../../lib/server/format';
+import { postForm, done, str } from '../../../lib/server/admin';
+import { sendMail, layout, escapeHtml, hasMail } from '../../../lib/server/mail';
+import { products } from '../../../data/products';
+import { site } from '../../../data/site';
+
+const sql = await db();
+const view = Astro.url.searchParams.get('ver') === 'avisos' ? 'avisos' : 'subscritores';
+const f = await postForm(Astro);
+if (f) {
+  const action = str(f, 'action');
+  if (action === 'unsubscribe') {
+    await sql`update subscribers set unsubscribed_at = now() where email = ${str(f, 'email').toLowerCase()}`;
+    return done(Astro, 'Email retirado da newsletter.');
+  }
+  if (action === 'add') {
+    const emails = str(f, 'emails', 100000).split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    for (const e of emails) await sql`insert into subscribers (email, source, consent) values (${e}, 'importado', 'true') on conflict (email) do nothing`;
+    return done(Astro, `${emails.length} emails importados (os que já existiam ficaram iguais).`);
+  }
+  if (action === 'notified') {
+    await sql`update notify_requests set notified_at = now() where product = ${str(f, 'product')} and size = ${str(f, 'size')} and notified_at is null`;
+    return done(Astro, 'Marcados como avisados.');
+  }
+  if (action === 'notify-send') {
+    const product = str(f, 'product'), size = str(f, 'size');
+    const p = products.find((x) => (x.customizable ? x.name : `${x.name} ${x.color}`) === product);
+    const url = p ? `${site.url}/produto/${p.slug}/` : `${site.url}/loja/`;
+    const rows = await sql<any[]>`select id, email from notify_requests where product = ${product} and size = ${size} and notified_at is null`;
+    let sent = 0;
+    for (const r of rows) {
+      const ok = await sendMail(r.email, `${product}${size ? ` (${size})` : ''} voltou!`, layout(`${escapeHtml(product)} voltou`,
+        `<p>Pediste para te avisarmos: ${escapeHtml(product)}${size ? ` no tamanho <strong>${escapeHtml(size)}</strong>` : ''} já está outra vez disponível.</p>
+         <p><a href="${url}" style="display:inline-block;background:#1f1f1f;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">Ver a peça</a></p>
+         <p style="font-size:13px;color:#5c5c5c">Este foi o único aviso que te enviamos sobre esta peça.</p>`));
+      if (ok) { sent++; await sql`update notify_requests set notified_at = now() where id = ${r.id}`; }
+    }
+    return sent ? done(Astro, `Aviso enviado a ${sent} ${sent === 1 ? 'pessoa' : 'pessoas'}.`) : done(Astro, 'Nenhum email saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
+  }
+}
+const subs = view === 'subscritores' ? await sql<any[]>`
+  select s.*, exists (select 1 from orders o where o.email = s.email and o.status in ('paga','enviada','entregue')) as bought
+  from subscribers s where s.unsubscribed_at is null order by s.created_at desc limit 2000` : [];
+const groups = view === 'avisos' ? await sql<any[]>`
+  select product, size, count(*)::int as n, min(created_at) as first, array_agg(email order by created_at) as emails
+  from notify_requests where notified_at is null group by product, size order by n desc` : [];
+const [{ total, month }] = await sql<any[]>`select count(*)::int as total, count(*) filter (where created_at > now() - interval '30 days')::int as month from subscribers where unsubscribed_at is null`;
+---
+<Admin title="Newsletter e avisos">
+  <h1>Newsletter e avisos</h1>
+  <p class="sub">{total} subscritores, {month} nos últimos 30 dias.</p>
+  <Flash />
+  <nav class="tabs">
+    <a href="?ver=subscritores" class:list={{ 'is-on': view === 'subscritores' }}>Subscritores</a>
+    <a href="?ver=avisos" class:list={{ 'is-on': view === 'avisos' }}>Avisa-me quando voltar</a>
+  </nav>
+
+  {view === 'subscritores' ? (
+    <>
+      <div class="bar"><a class="btn ghost small" href="/admin/newsletter/exportar/">Exportar CSV</a></div>
+      <div class="table">
+        {subs.length ? (
+          <table>
+            <thead><tr><th>Email</th><th>Desde</th><th>Origem</th><th>Já comprou</th><th></th></tr></thead>
+            <tbody>
+              {subs.map((s) => (
+                <tr>
+                  <td>{s.email}</td><td>{date(s.created_at)}</td><td>{s.source || '—'}</td>
+                  <td>{s.bought ? <span class="badge ok">Sim</span> : <span class="muted">Não</span>}</td>
+                  <td class="num"><form method="post" class="inline" onsubmit="return confirm('Retirar este email da newsletter?')"><input type="hidden" name="action" value="unsubscribe" /><input type="hidden" name="email" value={s.email} /><button class="btn ghost small">Retirar</button></form></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p class="empty">Ainda sem subscritores.</p>}
+      </div>
+      <details class="card" style="margin-top:14px">
+        <summary style="cursor:pointer;font-weight:600">Importar emails (por exemplo, da antiga Google Sheet)</summary>
+        <form method="post" class="stack" style="margin-top:12px">
+          <input type="hidden" name="action" value="add" />
+          <textarea name="emails" rows="6" placeholder="Um email por linha"></textarea>
+          <p class="note">Importa só emails de pessoas que aceitaram receber a newsletter.</p>
+          <div><button class="btn">Importar</button></div>
+        </form>
+      </details>
+    </>
+  ) : (
+    <div class="stack">
+      {!hasMail() && <p class="card setup">Para enviar os avisos daqui, falta configurar o envio de emails (RESEND_API_KEY). Até lá, copia os emails e marca como avisados.</p>}
+      {groups.length ? groups.map((g) => (
+        <div class="card stack">
+          <div class="bar" style="justify-content:space-between;margin:0">
+            <strong>{g.product}{g.size && ` · ${g.size}`}</strong>
+            <span class="badge warn">{g.n} {g.n === 1 ? 'pessoa' : 'pessoas'}</span>
+          </div>
+          <p class="muted" style="margin:0;word-break:break-all">{(g.emails as string[]).join(', ')}</p>
+          <div class="bar" style="margin:0">
+            <form method="post" class="inline"><input type="hidden" name="action" value="notify-send" /><input type="hidden" name="product" value={g.product} /><input type="hidden" name="size" value={g.size} /><button class="btn small">Enviar aviso agora</button></form>
+            <form method="post" class="inline"><input type="hidden" name="action" value="notified" /><input type="hidden" name="product" value={g.product} /><input type="hidden" name="size" value={g.size} /><button class="btn ghost small">Marcar como avisados</button></form>
+          </div>
+        </div>
+      )) : <p class="empty card">Ninguém à espera de reposição.</p>}
+    </div>
+  )}
+</Admin>

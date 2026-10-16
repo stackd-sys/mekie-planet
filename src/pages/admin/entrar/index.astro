@@ -1,0 +1,71 @@
+---
+export const prerender = false;
+import '@fontsource-variable/inter';
+import { requestLogin, consumeToken, passwordLogin, currentAdmin } from '../../../lib/server/auth';
+
+let msg = '';
+let error = '';
+const token = Astro.url.searchParams.get('t');
+const usePassword = Boolean(process.env.ADMIN_PASSWORD);
+
+try {
+  if (await currentAdmin(Astro.cookies)) return Astro.redirect('/admin/');
+  if (token) {
+    if (await consumeToken(token, Astro.cookies)) return Astro.redirect('/admin/');
+    error = 'Este link já foi usado ou expirou. Pede um novo.';
+  }
+  if (Astro.request.method === 'POST') {
+    const f = await Astro.request.formData();
+    const email = String(f.get('email') || '');
+    if (f.get('password')) {
+      if (await passwordLogin(email, String(f.get('password')), Astro.cookies)) return Astro.redirect('/admin/');
+      error = 'Email ou palavra-passe errados.';
+    } else {
+      await requestLogin(email, Astro.url.origin);
+      msg = 'Se este email tiver acesso, vais receber um link para entrar. Vê também o spam.';
+    }
+  }
+} catch (e) {
+  error = 'O CRM ainda não tem base de dados configurada. Vê o README, na secção CRM.';
+  console.error(e);
+}
+---
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Entrar · CRM Mekie</title>
+  <link rel="icon" href="/images/site/icon.png" type="image/png" />
+</head>
+<body>
+  <main class="in">
+    <img src="/images/site/logo.png" alt="Mekie" width="140" height="47" />
+    <h1>CRM</h1>
+    {msg && <p class="ok">{msg}</p>}
+    {error && <p class="err">{error}</p>}
+    <form method="post">
+      <label>Email<input type="email" name="email" required autocomplete="email" /></label>
+      {usePassword && <label>Palavra-passe <small>(opcional)</small><input type="password" name="password" autocomplete="current-password" /></label>}
+      <button type="submit">{usePassword ? 'Entrar' : 'Enviar link de entrada'}</button>
+      <p class="hint">{usePassword ? 'Sem palavra-passe, recebes um link por email.' : 'Recebes um link por email para entrar, sem palavra-passe.'}</p>
+    </form>
+  </main>
+</body>
+</html>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f5f5f4; font-family: 'Inter Variable', Helvetica, Arial, sans-serif; color: #1f1f1f; padding: 16px; }
+  .in { width: min(380px, 100%); background: #fff; border: 1px solid #e2e2df; border-radius: 12px; padding: 28px; display: grid; gap: 14px; }
+  img { height: 34px; width: auto; }
+  h1 { margin: 0; font-size: 14px; letter-spacing: .12em; color: #5c5c5c; font-weight: 600; }
+  form { display: grid; gap: 12px; }
+  label { display: grid; gap: 5px; font-size: 13px; }
+  small { color: #5c5c5c; }
+  input { font: inherit; padding: 10px 12px; border: 1px solid #cfcfcb; border-radius: 8px; }
+  button { font: inherit; font-weight: 600; background: #1f1f1f; color: #fff; border: 0; border-radius: 999px; padding: 12px; cursor: pointer; }
+  .hint { margin: 0; font-size: 12px; color: #5c5c5c; }
+  .ok, .err { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+  .ok { background: #dff3e8; color: #1f7a4d; }
+  .err { background: #f6e1df; color: #b3261e; }
+</style>

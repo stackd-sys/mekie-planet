@@ -1,0 +1,117 @@
+---
+export const prerender = false;
+import Admin from '../../layouts/Admin.astro';
+import Status from '../../components/admin/Status.astro';
+import { db } from '../../lib/server/db';
+import { euro, date } from '../../lib/server/format';
+import { products } from '../../data/products';
+import { hasMail } from '../../lib/server/mail';
+import { hasDeployHook } from '../../lib/server/deploy';
+import { hasGa, gaReport, rows, range } from '../../lib/server/google';
+import { hasMeta } from '../../lib/server/meta';
+
+const sql = await db();
+const PAID = "status in ('paga','enviada','entregue')";
+const [k] = await sql<any[]>`
+  select
+    coalesce(sum(total) filter (where ${sql.unsafe(PAID)} and created_at > now() - interval '30 days'), 0) as sales30,
+    coalesce(sum(total) filter (where ${sql.unsafe(PAID)} and created_at between now() - interval '60 days' and now() - interval '30 days'), 0) as salesPrev,
+    count(*) filter (where ${sql.unsafe(PAID)} and created_at > now() - interval '30 days')::int as orders30,
+    coalesce(avg(total) filter (where ${sql.unsafe(PAID)} and created_at > now() - interval '30 days'), 0) as ticket,
+    count(*) filter (where status = 'pendente')::int as pending,
+    coalesce(sum(total) filter (where status = 'pendente'), 0) as pendingValue,
+    count(*) filter (where status = 'paga' and address is not null)::int as toShip,
+    coalesce(sum(total) filter (where ${sql.unsafe(PAID)} and date_trunc('year', created_at) = date_trunc('year', now())), 0) as year
+  from orders`;
+const [extra] = await sql<any[]>`
+  select (select count(*)::int from customers where created_at > now() - interval '30 days') as newCustomers,
+    (select count(*)::int from subscribers where unsubscribed_at is null and created_at > now() - interval '30 days') as newSubs,
+    (select count(*)::int from notify_requests where notified_at is null) as waiting,
+    (select count(*)::int from returns where status in ('pedido','recebido')) as openReturns`;
+const daily = await sql<any[]>`
+  select to_char(d, 'YYYY-MM-DD') as day, coalesce(sum(o.total), 0) as total
+  from generate_series(current_date - 29, current_date, interval '1 day') d
+  left join orders o on date_trunc('day', o.created_at at time zone 'Europe/Lisbon') = d and o.status in ('paga','enviada','entregue')
+  group by d order by d`;
+const top = await sql<any[]>`
+  select l->>'name' as name, sum((l->>'qty')::int)::int as qty, sum((l->>'qty')::int * (l->>'price')::numeric) as revenue
+  from orders, jsonb_array_elements(lines) l where ${sql.unsafe(PAID)} and created_at > now() - interval '90 days'
+  group by 1 order by qty desc limit 6`;
+const recent = await sql<any[]>`select number, created_at, name, total, status from orders order by created_at desc limit 8`;
+const state = await sql<any[]>`select id, stock, size_stock from products_state`;
+/* Esgotados por completo e tamanhos esgotados com gente à espera */
+const waiting = await sql<any[]>`select product, size, count(*)::int as n from notify_requests where notified_at is null group by product, size`;
+const low = products.flatMap((p) => {
+  const s = state.find((r) => r.id === p.id);
+  if (!s || p.customizable || p.madeToOrderDays) return [];
+  const name = `${p.name} ${p.color}`;
+  const total = s.size_stock ? Object.values(s.size_stock as Record<string, number>).reduce((a, b) => a + b, 0) : s.stock;
+  if (total === 0) return [{ name, text: 'esgotado', zero: true }];
+  const asked = waiting.filter((w) => w.product === name && w.size);
+  return asked.length ? [{ name, text: asked.map((w) => `${w.size} esgotado, ${w.n} à espera`).join(' · '), zero: false }] : [];
+});
+let visits: number | null = null;
+if (hasGa()) {
+  try { visits = rows(await gaReport({ dateRanges: range(30), metrics: [{ name: 'sessions' }] }))[0]?.sessions ?? 0; } catch {}
+}
+const max = Math.max(1, ...daily.map((d) => Number(d.total)));
+const growth = Number(k.salesprev) ? Math.round((Number(k.sales30) / Number(k.salesprev) - 1) * 100) : null;
+const setup = [
+  [hasMail(), 'Envio de emails (Resend)', 'emails de encomenda, envio, cartões e avisos'],
+  [hasDeployHook(), 'Atualização automática do site', 'o stock e os preços do CRM aparecem no site'],
+  [hasGa(), 'Google Analytics', 'visitas e campanhas Google'],
+  [hasMeta(), 'Meta', 'campanhas do Instagram e Facebook'],
+].filter(([ok]) => !ok);
+---
+<Admin title="Painel">
+  <h1>Olá!</h1>
+  <p class="sub">Resumo dos últimos 30 dias.</p>
+
+  {(k.pending > 0 || k.toship > 0 || extra.openreturns > 0 || extra.waiting > 0) && (
+    <div class="grid kpis" style="margin-bottom:14px">
+      {k.pending > 0 && <a class="card kpi" href="/admin/encomendas/?estado=pendente" style="text-decoration:none;border-color:#e8c37a"><p>A aguardar pagamento</p><strong>{k.pending}</strong><small>{euro(k.pendingvalue)}</small></a>}
+      {k.toship > 0 && <a class="card kpi" href="/admin/encomendas/?estado=paga" style="text-decoration:none;border-color:#9cc0e6"><p>Pagas, por enviar</p><strong>{k.toship}</strong></a>}
+      {extra.openreturns > 0 && <a class="card kpi" href="/admin/devolucoes/" style="text-decoration:none"><p>Trocas e devoluções</p><strong>{extra.openreturns}</strong></a>}
+      {extra.waiting > 0 && <a class="card kpi" href="/admin/newsletter/?ver=avisos" style="text-decoration:none"><p>À espera de reposição</p><strong>{extra.waiting}</strong></a>}
+    </div>
+  )}
+
+  <div class="grid kpis">
+    <div class="card kpi"><p>Vendas</p><strong>{euro(k.sales30)}</strong>{growth !== null && <small style={`color:${growth >= 0 ? 'var(--ok)' : 'var(--bad)'}`}>{growth >= 0 ? '+' : ''}{growth}% que os 30 dias antes</small>}</div>
+    <div class="card kpi"><p>Encomendas pagas</p><strong>{k.orders30}</strong></div>
+    <div class="card kpi"><p>Valor médio</p><strong>{euro(k.ticket)}</strong></div>
+    <div class="card kpi"><p>Visitas</p><strong>{visits === null ? '—' : visits.toLocaleString('pt-PT')}</strong>{visits ? <small>conversão {(k.orders30 / visits * 100).toFixed(1).replace('.', ',')}%</small> : <small>liga o Analytics</small>}</div>
+    <div class="card kpi"><p>Clientes novos</p><strong>{extra.newcustomers}</strong><small>{extra.newsubs} na newsletter</small></div>
+    <div class="card kpi"><p>Vendas no ano</p><strong>{euro(k.year)}</strong></div>
+  </div>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Vendas por dia</h2>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:120px">
+      {daily.map((d) => <div title={`${date(d.day)}: ${euro(d.total)}`} style={`flex:1;background:${Number(d.total) ? '#1f1f1f' : '#e2e2df'};height:${Math.max(2, Number(d.total) / max * 100)}%;border-radius:2px`}></div>)}
+    </div>
+    <p class="note bar" style="justify-content:space-between;margin:6px 0 0"><span>{date(daily[0]?.day)}</span><span>Hoje</span></p>
+  </section>
+
+  <div class="grid two" style="margin-top:14px">
+    <section class="card">
+      <h2 style="margin-top:0">Últimas encomendas</h2>
+      {recent.length ? <table><tbody>{recent.map((o) => <tr><td><a class="row-link" href={`/admin/encomendas/${o.number}/`}>{o.number}</a><br /><span class="muted">{date(o.created_at, true)}</span></td><td>{o.name}</td><td class="num">{euro(o.total)}</td><td><Status status={o.status} /></td></tr>)}</tbody></table> : <p class="muted">Ainda sem encomendas.</p>}
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0">Mais vendidos (90 dias)</h2>
+      {top.length ? <table><tbody>{top.map((t) => <tr><td>{t.name}</td><td class="num">{t.qty} un.</td><td class="num">{euro(t.revenue)}</td></tr>)}</tbody></table> : <p class="muted">Ainda sem vendas.</p>}
+      <h2>Esgotados</h2>
+      {low.length ? <ul style="margin:0;padding-left:18px">{low.map((l) => <li><span style={l.zero ? 'color:var(--bad)' : ''}>{l.name}</span> <span class="muted">· {l.text}</span></li>)}</ul> : <p class="muted">Nada esgotado.</p>}
+      <p><a href="/admin/produtos/">Gerir stock →</a></p>
+    </section>
+  </div>
+
+  {setup.length > 0 && (
+    <section class="card setup" style="margin-top:14px">
+      <h2 style="margin-top:0">Por configurar</h2>
+      <ul style="margin:0;padding-left:18px">{setup.map(([, name, what]) => <li><strong>{name}</strong>: {what}.</li>)}</ul>
+      <p class="note">Os passos estão no README do repositório, na secção CRM.</p>
+    </section>
+  )}
+</Admin>

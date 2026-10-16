@@ -1,0 +1,213 @@
+---
+export const prerender = false;
+import Admin from '../../../../layouts/Admin.astro';
+import Flash from '../../../../components/admin/Flash.astro';
+import Status from '../../../../components/admin/Status.astro';
+import { db } from '../../../../lib/server/db';
+import { euro, date, STATUS, trackingUrl } from '../../../../lib/server/format';
+import { postForm, done, str, num } from '../../../../lib/server/admin';
+import { setStatus, sendShipped, sendGiftCard, moveStock } from '../../../../lib/server/orders';
+import { hasMail } from '../../../../lib/server/mail';
+import { rebuildSite } from '../../../../lib/server/deploy';
+
+const sql = await db();
+const number = Astro.params.number!;
+const by = Astro.locals.admin ?? '';
+
+const f = await postForm(Astro);
+if (f) {
+  const action = str(f, 'action');
+  const [cur] = await sql<any[]>`select * from orders where number = ${number}`;
+  if (!cur) return Astro.redirect('/admin/encomendas/');
+  try {
+    if (action === 'status') {
+      const status = str(f, 'status');
+      if (!STATUS[status]) return done(Astro, 'Estado inválido.', undefined, true);
+      await setStatus(number, status, by, { tracking: str(f, 'tracking', 40), notify: f.get('notify') === 'on' });
+      return done(Astro, 'Encomenda atualizada.');
+    }
+    if (action === 'resend-shipped') {
+      return (await sendShipped(cur)) ? done(Astro, 'Email de envio reenviado.') : done(Astro, 'O email não saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
+    }
+    if (action === 'note') {
+      await sql`update orders set notes = ${str(f, 'notes', 2000)} where id = ${cur.id}`;
+      return done(Astro, 'Notas guardadas.');
+    }
+    if (action === 'gift-resend') {
+      return (await sendGiftCard(str(f, 'code', 40))) ? done(Astro, 'Cartão reenviado.') : done(Astro, 'O email não saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
+    }
+    if (action === 'return') {
+      const items = (cur.lines as any[])
+        .map((l, i) => ({ ...l, qty: Math.min(l.qty, Math.max(0, Math.floor(num(f, `q${i}`) ?? 0))) }))
+        .filter((l) => l.qty > 0 && !l.digital);
+      if (!items.length) return done(Astro, 'Escolhe pelo menos uma peça.', undefined, true);
+      const kind = str(f, 'kind') === 'troca' ? 'troca' : 'devolucao';
+      await sql`insert into returns (order_id, kind, items, reason, refund, restock, notes)
+        values (${cur.id}, ${kind}, ${sql.json(items)}, ${str(f, 'reason', 300)}, ${num(f, 'refund') ?? 0}, ${f.get('restock') === 'on'}, ${str(f, 'rnotes', 1000)})`;
+      await sql`insert into order_events (order_id, text, by) values (${cur.id}, ${kind === 'troca' ? 'Troca registada' : 'Devolução registada'}, ${by})`;
+      return done(Astro, `${kind === 'troca' ? 'Troca' : 'Devolução'} registada. Acompanha em Trocas e devoluções.`);
+    }
+    if (action === 'delete' && cur.status === 'cancelada') {
+      if (cur.stock_applied && (await sql.begin((tx: any) => moveStock(tx, cur.lines, 1)))) await rebuildSite('Encomenda apagada');
+      await sql`delete from orders where id = ${cur.id}`;
+      return Astro.redirect('/admin/encomendas/?ok=' + encodeURIComponent(`Encomenda ${number} apagada.`));
+    }
+  } catch (e) {
+    return done(Astro, (e as Error).message, undefined, true);
+  }
+}
+
+const [o] = await sql<any[]>`select * from orders where number = ${number}`;
+if (!o) return Astro.redirect('/admin/encomendas/');
+const events = await sql<any[]>`select * from order_events where order_id = ${o.id} order by at desc`;
+const gifts = await sql<any[]>`select * from gift_cards where order_number = ${number} order by created_at`;
+const returns = await sql<any[]>`select * from returns where order_id = ${o.id} order by created_at desc`;
+const [cust] = await sql<any[]>`select id, (select count(*)::int from orders where customer_id = customers.id) as n from customers where id = ${o.customer_id}`;
+const mail = hasMail();
+---
+<Admin title={`Encomenda ${o.number}`}>
+  <p class="no-print"><a href="/admin/encomendas/" class="muted">← Encomendas</a></p>
+  <div class="bar" style="justify-content:space-between;align-items:center">
+    <div>
+      <h1>{o.number} <Status status={o.status} /></h1>
+      <p class="sub">{date(o.created_at, true)} · {euro(o.total)}{o.source !== 'site' ? ` · ${o.source}` : ''}</p>
+    </div>
+    <div class="bar" style="margin:0">
+      {o.address && <a class="btn ghost" href={`/admin/encomendas/${o.number}/folha/`} target="_blank">Folha de envio</a>}
+    </div>
+  </div>
+  <Flash />
+
+  <div class="grid two">
+    <section class="card">
+      <h2 style="margin-top:0">Artigos</h2>
+      <table>
+        <tbody>
+          {(o.lines as any[]).map((l) => (
+            <tr>
+              <td>{l.qty}×</td>
+              <td><strong>{l.name}</strong>{l.color && `, ${l.color}`}{l.size && ` · ${l.size}`}{l.custom && <><br /><span class="muted">{l.custom}</span></>}{l.madeToOrder && <><br /><span class="badge warn">Feito por encomenda</span></>}</td>
+              <td class="num">{euro(l.qty * l.price)}</td>
+            </tr>
+          ))}
+          <tr><td></td><td class="muted">Subtotal</td><td class="num">{euro(o.subtotal)}</td></tr>
+          {Number(o.discount) > 0 && <tr><td></td><td class="muted">Desconto {o.discount_code}</td><td class="num">-{euro(o.discount)}</td></tr>}
+          {o.address && <tr><td></td><td class="muted">Envio</td><td class="num">{Number(o.shipping) ? euro(o.shipping) : 'Grátis'}</td></tr>}
+          {Number(o.gift_amount) > 0 && <tr><td></td><td class="muted">Cartão presente {o.gift_code}</td><td class="num">-{euro(o.gift_amount)}</td></tr>}
+          <tr><td></td><td><strong>Total</strong></td><td class="num"><strong>{euro(o.total)}</strong></td></tr>
+        </tbody>
+      </table>
+      {o.customer_notes && <p><strong>Notas do cliente:</strong> {o.customer_notes}</p>}
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0">Cliente</h2>
+      <dl class="kv">
+        <dt>Nome</dt><dd>{cust ? <a href={`/admin/clientes/${cust.id}/`}>{o.name}</a> : o.name}{cust && cust.n > 1 && <span class="badge info" style="margin-left:6px">{cust.n}.ª encomenda</span>}</dd>
+        <dt>Email</dt><dd><a href={`mailto:${o.email}?subject=${encodeURIComponent(`A tua encomenda ${o.number}`)}`}>{o.email}</a></dd>
+        <dt>Telemóvel</dt><dd><a href={`tel:${o.phone}`}>{o.phone}</a></dd>
+        {o.nif && <><dt>NIF</dt><dd>{o.nif}</dd></>}
+        {o.address ? (
+          <><dt>Morada</dt><dd>{o.address.morada}<br />{o.address.codigo_postal} {o.address.localidade}<br />{o.address.pais}</dd></>
+        ) : <><dt>Envio</dt><dd>Só cartões presente (por email)</dd></>}
+      </dl>
+    </section>
+  </div>
+
+  <div class="grid two" style="margin-top:14px">
+    <section class="card">
+      <h2 style="margin-top:0">Estado e envio</h2>
+      <form method="post" class="stack">
+        <input type="hidden" name="action" value="status" />
+        <div class="fields">
+          <label>Estado
+            <select name="status">{Object.entries(STATUS).map(([k, v]) => <option value={k} selected={o.status === k}>{v.label}</option>)}</select>
+          </label>
+          <label>Nº de seguimento CTT<input name="tracking" value={o.tracking} placeholder="Ex.: RR123456789PT" /></label>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="notify" checked={o.status !== 'enviada'} /> Ao marcar como enviada, mandar email ao cliente com o seguimento</label>
+        <div><button class="btn">Guardar</button></div>
+        <p class="note">Ao marcar como paga, as peças saem do stock e o site é atualizado. Se cancelar, voltam ao stock.{!mail && ' Os emails ao cliente só saem depois de configurar o envio de emails.'}</p>
+      </form>
+      {o.tracking && (
+        <p class="bar" style="margin-top:12px">
+          <a href={trackingUrl(o.tracking)} target="_blank" rel="noopener">Ver nos CTT</a>
+          {o.status === 'enviada' && <form method="post" class="inline"><input type="hidden" name="action" value="resend-shipped" /><button class="btn ghost small">Reenviar email de envio</button></form>}
+        </p>
+      )}
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0">Notas internas</h2>
+      <form method="post" class="stack">
+        <input type="hidden" name="action" value="note" />
+        <textarea name="notes" rows="4" placeholder="Só a equipa vê">{o.notes}</textarea>
+        <div><button class="btn ghost">Guardar notas</button></div>
+      </form>
+    </section>
+  </div>
+
+  {gifts.length > 0 && (
+    <section class="card" style="margin-top:14px">
+      <h2 style="margin-top:0">Cartões presente desta encomenda</h2>
+      <table>
+        <tbody>
+          {gifts.map((g) => (
+            <tr>
+              <td><a href={`/admin/cartoes/?q=${g.code}`}><strong>{g.code}</strong></a></td>
+              <td>{euro(g.value)}</td>
+              <td>{g.recipient_name || '—'}<br /><span class="muted">{g.recipient_email || o.email}</span></td>
+              <td>{g.sent_at ? `Enviado ${date(g.sent_at, true)}` : <span class="badge warn">Por enviar</span>}</td>
+              <td><form method="post"><input type="hidden" name="action" value="gift-resend" /><input type="hidden" name="code" value={g.code} /><button class="btn ghost small">{g.sent_at ? 'Reenviar' : 'Enviar'}</button></form></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )}
+
+  {o.address && (
+    <details class="card" style="margin-top:14px">
+      <summary style="cursor:pointer;font-weight:600">Registar troca ou devolução</summary>
+      <form method="post" class="stack" style="margin-top:14px">
+        <input type="hidden" name="action" value="return" />
+        <table>
+          <tbody>
+            {(o.lines as any[]).map((l, i) => !l.digital && (
+              <tr><td>{l.name}{l.color && `, ${l.color}`}{l.size && ` · ${l.size}`}</td><td class="num"><label style="display:flex;gap:6px;align-items:center">Qtd. <input type="number" name={`q${i}`} min="0" max={l.qty} value="0" style="width:70px" /></label></td></tr>
+            ))}
+          </tbody>
+        </table>
+        <div class="fields">
+          <label>Tipo<select name="kind"><option value="devolucao">Devolução (reembolso)</option><option value="troca">Troca de tamanho</option></select></label>
+          <label>Motivo<input name="reason" placeholder="Ex.: tamanho grande" /></label>
+          <label>Reembolso (€)<input name="refund" inputmode="decimal" placeholder="0,00" /></label>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="restock" checked /> As peças voltam ao stock quando chegarem</label>
+        <textarea name="rnotes" placeholder="Notas (opcional)"></textarea>
+        <div><button class="btn">Registar</button></div>
+      </form>
+    </details>
+  )}
+
+  {returns.length > 0 && (
+    <section class="card" style="margin-top:14px">
+      <h2 style="margin-top:0">Trocas e devoluções</h2>
+      <ul>{returns.map((r) => <li>{date(r.created_at)}: {r.kind === 'troca' ? 'Troca' : 'Devolução'} de {(r.items as any[]).map((i) => `${i.qty}× ${i.name}${i.size ? ` ${i.size}` : ''}`).join(', ')} · {r.status}{Number(r.refund) ? ` · reembolso ${euro(r.refund)}` : ''} · <a href="/admin/devolucoes/">ver</a></li>)}</ul>
+    </section>
+  )}
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Histórico</h2>
+    <ul class="stack" style="list-style:none;padding:0;margin:0">
+      {events.map((e) => <li><span class="muted">{date(e.at, true)}</span> · {e.text}{e.by && <span class="muted"> · {e.by}</span>}</li>)}
+    </ul>
+  </section>
+
+  {o.status === 'cancelada' && (
+    <form method="post" style="margin-top:20px" onsubmit="return confirm('Apagar esta encomenda de vez?')">
+      <input type="hidden" name="action" value="delete" />
+      <button class="btn danger small">Apagar encomenda</button>
+    </form>
+  )}
+</Admin>

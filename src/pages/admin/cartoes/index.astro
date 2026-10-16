@@ -1,0 +1,104 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+import { postForm, done, str, num } from '../../../lib/server/admin';
+import { createGiftCard, sendGiftCard } from '../../../lib/server/orders';
+import { giftCard } from '../../../data/giftcard';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  const action = str(f, 'action');
+  if (action === 'create') {
+    const value = num(f, 'value');
+    if (!value || value <= 0) return done(Astro, 'Indica o valor.', undefined, true);
+    const code = await createGiftCard({ value, buyer: str(f, 'buyer'), recipient_name: str(f, 'recipient_name'), recipient_email: str(f, 'recipient_email').toLowerCase(), message: str(f, 'message', 250), notes: str(f, 'notes') });
+    const sent = f.get('send') === 'on' && str(f, 'recipient_email') ? await sendGiftCard(code) : false;
+    return done(Astro, `Cartão ${code} criado${sent ? ' e enviado por email' : ''}.`);
+  }
+  const code = str(f, 'code', 40);
+  if (action === 'adjust') {
+    const amount = num(f, 'amount');
+    if (!amount) return done(Astro, 'Indica o valor a descontar ou a juntar.', undefined, true);
+    await sql`update gift_cards set balance = greatest(0, balance + ${amount}) where code = ${code}`;
+    await sql`insert into gift_movements (code, amount, order_number, note) values (${code}, ${amount}, ${str(f, 'order', 20)}, ${str(f, 'note') || 'Ajuste manual'})`;
+    return done(Astro, 'Saldo atualizado.');
+  }
+  if (action === 'send') {
+    return (await sendGiftCard(code)) ? done(Astro, 'Cartão enviado.') : done(Astro, 'O email não saiu. Confirma o email de quem recebe e o envio de emails (RESEND_API_KEY).', undefined, true);
+  }
+}
+const q = (Astro.url.searchParams.get('q') || '').trim().toUpperCase();
+const cards = await sql<any[]>`
+  select g.*, (select json_agg(m order by m.at desc) from gift_movements m where m.code = g.code) as moves
+  from gift_cards g where (${q} = '' or g.code like ${'%' + q + '%'} or upper(g.recipient_name) like ${'%' + q + '%'} or upper(g.recipient_email) like ${'%' + q + '%'})
+  order by g.created_at desc limit 300`;
+const [t] = await sql<any[]>`select coalesce(sum(value), 0) as sold, coalesce(sum(balance) filter (where expires_at >= current_date), 0) as open from gift_cards`;
+---
+<Admin title="Cartões presente">
+  <h1>Cartões presente</h1>
+  <p class="sub">Os cartões comprados no site são criados e enviados sozinhos quando marcas a encomenda como paga. Aqui podes criar cartões à mão (ofertas, sorteios) e ajustar saldos.</p>
+  <Flash />
+  <div class="grid kpis" style="margin-bottom:14px">
+    <div class="card kpi"><p>Total em cartões</p><strong>{euro(t.sold)}</strong></div>
+    <div class="card kpi"><p>Saldo por usar</p><strong>{euro(t.open)}</strong><small>dinheiro que já recebeste e ainda vai ser gasto na loja</small></div>
+  </div>
+  <details class="card">
+    <summary style="cursor:pointer;font-weight:600">Criar cartão</summary>
+    <form method="post" class="stack" style="margin-top:12px">
+      <input type="hidden" name="action" value="create" />
+      <div class="fields">
+        <label>Valor (€)<select name="value">{giftCard.values.map((v) => <option value={v}>{v}€ · {giftCard.names[v]}</option>)}</select></label>
+        <label>De<input name="buyer" placeholder="Quem oferece" /></label>
+        <label>Para<input name="recipient_name" /></label>
+        <label>Email de quem recebe<input name="recipient_email" type="email" /></label>
+      </div>
+      <label>Mensagem<input name="message" maxlength="250" /></label>
+      <label>Notas internas<input name="notes" placeholder="Ex.: sorteio do Instagram" /></label>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="send" checked /> Enviar já por email</label>
+      <div><button class="btn">Criar cartão</button></div>
+    </form>
+  </details>
+  <form class="bar" method="get" style="margin-top:16px"><input name="q" value={q} placeholder="Código ou nome" style="width:240px" /><button class="btn ghost small">Procurar</button></form>
+  <div class="stack">
+    {cards.length ? cards.map((g) => {
+      const expired = new Date(g.expires_at) < new Date(new Date().toDateString());
+      return (
+        <details class="card">
+          <summary style="cursor:pointer;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <strong>{g.code}</strong>
+            <span>{euro(g.balance)} de {euro(g.value)}</span>
+            {expired ? <span class="badge off">Expirado</span> : Number(g.balance) === 0 ? <span class="badge done">Gasto</span> : <span class="badge ok">Válido até {date(g.expires_at)}</span>}
+            <span class="muted">{g.recipient_name || g.recipient_email || '—'}{g.order_number && ` · ${g.order_number}`}</span>
+            {!g.sent_at && <span class="badge warn">Por enviar</span>}
+          </summary>
+          <div class="grid two" style="margin-top:12px">
+            <div>
+              <dl class="kv">
+                <dt>De</dt><dd>{g.buyer || '—'}</dd>
+                <dt>Para</dt><dd>{g.recipient_name || '—'} {g.recipient_email && <span class="muted">({g.recipient_email})</span>}</dd>
+                {g.message && <><dt>Mensagem</dt><dd>"{g.message}"</dd></>}
+                <dt>Criado</dt><dd>{date(g.created_at)}{g.order_number && <> · <a href={`/admin/encomendas/${g.order_number}/`}>{g.order_number}</a></>}</dd>
+                <dt>Enviado</dt><dd>{g.sent_at ? date(g.sent_at, true) : 'Não'}</dd>
+                {g.notes && <><dt>Notas</dt><dd>{g.notes}</dd></>}
+              </dl>
+              <ul class="note">{(g.moves ?? []).map((m: any) => <li>{date(m.at)}: {Number(m.amount) > 0 ? '+' : ''}{euro(m.amount)} {m.note}{m.order_number && ` (${m.order_number})`}</li>)}</ul>
+            </div>
+            <div class="stack">
+              <form method="post" class="stack">
+                <input type="hidden" name="action" value="adjust" /><input type="hidden" name="code" value={g.code} />
+                <div class="fields"><label>Valor (€, negativo desconta)<input name="amount" inputmode="decimal" placeholder="-20,00" /></label><label>Encomenda<input name="order" placeholder="MK-1001" /></label></div>
+                <label>Motivo<input name="note" placeholder="Ex.: usado numa venda em mão" /></label>
+                <div><button class="btn small">Ajustar saldo</button></div>
+              </form>
+              <form method="post"><input type="hidden" name="action" value="send" /><input type="hidden" name="code" value={g.code} /><button class="btn ghost small">{g.sent_at ? 'Reenviar por email' : 'Enviar por email'}</button></form>
+            </div>
+          </div>
+        </details>
+      );
+    }) : <p class="empty card">Ainda sem cartões.</p>}
+  </div>
+</Admin>

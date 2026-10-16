@@ -1,0 +1,79 @@
+---
+export const prerender = false;
+/* Venda feita fora do site (Instagram, feira, em mão): fica registada e tira do stock */
+import Admin from '../../../../layouts/Admin.astro';
+import Flash from '../../../../components/admin/Flash.astro';
+import { products } from '../../../../data/products';
+import { destinations } from '../../../../data/shipping';
+import { postForm, done, str, num } from '../../../../lib/server/admin';
+import { createOrder, setStatus } from '../../../../lib/server/orders';
+
+const ROWS = 6;
+const f = await postForm(Astro);
+if (f) {
+  const lines = Array.from({ length: ROWS }, (_, i) => ({ id: num(f, `p${i}`), size: str(f, `s${i}`), qty: num(f, `q${i}`) ?? 1, custom: str(f, `c${i}`, 300) }))
+    .filter((l) => l.id);
+  const res = await createOrder({
+    lines,
+    code: str(f, 'code'),
+    customer: {
+      email: str(f, 'email'), phone: str(f, 'phone'), nome: str(f, 'nome'), apelido: str(f, 'apelido'), nif: str(f, 'nif'),
+      notas: str(f, 'notas'), morada: str(f, 'morada'), codigo_postal: str(f, 'codigo_postal'), localidade: str(f, 'localidade'), pais: str(f, 'pais'),
+    },
+  }, { source: str(f, 'source') || 'manual', emails: f.get('emails') === 'on' });
+  if ('error' in res) return done(Astro, res.error!, undefined, true);
+  if (str(f, 'status') !== 'pendente') await setStatus(res.number!, str(f, 'status'), Astro.locals.admin ?? '');
+  return Astro.redirect(`/admin/encomendas/${res.number}/?ok=${encodeURIComponent('Encomenda registada.')}`);
+}
+const options = products;
+---
+<Admin title="Nova encomenda">
+  <p><a href="/admin/encomendas/" class="muted">← Encomendas</a></p>
+  <h1>Nova encomenda</h1>
+  <p class="sub">Para vendas feitas por mensagem, numa feira ou em mão. Os preços e os portes são calculados como no site.</p>
+  <Flash />
+  <form method="post" class="stack">
+    <section class="card stack">
+      <h2 style="margin:0">Peças</h2>
+      {Array.from({ length: ROWS }, (_, i) => (
+        <div class="fields" style="grid-template-columns: 2fr 1fr 80px 2fr">
+          <label>Peça {i + 1}
+            <select name={`p${i}`}>
+              <option value="">—</option>
+              {options.map((p) => <option value={p.id}>{p.name}{p.customizable ? '' : ` · ${p.color}`} ({p.price}€)</option>)}
+            </select>
+          </label>
+          <label>Tamanho<select name={`s${i}`}><option value="">Único</option>{['XS', 'S', 'M', 'L', 'XL'].map((s) => <option>{s}</option>)}</select></label>
+          <label>Qtd.<input type="number" name={`q${i}`} min="1" max="20" value="1" /></label>
+          <label>Cores / notas<input name={`c${i}`} placeholder="Só no personalizado" /></label>
+        </div>
+      ))}
+      <label style="max-width:240px">Código de desconto<input name="code" /></label>
+    </section>
+    <section class="card stack">
+      <h2 style="margin:0">Cliente</h2>
+      <div class="fields">
+        <label>Email<input name="email" type="email" required /></label>
+        <label>Telemóvel<input name="phone" required /></label>
+        <label>Nome<input name="nome" required /></label>
+        <label>Apelido<input name="apelido" /></label>
+        <label>NIF<input name="nif" /></label>
+      </div>
+      <div class="fields">
+        <label>Morada<input name="morada" /></label>
+        <label>Código postal<input name="codigo_postal" /></label>
+        <label>Localidade<input name="localidade" /></label>
+        <label>País<select name="pais">{destinations.map((d) => <option>{d.name}</option>)}</select></label>
+      </div>
+      <label>Notas<textarea name="notas"></textarea></label>
+    </section>
+    <section class="card stack">
+      <div class="fields">
+        <label>Estado<select name="status"><option value="pendente">A aguardar pagamento</option><option value="paga" selected>Paga</option><option value="entregue">Entregue em mão</option></select></label>
+        <label>Onde foi a venda<select name="source"><option value="manual">Mensagem / Instagram</option><option value="feira">Feira / evento</option><option value="loja">Em mão</option></select></label>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="emails" /> Enviar ao cliente o email com o resumo</label>
+      <div><button class="btn">Registar encomenda</button></div>
+    </section>
+  </form>
+</Admin>

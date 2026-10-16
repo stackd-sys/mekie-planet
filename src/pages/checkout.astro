@@ -60,8 +60,9 @@ import { destinations } from '../data/shipping';
           <input type="checkbox" required />
           <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
         </label>
+        <p class="co__code-msg is-error" role="alert" data-co-error hidden></p>
         <button type="submit" class="pill pill--accent pill--block co__submit">Enviar encomenda</button>
-        <p class="co__note">Ao enviar, abrimos o teu email com o resumo da encomenda para {site.email}. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>
+        <p class="co__note">Ao enviar, recebes um email com o resumo da encomenda. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>
       </form>
 
       <aside class="co__summary">
@@ -81,11 +82,15 @@ import { destinations } from '../data/shipping';
   import { cart, money, href } from '../scripts/cart';
   import * as newsletter from '../scripts/newsletter';
   import { shippingCost, type Zone } from '../data/shipping';
-  import { track, consentSettled } from '../scripts/consent';
+  import { track, consentSettled, visitSource } from '../scripts/consent';
   const CODE = newsletter.CODE;
   const RATE = 0.1;
+  /* Código de desconto aplicado: validado no CRM; sem CRM, só o de boas-vindas */
+  type Discount = { code: string; kind: 'percent' | 'fixed'; value: number };
+  let discount: Discount | null = null;
   let applied = '';
   try { applied = localStorage.getItem('mekie-code-applied') || ''; } catch {}
+  const welcomeFallback = (c: string): Discount | null => (c && c === CODE ? { code: CODE, kind: 'percent', value: RATE * 100 } : null);
   const EMAIL = document.documentElement.dataset.email || '';
   const made = (l: (typeof cart.lines)[number]) => (l.madeToOrderDays ? Math.max(0, l.qty - (l.stock ?? 0)) : 0);
   const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -101,28 +106,41 @@ import { destinations } from '../data/shipping';
     const sub = cart.subtotal;
     /* o desconto e o envio grátis contam só os artigos físicos, antes do desconto */
     const goods = cart.goodsSubtotal;
-    const disc = applied === CODE && CODE ? Math.round(goods * RATE * 100) / 100 : 0;
+    const disc = !discount ? 0 : Math.round((discount.kind === 'percent' ? goods * discount.value / 100 : Math.min(discount.value, goods)) * 100) / 100;
     const ship = shippingCost(zone(), goods, cart.grams);
     const before = Math.round((sub - disc + ship) * 100) / 100;
     const giftUsed = gift.verified ? Math.min(gift.balance, before) : 0;
     return { sub, disc, ship, giftUsed, total: before - giftUsed };
   };
   country.addEventListener('change', () => render(cart.lines));
-  document.querySelector('[data-code-apply]')?.addEventListener('click', () => {
-    const value = codeInput.value.trim().toUpperCase();
-    codeMsg.hidden = false;
-    if (value && value === CODE) {
-      applied = value;
-      codeMsg.textContent = 'Código aplicado: 10% de desconto. Não acumulável com outras promoções.';
-      codeMsg.classList.remove('is-error');
-    } else {
-      applied = '';
-      codeMsg.textContent = 'Este código não é válido.';
-      codeMsg.classList.add('is-error');
+  const describe = (d: Discount) => (d.kind === 'percent' ? `${String(d.value).replace('.', ',')}% de desconto` : `${money(d.value)} de desconto`);
+  const applyCode = async (value: string, quiet = false) => {
+    codeMsg.hidden = quiet;
+    let result: Discount | null = null;
+    let message = 'Este código não é válido.';
+    if (value) {
+      try {
+        const email = document.querySelector<HTMLInputElement>('[name=email]')?.value || '';
+        const res = await newsletter.codeCheck(value, email, cart.goodsSubtotal);
+        if (res.status === 'ok') result = { code: res.code, kind: res.kind, value: res.value };
+        else if (res.status === 'invalid') message = res.message;
+        else result = welcomeFallback(value);
+      } catch {
+        result = welcomeFallback(value);
+      }
+    }
+    discount = result;
+    applied = result?.code ?? '';
+    if (!quiet || !result) {
+      codeMsg.hidden = !value;
+      codeMsg.textContent = result ? `Código aplicado: ${describe(result)}. Não acumulável com outras promoções.` : message;
+      codeMsg.classList.toggle('is-error', !result);
     }
     try { localStorage.setItem('mekie-code-applied', applied); } catch {}
     render(cart.lines);
-  });
+  };
+  document.querySelector('[data-code-apply]')?.addEventListener('click', () => applyCode(codeInput.value.trim().toUpperCase()));
+  if (applied) applyCode(applied, true);
 
   /* Só cartões presente no carrinho: sem morada nem portes */
   const shipFields = document.querySelector<HTMLElement>('[data-ship-fields]')!;
@@ -207,10 +225,45 @@ import { destinations } from '../data/shipping';
     codeInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
 
+  const coError = document.querySelector<HTMLElement>('[data-co-error]')!;
+
+  /* Grava a encomenda no CRM. Devolve false quando o CRM não está disponível (segue por email). */
+  const sendToCrm = async (f: FormData) => {
+    const payload = {
+      lines: cart.lines.map((l) => ({ id: l.id, qty: l.qty, size: l.size ?? '', custom: l.custom ?? '' })),
+      code: applied,
+      gift: gift.code,
+      utm: visitSource(),
+      customer: Object.fromEntries(['email', 'telefone', 'nome', 'apelido', 'nif', 'notas', 'morada', 'codigo_postal', 'localidade', 'pais'].map((k) => [k === 'telefone' ? 'phone' : k, String(f.get(k) ?? '')])),
+    };
+    let res: Response;
+    try {
+      res = await fetch('/api/encomenda/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } catch {
+      return false;
+    }
+    if (res.status === 503 || res.status === 404 || res.status === 405) return false;
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.number) {
+      cart.clear();
+      try { localStorage.setItem('mekie-code-applied', ''); } catch {}
+      location.href = `/encomenda-recebida/?n=${encodeURIComponent(data.number)}&t=${encodeURIComponent(money(data.total))}`;
+      return true;
+    }
+    if (data.field === 'code') codeError(data.error);
+    else if (data.field === 'gift') { gift = { code: '', balance: 0, verified: false }; say(giftMsg, data.error, true); render(cart.lines); giftInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    else { coError.hidden = false; coError.textContent = data.error || 'Não conseguimos enviar a encomenda. Tenta outra vez.'; }
+    return true;
+  };
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = new FormData(form);
     const email = String(f.get('email') || '');
+    coError.hidden = true;
+    if (submitBtn) submitBtn.disabled = true;
+    const handled = await sendToCrm(f).finally(() => { if (submitBtn) submitBtn.disabled = false; });
+    if (handled) return;
 
     /* O código de boas-vindas é de quem subscreveu com este email e só vale uma vez */
     if (applied && newsletter.hasWebhook()) {
@@ -237,7 +290,7 @@ import { destinations } from '../data/shipping';
       ...lines.map((l) => `• ${l.qty}x ${l.name}, ${l.custom || l.color}${l.size ? `, tamanho ${l.size}` : ''}: ${money(l.qty * l.price)}${made(l) ? ` (${made(l)} por encomenda, ${l.madeToOrderDays} dias úteis)` : ''}`),
       '',
       `Subtotal: ${money(sub)}`,
-      disc ? `Desconto ${applied} (10%): -${money(disc)}` : '',
+      disc ? `Desconto ${applied}: -${money(disc)}` : '',
       physical ? `Envio (${f.get('pais')}): ${ship === 0 ? 'grátis' : money(ship)}` : 'Envio: cartão presente por email',
       gift.code ? `Cartão presente ${gift.code}: ${gift.verified ? `-${money(giftUsed)}` : 'saldo por confirmar'}` : '',
       `Total: ${money(total)}`,

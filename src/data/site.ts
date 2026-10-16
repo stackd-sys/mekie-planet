@@ -20,9 +20,9 @@ export const site = {
   // Portes: valores em src/data/shipping.ts
   freeShippingFrom: 65,
   deliveryDays: 7,
-  // Webhook que guarda os emails da newsletter e controla o uso do código (ver integrations/newsletter.gs e o README).
-  // Pode ficar aqui ou na variável PUBLIC_NEWSLETTER_WEBHOOK da Vercel.
-  newsletterWebhook: (import.meta.env.PUBLIC_NEWSLETTER_WEBHOOK as string | undefined) ?? '',
+  // Onde o site guarda newsletter, avisos e consulta códigos e cartões: a API do CRM.
+  // PUBLIC_NEWSLETTER_WEBHOOK na Vercel só serve para usar outro sistema (ex.: o antigo Google Apps Script).
+  newsletterWebhook: (import.meta.env.PUBLIC_NEWSLETTER_WEBHOOK as string | undefined) || '/api/newsletter/',
   // Código de boas-vindas mostrado depois de subscrever. Tem de existir também no sistema de pagamento.
   welcomeCode: 'MEKIE10',
   welcomeDiscount: 10,

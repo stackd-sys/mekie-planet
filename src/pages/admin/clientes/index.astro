@@ -1,0 +1,57 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import { listCustomers, SEGMENTS } from '../../../lib/server/customers';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+
+const seg = Astro.url.searchParams.get('grupo') || '';
+const q = (Astro.url.searchParams.get('q') || '').trim();
+const rows = await listCustomers(seg, q);
+const sql = await db();
+const [t] = await sql<any[]>`
+  select (select count(*)::int from customers) as clientes,
+    (select count(*)::int from subscribers where unsubscribed_at is null) as subs,
+    (select count(*)::int from (select customer_id from orders where status in ('paga','enviada','entregue') group by customer_id having count(*) > 1) x) as repeat,
+    (select coalesce(avg(total), 0) from orders where status in ('paga','enviada','entregue')) as ticket`;
+const qs = new URLSearchParams({ ...(seg ? { grupo: seg } : {}), ...(q ? { q } : {}) }).toString();
+---
+<Admin title="Clientes">
+  <div class="bar" style="justify-content:space-between">
+    <div><h1>Clientes</h1><p class="sub">Quem comprou e quem subscreveu a newsletter.</p></div>
+    <a class="btn ghost" href={`/admin/clientes/exportar/${qs ? `?${qs}` : ''}`}>Exportar CSV</a>
+  </div>
+  <div class="grid kpis" style="margin-bottom:18px">
+    <div class="card kpi"><p>Clientes</p><strong>{t.clientes}</strong></div>
+    <div class="card kpi"><p>Voltaram a comprar</p><strong>{t.repeat}</strong><small>{t.clientes ? Math.round(t.repeat / t.clientes * 100) : 0}% dos clientes</small></div>
+    <div class="card kpi"><p>Valor médio por encomenda</p><strong>{euro(t.ticket)}</strong></div>
+    <div class="card kpi"><p>Na newsletter</p><strong>{t.subs}</strong></div>
+  </div>
+  <nav class="tabs">
+    {Object.entries(SEGMENTS).map(([k, v]) => <a href={k ? `?grupo=${k}` : '/admin/clientes/'} class:list={{ 'is-on': seg === k }}>{v}</a>)}
+  </nav>
+  <form class="bar" method="get">
+    {seg && <input type="hidden" name="grupo" value={seg} />}
+    <input name="q" value={q} placeholder="Nome, email ou telemóvel" style="width:260px" />
+    <button class="btn ghost small">Procurar</button>
+  </form>
+  <div class="table">
+    {rows.length ? (
+      <table>
+        <thead><tr><th>Cliente</th><th class="num">Encomendas</th><th class="num">Total gasto</th><th>Última compra</th><th>Newsletter</th></tr></thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr>
+              <td>{c.id ? <a class="row-link" href={`/admin/clientes/${c.id}/`}>{c.name || c.email}</a> : <strong>{c.email}</strong>}<br /><span class="muted">{c.email}{c.phone && ` · ${c.phone}`}</span></td>
+              <td class="num">{c.orders}</td>
+              <td class="num">{euro(c.spent)}</td>
+              <td>{c.last_order ? date(c.last_order) : <span class="muted">—</span>}</td>
+              <td>{c.newsletter ? <span class="badge ok">Sim</span> : <span class="muted">Não</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p class="empty">Sem clientes neste grupo.</p>}
+  </div>
+  <p class="note" style="margin-top:12px">Para anúncios (públicos personalizados na Meta ou no Google), usa só os contactos com newsletter "Sim": deram consentimento para receber comunicações da Mekie.</p>
+</Admin>

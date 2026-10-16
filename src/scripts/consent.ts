@@ -40,7 +40,32 @@ function load(src: string) {
 let gaLoaded = false;
 let pixelLoaded = false;
 
+/* Origem da visita (utm_* dos links com etiqueta), para o CRM saber que campanha trouxe cada venda.
+   Só com consentimento de estatísticas. Fica a primeira origem durante 30 dias. */
+const UTM_KEY = 'mekie-utm';
+function rememberVisit() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const utm = Object.fromEntries(['source', 'medium', 'campaign', 'content', 'term'].map((k) => [k, q.get(`utm_${k}`) || '']).filter(([, v]) => v));
+    const ref = document.referrer && new URL(document.referrer).host !== location.host ? new URL(document.referrer).host : '';
+    if (!Object.keys(utm).length && !ref) return;
+    const prev = JSON.parse(localStorage.getItem(UTM_KEY) || 'null');
+    if (prev && Date.now() - Date.parse(prev.at) < 30 * 86400000) return;
+    localStorage.setItem(UTM_KEY, JSON.stringify({ ...utm, ...(ref ? { ref } : {}), landing: location.pathname, at: new Date().toISOString() }));
+  } catch {}
+}
+/** Origem guardada (ou null), para juntar à encomenda */
+export function visitSource() {
+  try {
+    const v = JSON.parse(localStorage.getItem(UTM_KEY) || 'null');
+    return v && getChoice()?.analytics && Date.now() - Date.parse(v.at) < 30 * 86400000 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 function apply(c: Choice) {
+  if (c.analytics) rememberVisit();
   if (GA4 && c.analytics && !gaLoaded) {
     gaLoaded = true;
     window.dataLayer = window.dataLayer || [];
@@ -75,6 +100,7 @@ export function setChoice(analytics: boolean, marketing: boolean) {
   const prev = getChoice();
   const c: Choice = { analytics, marketing, at: new Date().toISOString(), v: VERSION };
   try { localStorage.setItem(KEY, JSON.stringify(c)); } catch {}
+  if (!analytics) try { localStorage.removeItem(UTM_KEY); } catch {}
   /* retirar um consentimento já dado só tem efeito com a página limpa */
   if (prev && ((prev.analytics && !analytics) || (prev.marketing && !marketing))) {
     location.reload();

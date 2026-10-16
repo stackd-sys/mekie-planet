@@ -1,0 +1,6 @@
+---
+import { STATUS } from '../../lib/server/format';
+interface Props { status: string }
+const s = STATUS[Astro.props.status] ?? { label: Astro.props.status, tone: '' };
+---
+<span class:list={['badge', s.tone]}>{s.label}</span>

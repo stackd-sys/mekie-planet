@@ -275,8 +275,9 @@ export const legalPages: LegalPage[] = [
             list: [
               'CTT, para entregar a encomenda.',
               'O prestador de pagamentos (Stripe), para processar o pagamento com segurança.',
-              'Vercel, que aloja o site.',
-              'Google, onde guardamos a lista da newsletter (Google Sheets) e, se aceitares, para as estatísticas (Google Analytics).',
+              'Vercel, que aloja o site, e Neon, onde fica a base de dados das encomendas, clientes e newsletter (servidores na União Europeia).',
+              'Resend, que envia os emails da loja (confirmação da encomenda, envio, cartões presente e avisos).',
+              'Google, se aceitares, para as estatísticas (Google Analytics).',
               'Meta (Facebook e Instagram), se aceitares cookies de publicidade (Meta Pixel).',
               'O nosso contabilista, para a faturação.',
             ],
@@ -364,6 +365,7 @@ export const legalPages: LegalPage[] = [
               rows: [
                 ['_ga', 'Google', 'Distinguir visitantes', '2 anos'],
                 [`_ga_${analytics.ga4.replace(/^G-/, '') || 'ID'}`, 'Google', 'Guardar o estado da visita', '2 anos'],
+                ['mekie-utm', 'Mekie (no teu browser)', 'Saber de que publicação, anúncio ou parceria vieste, para juntar à encomenda', '30 dias'],
               ],
             },
           },

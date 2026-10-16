@@ -1,0 +1,139 @@
+---
+/* Moldura do CRM: menu lateral e estilos próprios. Nada de estatísticas, publicidade ou pop ups aqui. */
+import '@fontsource-variable/inter';
+import '@fontsource/syne/600.css';
+interface Props { title: string; wide?: boolean }
+const { title, wide = false } = Astro.props;
+const admin = Astro.locals.admin ?? '';
+const nav = [
+  ['/admin/', 'Painel'],
+  ['/admin/encomendas/', 'Encomendas'],
+  ['/admin/clientes/', 'Clientes'],
+  ['/admin/produtos/', 'Stock e produtos'],
+  ['/admin/devolucoes/', 'Trocas e devoluções'],
+  ['/admin/newsletter/', 'Newsletter e avisos'],
+  ['/admin/cartoes/', 'Cartões presente'],
+  ['/admin/codigos/', 'Códigos e links'],
+  ['/admin/marketing/', 'Analytics e campanhas'],
+];
+const path = Astro.url.pathname;
+const current = nav.filter(([href]) => path === href || (href !== '/admin/' && path.startsWith(href))).sort((a, b) => b[0].length - a[0].length)[0]?.[0];
+---
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>{title} · CRM Mekie</title>
+  <link rel="icon" href="/images/site/icon.png" type="image/png" />
+</head>
+<body>
+  <div class="adm">
+    <aside class="adm__side">
+      <a href="/admin/" class="adm__logo"><img src="/images/site/logo.png" alt="Mekie" width="96" height="32" /> <span>CRM</span></a>
+      <nav>
+        {nav.map(([href, label]) => <a href={href} class:list={{ 'is-on': current === href }}>{label}</a>)}
+      </nav>
+      <div class="adm__me">
+        <p>{admin}</p>
+        <a href="/" target="_blank">Ver o site</a>
+        <form method="post" action="/admin/sair/"><button type="submit">Sair</button></form>
+      </div>
+    </aside>
+    <main class:list={['adm__main', { 'adm__main--wide': wide }]}>
+      <slot />
+    </main>
+  </div>
+</body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #f5f5f4; --surface: #fff; --ink: #1f1f1f; --soft: #5c5c5c; --line: #e2e2df;
+    --ok: #1f7a4d; --warn: #9a6200; --info: #1d5c99; --bad: #b3261e;
+    --font: 'Inter Variable', Helvetica, Arial, sans-serif; --display: 'Syne', 'Inter Variable', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+  a { color: inherit; }
+  h1 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; margin: 28px 0 12px; }
+  .sub { color: var(--soft); margin: 0 0 22px; }
+  .adm { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+  .adm__side { background: var(--ink); color: #eee; padding: 22px 16px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; }
+  .adm__logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-size: 12px; letter-spacing: .1em; }
+  .adm__logo img { filter: invert(1); height: 26px; width: auto; }
+  .adm__side nav { display: grid; gap: 2px; }
+  .adm__side nav a { text-decoration: none; padding: 8px 10px; border-radius: 6px; color: #cfcfcf; }
+  .adm__side nav a:hover { background: #2c2c2c; color: #fff; }
+  .adm__side nav a.is-on { background: #fff; color: var(--ink); }
+  .adm__me { margin-top: auto; font-size: 12px; color: #aaa; display: grid; gap: 6px; }
+  .adm__me p { margin: 0; word-break: break-all; }
+  .adm__me button { background: none; border: 0; color: #fff; padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
+  .adm__main { padding: 28px clamp(16px, 3vw, 40px) 60px; max-width: 1180px; width: 100%; min-width: 0; }
+  .adm__main--wide { max-width: none; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; overflow-x: auto; }
+  .grid { display: grid; gap: 14px; }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .kpi p { margin: 0; color: var(--soft); font-size: 12px; }
+  .kpi strong { display: block; font-size: 24px; font-family: var(--display); margin-top: 4px; }
+  .kpi small { color: var(--soft); }
+  .two { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); }
+  .table { border: 1px solid var(--line); border-radius: 10px; overflow: auto; background: var(--surface); }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--soft); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tbody tr:hover { background: #fafaf9; }
+  .row-link { text-decoration: none; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: #eee; white-space: nowrap; }
+  .badge.warn { background: #fff1d6; color: var(--warn); }
+  .badge.info { background: #e1edf9; color: var(--info); }
+  .badge.ok { background: #dff3e8; color: var(--ok); }
+  .badge.done { background: #e9e9e6; color: #333; }
+  .badge.off { background: #f6e1df; color: var(--bad); }
+  form.inline { display: inline; }
+  label { display: grid; gap: 4px; font-size: 12px; color: var(--soft); }
+  input, select, textarea { font: inherit; color: var(--ink); border: 1px solid #cfcfcb; border-radius: 6px; padding: 8px 10px; background: #fff; min-width: 0; }
+  textarea { min-height: 70px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outline-offset: -1px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; background: var(--ink); color: #fff; border: 0; border-radius: 999px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn:hover { background: #000; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .btn.ghost:hover { background: var(--ink); color: #fff; }
+  .btn.small { padding: 5px 11px; font-size: 12.5px; }
+  .btn.danger { background: var(--bad); }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0 0 16px; }
+  .bar > * { flex: 0 1 auto; min-width: 0; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+  .tabs a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 12.5px; }
+  .tabs a.is-on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .msg { padding: 10px 14px; border-radius: 8px; background: #dff3e8; color: var(--ok); margin: 0 0 16px; }
+  .msg.err { background: #f6e1df; color: var(--bad); }
+  .muted { color: var(--soft); }
+  .empty { padding: 30px; text-align: center; color: var(--soft); }
+  .stack { display: grid; gap: 10px; }
+  .fields { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dl.kv dt { color: var(--soft); }
+  dl.kv dd { margin: 0; }
+  .note { font-size: 12.5px; color: var(--soft); }
+  .setup { border-style: dashed; background: #fbfbfa; }
+  .setup code { background: #eee; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  @media (max-width: 860px) {
+    .two { grid-template-columns: minmax(0, 1fr); }
+    .adm__main { padding-top: 20px; }
+    .adm { grid-template-columns: minmax(0, 1fr); }
+    .adm__side { position: static; height: auto; padding: 14px; gap: 12px; }
+    .adm__side nav { display: flex; flex-wrap: wrap; }
+    .adm__me { flex-direction: row; display: flex; gap: 14px; align-items: center; }
+  }
+  @media print {
+    .adm { display: block; }
+    .adm__side, .no-print { display: none !important; }
+    .adm__main { padding: 0; }
+    body { background: #fff; }
+  }
+</style>

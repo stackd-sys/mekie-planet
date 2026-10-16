@@ -1,0 +1,65 @@
+---
+export const prerender = false;
+import { db } from '../../../../../lib/server/db';
+import { date } from '../../../../../lib/server/format';
+import { site } from '../../../../../data/site';
+
+const sql = await db();
+const [o] = await sql<any[]>`select * from orders where number = ${Astro.params.number!}`;
+if (!o) return Astro.redirect('/admin/encomendas/');
+const a = o.address ?? {};
+---
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Folha de envio {o.number}</title>
+</head>
+<body>
+  <p class="tools"><button onclick="print()">Imprimir</button> <a href={`/admin/encomendas/${o.number}/`}>Voltar</a></p>
+  <section class="label">
+    <p class="from"><strong>Remetente:</strong> {site.company.legalName}, {site.company.address}</p>
+    <p class="to-title">Destinatário</p>
+    <p class="to">
+      <strong>{o.name}</strong><br />
+      {a.morada}<br />
+      {a.codigo_postal} {a.localidade}<br />
+      {a.pais?.toUpperCase()}<br />
+      Tel. {o.phone}
+    </p>
+    <p class="num">{o.number}</p>
+  </section>
+  <section class="slip">
+    <img src="/images/site/logo.png" alt="Mekie" width="120" />
+    <h1>Encomenda {o.number}</h1>
+    <p>{date(o.created_at)} · {o.name}</p>
+    <table>
+      <thead><tr><th>Qtd.</th><th>Peça</th><th>Tamanho</th><th>✓</th></tr></thead>
+      <tbody>
+        {(o.lines as any[]).filter((l) => !l.digital).map((l) => (
+          <tr><td>{l.qty}</td><td>{l.name}{l.color && `, ${l.color}`}{l.custom && <><br /><small>{l.custom}</small></>}</td><td>{l.size || 'Único'}</td><td class="box"></td></tr>
+        ))}
+      </tbody>
+    </table>
+    {o.customer_notes && <p><strong>Notas do cliente:</strong> {o.customer_notes}</p>}
+    <p class="thanks">Obrigado por escolheres a Mekie! Trocas e devoluções em 14 dias: {site.email}</p>
+  </section>
+</body>
+</html>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; color: #111; margin: 24px; }
+  .tools { margin: 0 0 16px; }
+  .label { border: 2px dashed #111; padding: 22px; max-width: 520px; margin-bottom: 32px; }
+  .from { font-size: 12px; margin: 0 0 16px; }
+  .to-title { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+  .to { font-size: 22px; line-height: 1.35; margin: 6px 0 12px; }
+  .num { margin: 0; font-size: 12px; text-align: right; }
+  .slip { max-width: 680px; border-top: 1px solid #ccc; padding-top: 24px; }
+  .slip h1 { font-size: 20px; margin: 16px 0 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #ccc; padding: 8px 6px; text-align: left; vertical-align: top; }
+  td.box { width: 24px; } td.box::after { content: ''; display: inline-block; width: 14px; height: 14px; border: 1px solid #111; }
+  .thanks { font-size: 13px; margin-top: 24px; }
+  @media print { .tools { display: none; } body { margin: 10mm; } .label { page-break-after: always; } }
+</style>

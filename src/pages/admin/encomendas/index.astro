@@ -1,0 +1,57 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import Status from '../../../components/admin/Status.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date, STATUS } from '../../../lib/server/format';
+
+const sql = await db();
+const status = Astro.url.searchParams.get('estado') || '';
+const q = (Astro.url.searchParams.get('q') || '').trim();
+const like = `%${q}%`;
+const orders = await sql<any[]>`
+  select number, created_at, name, email, total, status, lines, tracking, address
+  from orders
+  where (${status} = '' or status = ${status})
+    and (${q} = '' or number ilike ${like} or email ilike ${like} or name ilike ${like})
+  order by created_at desc limit 300`;
+const counts = Object.fromEntries((await sql<any[]>`select status, count(*)::int as n from orders group by status`).map((r) => [r.status, r.n]));
+const pieces = (lines: any[]) => lines.reduce((n, l) => n + l.qty, 0);
+---
+<Admin title="Encomendas">
+  <div class="bar" style="justify-content:space-between">
+    <div><h1>Encomendas</h1><p class="sub">Tudo o que entra pelo site, e as vendas que registarem à mão.</p></div>
+    <a class="btn" href="/admin/encomendas/nova/">Nova encomenda</a>
+  </div>
+  <Flash />
+  <nav class="tabs">
+    <a href="/admin/encomendas/" class:list={{ 'is-on': !status }}>Todas</a>
+    {Object.entries(STATUS).map(([k, v]) => <a href={`?estado=${k}`} class:list={{ 'is-on': status === k }}>{v.label} {counts[k] ? `(${counts[k]})` : ''}</a>)}
+  </nav>
+  <form class="bar" method="get">
+    {status && <input type="hidden" name="estado" value={status} />}
+    <input name="q" value={q} placeholder="Número, nome ou email" style="width:260px" />
+    <button class="btn ghost small">Procurar</button>
+  </form>
+  <div class="table">
+    {orders.length ? (
+      <table>
+        <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Destino</th><th class="num">Peças</th><th class="num">Total</th><th>Estado</th></tr></thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr>
+              <td><a class="row-link" href={`/admin/encomendas/${o.number}/`}>{o.number}</a></td>
+              <td>{date(o.created_at, true)}</td>
+              <td>{o.name}<br /><span class="muted">{o.email}</span></td>
+              <td>{o.address ? o.address.pais : <span class="muted">Digital</span>}</td>
+              <td class="num">{pieces(o.lines)}</td>
+              <td class="num">{euro(o.total)}</td>
+              <td><Status status={o.status} />{o.tracking && <><br /><span class="muted">{o.tracking}</span></>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p class="empty">Ainda não há encomendas{status || q ? ' com estes filtros' : ''}.</p>}
+  </div>
+</Admin>
