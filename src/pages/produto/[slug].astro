@@ -5,6 +5,8 @@ import Img from '../../components/Img.astro';
 import { products, discount, fullName, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, weightOf, type Product } from '../../data/products';
 import { site, formatPrice } from '../../data/site';
 import { shipping, shippingCost } from '../../data/shipping';
+import { reviewsOf, ratingOf } from '../../data/reviews';
+import Stars from '../../components/Stars.astro';
 import { productLd, breadcrumbLd, categoryTrail, productSummary } from '../../data/seo';
 
 export function getStaticPaths() {
@@ -12,6 +14,8 @@ export function getStaticPaths() {
 }
 interface Props { product: Product }
 const { product: p } = Astro.props;
+const reviews = reviewsOf(p);
+const rating = ratingOf(p);
 const off = discount(p);
 const variants = variantsOf(p);
 const related = [
@@ -57,6 +61,12 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
     <div class="info">
       <h1 class="info__title">{p.name}</h1>
+      {rating && (
+        <a href="#opinioes" class="info__rating">
+          <Stars rating={rating.value} size={13} />
+          <span>{rating.count === 1 ? '1 opinião' : `${rating.count} opiniões`}</span>
+        </a>
+      )}
       <p class="price info__price">
         {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
         {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
@@ -208,6 +218,27 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     </div>
     <button type="button" class="pill pill--accent" data-sticky-btn disabled={soldOut}>{soldOut ? 'Esgotado' : 'Adicionar'}</button>
   </div>
+
+  {reviews.length > 0 && rating && (
+    <section class="section reviews" id="opinioes" aria-labelledby="reviews-title">
+      <div class="container">
+        <div class="reviews__head">
+          <h2 id="reviews-title" class="section-title related__title">Opiniões</h2>
+          <p class="reviews__score"><Stars rating={rating.value} size={15} /> <span>{String(rating.value).replace('.', ',')} em 5 · {rating.count === 1 ? '1 opinião' : `${rating.count} opiniões`}</span></p>
+        </div>
+        <ul class="reviews__list">
+          {reviews.map((rv) => (
+            <li class="review">
+              <Stars rating={rv.rating} size={12} />
+              <p class="review__text">{rv.text}</p>
+              <p class="review__author eyebrow">{rv.author}</p>
+            </li>
+          ))}
+        </ul>
+        <p class="reviews__note">Opiniões de quem já usa as nossas peças.</p>
+      </div>
+    </section>
+  )}
 
   <section class="section related">
     <div class="container">
@@ -403,6 +434,17 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .info__dot { animation: none; } }
 
+  .info__rating { display: flex; width: max-content; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 12.5px; color: var(--ink-soft); text-decoration: none; }
+  .info__rating:hover span { text-decoration: underline; }
+  .reviews { margin-top: clamp(40px, 6vw, 80px); }
+  .reviews__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 24px; }
+  .reviews__head .related__title { margin: 0; }
+  .reviews__score { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 13px; color: var(--ink-soft); }
+  .reviews__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .review { background: var(--surface); padding: 22px; display: grid; gap: 12px; align-content: start; }
+  .review__text { margin: 0; font-size: 14.5px; line-height: 1.6; }
+  .review__author { margin: 0; font-size: 11px; color: var(--ink-soft); }
+  .reviews__note { margin: 16px 0 0; font-size: 12px; color: var(--ink-soft); }
   .related { margin-top: clamp(40px, 6vw, 80px); }
   .related__title { font-weight: 400; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
 

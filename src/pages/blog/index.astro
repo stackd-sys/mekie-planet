@@ -1,0 +1,42 @@
+---
+import Base from '../../layouts/Base.astro';
+import Img from '../../components/Img.astro';
+import { blogPosts, formatDate } from '../../data/blog';
+import { breadcrumbLd } from '../../data/seo';
+---
+<Base title="Blog" description="Dicas para cuidar da tua roupa bordada, escolher o tamanho certo e aproveitar a Ericeira. Histórias e novidades da Mekie Planet.">
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: 'Blog', path: '/blog/' }]))} />
+  <section class="container blog">
+    <h1 class="display blog__title">Blog</h1>
+    <p class="blog__intro">Dicas, histórias e novidades da Mekie.</p>
+    <ul class="blog__list">
+      {blogPosts.map((post, i) => (
+        <li class="post-card reveal">
+          <a href={`/blog/${post.slug}/`} class="post-card__media" tabindex="-1" aria-hidden="true">
+            <Img src={post.image} alt="" width="1200" height="800" sizes="(max-width: 700px) 100vw, 33vw" loading={i === 0 ? 'eager' : 'lazy'} />
+          </a>
+          <p class="eyebrow post-card__date"><time datetime={post.date}>{formatDate(post.date)}</time></p>
+          <h2 class="post-card__title"><a href={`/blog/${post.slug}/`}>{post.title}</a></h2>
+          <p class="post-card__text">{post.description}</p>
+          <a href={`/blog/${post.slug}/`} class="link-underline post-card__more">Ler artigo</a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .blog { padding-top: clamp(40px, 6vw, 80px); padding-bottom: clamp(56px, 8vw, 110px); }
+  .blog__title { font-size: clamp(36px, 5vw, 64px); text-transform: uppercase; margin: 0; }
+  .blog__intro { margin: 10px 0 40px; color: var(--ink-soft); font-size: 15px; }
+  .blog__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 3vw, 40px); }
+  .post-card__media { display: block; aspect-ratio: 3 / 2; overflow: hidden; background: #e7e7e5; }
+  .post-card__media :global(img) { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
+  .post-card:hover .post-card__media :global(img) { transform: scale(1.03); }
+  .post-card__date { margin: 16px 0 6px; font-size: 10.5px; color: var(--ink-soft); }
+  .post-card__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.25; }
+  .post-card__title a { color: inherit; text-decoration: none; }
+  .post-card__text { margin: 10px 0 12px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+  .post-card__more { font-size: 13px; }
+  @media (max-width: 900px) { .blog__list { grid-template-columns: 1fr; max-width: 560px; } }
+</style>

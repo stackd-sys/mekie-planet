@@ -21,7 +21,8 @@ export const site = {
   freeShippingFrom: 65,
   deliveryDays: 7,
   // Webhook que guarda os emails da newsletter e controla o uso do código (ver integrations/newsletter.gs e o README).
-  newsletterWebhook: '',
+  // Pode ficar aqui ou na variável PUBLIC_NEWSLETTER_WEBHOOK da Vercel.
+  newsletterWebhook: (import.meta.env.PUBLIC_NEWSLETTER_WEBHOOK as string | undefined) ?? '',
   // Código de boas-vindas mostrado depois de subscrever. Tem de existir também no sistema de pagamento.
   welcomeCode: 'MEKIE10',
   welcomeDiscount: 10,

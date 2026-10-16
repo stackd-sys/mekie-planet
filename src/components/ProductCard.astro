@@ -2,12 +2,15 @@
 import Img from './Img.astro';
 import { type Product, discount, variantsOf, cartInfo, totalStock, isSoldOut } from '../data/products';
 import { formatPrice } from '../data/site';
+import { ratingOf } from '../data/reviews';
+import Stars from './Stars.astro';
 interface Props { product: Product; eager?: boolean }
 const { product: p, eager = false } = Astro.props;
 const off = discount(p);
 const colors = variantsOf(p).length;
 const label = p.badge ?? (isSoldOut(p) ? 'Esgotado' : off > 0 ? `-${off}%` : undefined);
 const cartData = JSON.stringify(cartInfo(p));
+const rating = ratingOf(p);
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
 const sizes = '(max-width: 700px) 50vw, 25vw';
@@ -46,12 +49,14 @@ const cutout = /\/products\/.+-1\.webp$/.test(p.images[0]);
       {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
       {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
     </p>
+    {rating && <p class="card__rating"><Stars rating={rating.value} size={11} /><span>({rating.count})</span></p>}
     <p class="card__meta eyebrow">{colors > 1 ? `${colors} cores disponíveis` : p.color}</p>
     {!p.madeToOrderDays && total !== undefined && total > 0 && total <= 3 && <p class="card__stock eyebrow">{total === 1 ? 'Última unidade' : `Últimas ${total} unidades`}</p>}
   </div>
 </article>
 
 <style>
+  .card__rating { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 11px; color: var(--ink-soft); }
   .card { position: relative; display: flex; flex-direction: column; text-align: center; }
   .card__media { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
   .card__link { position: absolute; inset: 0; display: block; }

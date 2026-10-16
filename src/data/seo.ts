@@ -1,6 +1,7 @@
 /* Dados estruturados (schema.org) para o Google: produtos, envios, devoluções e navegação */
 import { site } from './site';
 import { shippingCost, type Zone } from './shipping';
+import { reviewsOf, ratingOf } from './reviews';
 import { getCategory, totalStock, isSoldOut, fullName, weightOf, type Product } from './products';
 
 const abs = (path: string) => new URL(path, site.url).href;
@@ -84,6 +85,20 @@ export const productSummary = (p: Product) => {
   return [`${fullName(p)}.`, feature && `${feature}.`, p.description].filter(Boolean).join(' ');
 };
 
+const reviewsLd = (p: Product) => {
+  const rating = ratingOf(p);
+  if (!rating) return {};
+  return {
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: rating.value, reviewCount: rating.count, bestRating: 5, worstRating: 1 },
+    review: reviewsOf(p).map((rv) => ({
+      '@type': 'Review',
+      author: { '@type': 'Person', name: rv.author },
+      reviewRating: { '@type': 'Rating', ratingValue: rv.rating, bestRating: 5, worstRating: 1 },
+      reviewBody: rv.text,
+    })),
+  };
+};
+
 export const productLd = (p: Product) => {
   const total = totalStock(p);
   return {
@@ -99,6 +114,7 @@ export const productLd = (p: Product) => {
     ...(p.details?.composition.length ? { material: p.details.composition.join(', ') } : {}),
     ...(p.sizes ? { size: p.sizes.join(', ') } : {}),
     brand: { '@type': 'Brand', name: site.name },
+    ...reviewsLd(p),
     offers: {
       '@type': 'Offer',
       priceCurrency: 'EUR',

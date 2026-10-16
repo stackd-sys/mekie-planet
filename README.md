@@ -31,7 +31,7 @@ O carrinho funciona no browser (guardado em `localStorage`). Por agora, o checko
 
 O popup (e o formulário do rodapé) pede o email e o consentimento e mostra o código `MEKIE10`.
 
-Para guardar os emails, põe o URL de um webhook em `newsletterWebhook` (`src/data/site.ts`). O mais simples é o Google Apps Script em `integrations/newsletter.gs`, que escreve numa Google Sheet (as instruções estão no topo do ficheiro). Esse script:
+Para guardar os emails, põe o URL de um webhook em `newsletterWebhook` (`src/data/site.ts`) ou na Vercel, em Settings > Environment Variables, com o nome `PUBLIC_NEWSLETTER_WEBHOOK` (depois é preciso fazer Redeploy). O mais simples é o Google Apps Script em `integrations/newsletter.gs`, que escreve numa Google Sheet (as instruções estão no topo do ficheiro). Esse script:
 
 - não deixa o mesmo email entrar duas vezes e avisa a pessoa que já estava na lista;
 - no checkout, confirma que o email da encomenda subscreveu a newsletter e ainda não usou o código;
@@ -77,7 +77,7 @@ Custo real com os preços de balcão dos CTT 2026 (tarifário de 3 de fevereiro 
 | Europa, 500 g a 1 kg | Correio Registado internacional | 15,55€ + embalagem | 16,90€ |
 | Europa, 1 a 2 kg | Correio Registado internacional | 23,35€ + embalagem | 24,90€ |
 
-Os portes cobrados cobrem sempre o custo. O Correio Verde e o Correio Registado nacional custam o mesmo para os Açores e a Madeira, por isso as ilhas pagam o mesmo que o Continente.
+Os envios são feitos ao balcão de uma loja CTT, sem contrato, e os portes cobrados cobrem sempre o custo. O Correio Verde e o Correio Registado nacional custam o mesmo para os Açores e a Madeira, por isso as ilhas pagam o mesmo que o Continente.
 
 O envio grátis em Portugal acima de 65€ custa à Mekie entre 5,90€ e 9,40€ por encomenda (9% a 14% de uma encomenda de 65€). Na União Europeia não há envio grátis, porque os portes reais passam facilmente de 15% da venda.
 

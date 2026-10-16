@@ -9,7 +9,8 @@
  * 2. Apaga o que lá estiver, cola este ficheiro e guarda.
  * 3. Implementar > Nova implementação > Tipo: Aplicação Web.
  *    Executar como: Eu. Quem tem acesso: Qualquer pessoa.
- * 4. Copia o URL que termina em /exec para `newsletterWebhook` em src/data/site.ts.
+ * 4. Copia o URL que termina em /exec para `newsletterWebhook` em src/data/site.ts,
+ *    ou para a variável PUBLIC_NEWSLETTER_WEBHOOK na Vercel (e faz Redeploy).
  *
  * Pedidos (POST, application/x-www-form-urlencoded):
  *   action=subscribe  email, consent, source, page, code, created_at
