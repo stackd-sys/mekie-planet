@@ -30,10 +30,6 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
 const trail = [...categoryTrail(p.category), { name: fullName(p), path: `/produto/${p.slug}/` }];
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${c.name}` : c.name);
 /* Pré-visualização do scrunchie: folhos à volta de um aro */
-const ruffles = Array.from({ length: 14 }, (_, i) => {
-  const a = (i / 14) * Math.PI * 2;
-  return { x: +(100 + Math.cos(a) * 62).toFixed(1), y: +(100 + Math.sin(a) * 62).toFixed(1) };
-});
 const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test(src);
 ---
 <Base title={fullName(p)} description={`${productSummary(p)} ${formatPrice(p.price)}. Envio CTT para Portugal e União Europeia.`} image={p.images[1] ?? p.images[0]} ogType="product">
@@ -102,10 +98,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       <form class="buy" data-buy data-product={JSON.stringify(cartData)} novalidate>
         {p.customizable && (
           <div class="custom">
-            <svg class="custom__preview" viewBox="0 0 200 200" aria-hidden="true" data-preview>
-              {ruffles.map((c) => <circle cx={c.x} cy={c.y} r="30" />)}
-              <circle class="custom__hole" cx="100" cy="100" r="36" />
-            </svg>
+            <figure class="custom__preview">
+              <canvas width="640" height="640" data-preview data-map="/images/products/scrunchie-personalizado-mapa.webp" role="img" aria-label="Pré-visualização do scrunchie com as cores escolhidas"></canvas>
+              <figcaption>Pré-visualização com as tuas cores</figcaption>
+            </figure>
             {[['main', 'Cor do corpo'], ['edge', 'Cor do rebordo']].map(([name, label]) => (
               <fieldset class="opt">
                 <legend class="opt__label">{label}: <span data-pick-label={name}>escolhe uma cor</span></legend>
@@ -265,6 +261,41 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   const form = document.querySelector<HTMLFormElement>('[data-buy]');
   if (form) {
     const product = JSON.parse(form.dataset.product!);
+
+    /* Scrunchie personalizado: pinta a fotografia com as cores escolhidas.
+       O mapa guarda a sombra do crochet (vermelho), a zona do rebordo (verde) e o recorte (alfa). */
+    const picked: Record<string, string> = { main: '#de5378', edge: '#d8c0cc' };
+    const canvas = form.querySelector<HTMLCanvasElement>('[data-preview]');
+    let mapData: ImageData | null = null;
+    const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const paint = () => {
+      if (!canvas || !mapData) return;
+      const ctx = canvas.getContext('2d')!;
+      const out = ctx.createImageData(mapData.width, mapData.height);
+      const src = mapData.data, dst = out.data;
+      const [mr, mg, mb] = hex(picked.main), [er, eg, eb] = hex(picked.edge);
+      for (let i = 0; i < src.length; i += 4) {
+        const shade = src[i] / 128, w = src[i + 1] / 255;
+        dst[i] = (mr + (er - mr) * w) * shade;
+        dst[i + 1] = (mg + (eg - mg) * w) * shade;
+        dst[i + 2] = (mb + (eb - mb) * w) * shade;
+        dst[i + 3] = src[i + 3];
+      }
+      ctx.putImageData(out, 0, 0);
+    };
+    if (canvas) {
+      const map = new Image();
+      map.onload = () => {
+        const tmp = document.createElement('canvas');
+        tmp.width = canvas.width = map.naturalWidth;
+        tmp.height = canvas.height = map.naturalHeight;
+        const tctx = tmp.getContext('2d', { willReadFrequently: true })!;
+        tctx.drawImage(map, 0, 0);
+        mapData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+        paint();
+      };
+      map.src = canvas.dataset.map!;
+    }
     const item = (size?: string) => ({ id: product.id, name: product.customizable ? product.name : `${product.name} ${product.color}`, price: product.price, variant: size });
     const viewed = () => trackEvent('view_item', [item()]);
     if (consentSettled()) viewed();
@@ -280,8 +311,8 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         error.hidden = true;
         const label = form.querySelector<HTMLElement>(`[data-pick-label=${t.name}]`);
         if (label) label.textContent = t.value;
-        const preview = form.querySelector<SVGElement>('[data-preview]');
-        preview?.style.setProperty(t.name === 'main' ? '--main' : '--edge', t.dataset.hex!);
+        picked[t.name] = t.dataset.hex!;
+        paint();
       }
       if (t.name === 'size') {
         error.hidden = true;
@@ -386,9 +417,9 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   }
   .size span:hover { border-color: var(--ink); }
   .custom { margin-bottom: 8px; }
-  .custom__preview { display: block; width: 132px; height: 132px; margin: 0 0 18px; --main: #e1767e; --edge: #ecd6dc; }
-  .custom__preview circle { fill: var(--main); stroke: var(--edge); stroke-width: 7; transition: fill .25s, stroke .25s; }
-  .custom__preview .custom__hole { fill: var(--bg); stroke: none; }
+  .custom__preview { margin: 0 0 18px; }
+  .custom__preview canvas { display: block; width: min(260px, 70vw); height: auto; aspect-ratio: 1; }
+  .custom__preview figcaption { margin-top: 6px; font-size: 11.5px; color: var(--ink-soft); }
   .yarns { display: flex; flex-wrap: wrap; gap: 7px; }
   .yarn input { position: absolute; opacity: 0; pointer-events: none; }
   .yarn > span { display: block; width: 28px; height: 28px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer; transition: box-shadow .2s; }
