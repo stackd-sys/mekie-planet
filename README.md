@@ -114,3 +114,20 @@ O site antigo carregava também o Google Tag Manager (`GTM-T8HV3THK`) com estas 
 2. Em **Settings > Domains**, adicionar `mekie-planet.com` e `www.mekie-planet.com` e seguir as instruções de DNS.
 3. Os redirecionamentos dos URLs antigos do WooCommerce e os cabeçalhos de cache e segurança estão em `vercel.json`.
 4. Depois de mudar o domínio, submeter `https://mekie-planet.com/sitemap-index.xml` no Google Search Console.
+
+## Por fazer
+
+Pendente da Mekie:
+
+- [ ] Atualizar o script da Google Sheet: colar `integrations/newsletter.gs` no Apps Script e fazer Implementar > Gerir implementações > Nova versão. Sem isto, o cartão presente e o "Avisa-me quando voltar" não ficam guardados.
+- [ ] Ligar o webhook: pôr o URL `/exec` em `PUBLIC_NEWSLETTER_WEBHOOK` na Vercel (e fazer Redeploy) ou em `newsletterWebhook` em `src/data/site.ts`.
+- [ ] Enviar as fotos das peças vestidas e a foto e o preço do crewneck.
+
+Fechado: preço das totes (25€), textos das opiniões confirmados por cada pessoa, preço e cores do scrunchie personalizado.
+
+Próximas fases do site:
+
+1. Pagamento Stripe (MB WAY, Multibanco, cartão), com página de encomenda confirmada, emails automáticos, cartões presente criados e enviados sozinhos e evento `purchase` no Analytics e no Pixel.
+2. Domínio mekie-planet.com na Vercel, Google Search Console (enviar o sitemap) e Google Merchant Center.
+3. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
+4. Mais tarde: CRM (stock, encomendas, clientes) e conta de cliente com login por email. Campanha de Natal quando fizer sentido.
