@@ -233,9 +233,14 @@ const scrunchieCustom: ProductDetails = {
   composition: ['Fio 100% algodão orgânico', 'Fio com certificação GOTS'],
 };
 
-const scrunchie: ProductDetails = {
+const scrunchieRosa: ProductDetails = {
   features: ['Feito à mão em crochet'],
-  composition: [],
+  composition: ['59% nylon, 41% poliéster'],
+};
+
+const scrunchieDourado: ProductDetails = {
+  features: ['Feito à mão em crochet'],
+  composition: ['98% algodão, 2% fibra metalizada'],
 };
 
 const socks: ProductDetails = {
@@ -509,7 +514,7 @@ export const products: Product[] = [
     stock: 1,
     madeToOrderDays: 10,
     images: [img('scrunchie-rosa-1'), look('scrunchie-couple')],
-    details: scrunchie,
+    details: scrunchieRosa,
     description: '',
   },
   {
@@ -523,7 +528,7 @@ export const products: Product[] = [
     stock: 1,
     madeToOrderDays: 10,
     images: [img('scrunchie-dourado-1'), look('scrunchie-dourado-tote'), look('sweat-planetas-black-scrunchie')],
-    details: scrunchie,
+    details: scrunchieDourado,
     description: '',
   },
   {
