@@ -9,7 +9,7 @@ import CartDrawer from '../components/CartDrawer.astro';
 import Popup from '../components/Popup.astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
-import { giftCatalog } from '../data/giftcard';
+import { giftCatalog, testItem } from '../data/giftcard';
 import { products, cartInfo } from '../data/products';
 import { organizationLd, websiteLd } from '../data/seo';
 
@@ -23,7 +23,7 @@ interface Props {
   ogType?: 'website' | 'product' | 'article';
 }
 /* Preço e stock atuais, para o carrinho guardado no browser se manter certo */
-const catalog = Object.fromEntries([...products.map((p) => [p.id, cartInfo(p)]), ...giftCatalog.map((g) => [g.id, g])]);
+const catalog = Object.fromEntries([...products.map((p) => [p.id, cartInfo(p)]), ...giftCatalog.map((g) => [g.id, g]), [testItem.id, testItem]]);
 const {
   title,
   description = 'Mekie Planet: hoodies e t-shirts bordados, caps, bucket hats, meias, scrunchies e tote bags. Roupa descontraída, sempre com estilo. Envio CTT para Portugal e União Europeia.',

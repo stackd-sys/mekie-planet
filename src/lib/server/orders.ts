@@ -4,7 +4,7 @@ import { db } from './db';
 import { sendMail, layout, escapeHtml } from './mail';
 import { euro, trackingUrl } from './format';
 import { products, weightOf } from '../../data/products';
-import { giftCatalog, giftCard } from '../../data/giftcard';
+import { giftCatalog, giftCard, testItem } from '../../data/giftcard';
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';
 import { rebuildSite } from './deploy';
@@ -118,6 +118,9 @@ export async function sendGiftCard(code: string) {
 
 type RawLine = { id?: unknown; qty?: unknown; size?: unknown; custom?: unknown };
 
+/** linha de cartão presente (o produto teste também é digital, mas não gera cartão) */
+const isGiftLine = (l: OrderLine) => giftCatalog.some((g) => g.id === l.id);
+
 export async function priceOrder(raw: RawLine[], country: string, codeRaw: string, giftRaw: string, email: string) {
   const sql = await db();
   const state = new Map((await sql<any[]>`select id, price, stock, size_stock from products_state`).map((r) => [r.id, r]));
@@ -127,7 +130,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
   for (const r of (Array.isArray(raw) ? raw : []).slice(0, 40)) {
     const id = Number(r.id), qty = Math.max(1, Math.min(20, Math.floor(Number(r.qty) || 1)));
     const size = clean(r.size, 10), custom = clean(r.custom, 400);
-    const gift = giftCatalog.find((g) => g.id === id);
+    const gift = giftCatalog.find((g) => g.id === id) ?? (id === testItem.id ? testItem : undefined);
     if (gift) {
       lines.push({ id, slug: gift.slug, name: gift.name, color: gift.color, size: '', custom, qty, price: gift.price, grams: 0, digital: true, madeToOrder: false });
       continue;
@@ -261,7 +264,7 @@ async function sendOrderReceived(o: any) {
 /** Pagamento confirmado (Stripe): email ao cliente e aviso à Mekie */
 export async function sendOrderPaid(o: any) {
   const first = String(o.name).split(' ')[0];
-  const gifts = (o.lines as OrderLine[]).some((l) => l.digital);
+  const gifts = (o.lines as OrderLine[]).some((l) => isGiftLine(l));
   await Promise.allSettled([
     sendMail(o.email, `Pagamento confirmado: encomenda ${o.number}`, layout(`Obrigado, ${escapeHtml(first)}!`,
       `<p>Recebemos o pagamento da tua encomenda <strong>${o.number}</strong>. ${o.address ? 'Vamos prepará-la e avisamos-te quando seguir pelos CTT.' : ''}${gifts ? ' O cartão presente segue por email para quem o recebe.' : ''}</p>
@@ -350,7 +353,7 @@ export async function setStatus(number: string, status: string, by: string, extr
   /* cartões presente comprados nesta encomenda: criados e enviados quando é paga */
   if (STOCK_OUT.includes(status)) {
     const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from gift_cards where order_number = ${number}`;
-    const giftLines = (o.lines as OrderLine[]).filter((l) => l.digital);
+    const giftLines = (o.lines as OrderLine[]).filter(isGiftLine);
     const wanted = giftLines.reduce((k, l) => k + l.qty, 0);
     if (n < wanted) {
       let made = n;

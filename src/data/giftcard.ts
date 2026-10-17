@@ -37,3 +37,17 @@ export const giftCatalog = giftCard.values.map((value, i) => ({
   grams: 0,
   digital: true,
 }));
+
+/** Artigo para testar pagamentos: 1€, sem portes, fora da loja e do Google (/teste-pagamento/).
+    Não cria cartão presente nem mexe no stock. Para o tirar, apaga esta entrada e a página. */
+export const testItem = {
+  id: 9999,
+  slug: 'teste-pagamento',
+  href: '/teste-pagamento/',
+  name: 'Produto teste',
+  color: 'Teste de pagamento',
+  price: 1,
+  image: '/images/site/logo.png',
+  grams: 0,
+  digital: true,
+};

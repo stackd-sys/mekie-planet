@@ -1,0 +1,34 @@
+---
+/* Página escondida para testar pagamentos: não aparece na loja, no menu nem no Google. */
+import Base from '../layouts/Base.astro';
+import { formatPrice } from '../data/site';
+import { testItem } from '../data/giftcard';
+---
+<Base title="Teste de pagamento" noindex>
+  <section class="container tp">
+    <img src={testItem.image} alt="" width="120" height="120" class="tp__img" />
+    <h1 class="tp__title">{testItem.name}</h1>
+    <p class="tp__price">{formatPrice(testItem.price)}</p>
+    <p class="tp__text">Serve só para experimentar o pagamento. Não tem portes, não precisa de morada e não mexe no stock.</p>
+    <button type="button" class="pill" data-tp-add data-item={JSON.stringify(testItem)}>Adicionar ao carrinho</button>
+  </section>
+</Base>
+
+<script>
+  import { cart } from '../scripts/cart';
+  import { openCart } from '../scripts/ui';
+
+  const btn = document.querySelector<HTMLButtonElement>('[data-tp-add]')!;
+  btn.addEventListener('click', () => {
+    cart.add(JSON.parse(btn.dataset.item!), 1);
+    openCart();
+  });
+</script>
+
+<style>
+  .tp { min-height: 60vh; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; max-width: 520px; }
+  .tp__img { width: 120px; height: auto; }
+  .tp__title { margin: 8px 0 0; }
+  .tp__price { margin: 0; font-size: 1.4rem; }
+  .tp__text { margin: 0 0 12px; color: var(--ink-soft); }
+</style>
