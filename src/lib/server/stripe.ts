@@ -21,7 +21,7 @@ function encode(obj: Record<string, unknown>, prefix = '', out = new URLSearchPa
 async function call(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>) {
   const res = await fetch(`${API()}/v1/${path}`, {
     method,
-    headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { Authorization: `Bearer ${(process.env.STRIPE_SECRET_KEY || '').trim()}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body ? encode(body) : undefined,
   });
   const data = await res.json();
@@ -58,7 +58,7 @@ export const getSession = (id: string) => call('GET', `checkout/sessions/${encod
 
 /** Confirma a assinatura do webhook (cabeçalho Stripe-Signature) e devolve o evento. */
 export function verifyWebhook(payload: string, header: string | null, toleranceSec = 300) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  const secret = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
   if (!secret || !header) throw new Error('Webhook sem assinatura');
   const parts = Object.fromEntries(header.split(',').map((p) => p.split('=') as [string, string]).filter((p) => p.length === 2));
   const t = Number(parts.t);
