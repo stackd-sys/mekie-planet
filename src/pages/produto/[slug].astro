@@ -197,7 +197,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         <details open>
           <summary class="eyebrow">Descrição</summary>
           <div class="acc__body">
-            <p>{p.description}</p>
+            {p.description && <p>{p.description}</p>}
             {p.details && (
               <ul>{p.details.features.map((f) => <li>{f}</li>)}</ul>
             )}
@@ -339,7 +339,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   const track = document.querySelector<HTMLElement>('[data-track]');
   const dots = document.querySelectorAll<HTMLElement>('[data-dot]');
   track?.addEventListener('scroll', () => {
-    const i = Math.round(track.scrollLeft / track.clientWidth);
+    /* as fotos ocupam 86% da largura, por isso a seguinte espreita; no fim do scroll é sempre a última */
+    const step = (track.firstElementChild as HTMLElement | null)?.offsetWidth || track.clientWidth;
+    const end = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2;
+    const i = end ? dots.length - 1 : Math.round(track.scrollLeft / step);
     dots.forEach((d, n) => d.classList.toggle('is-active', n === i));
   }, { passive: true });
 
@@ -596,10 +599,11 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     .pdp { grid-template-columns: 1fr; padding: 0; gap: 0; }
     .gallery { position: relative; }
     .gallery__track {
-      display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 100%;
-      gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+      display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 86%;
+      gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
     }
     .gallery__track::-webkit-scrollbar { display: none; }
+    .gallery__track:has(> :only-child) { grid-auto-columns: 100%; }
     .gallery__item, .gallery__item--lead { grid-column: auto; aspect-ratio: 4 / 5; scroll-snap-align: start; }
     .gallery__item--lead img { padding: 8%; }
     .gallery__dots { display: flex; justify-content: center; gap: 8px; padding: 14px 0 0; }

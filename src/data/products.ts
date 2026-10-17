@@ -111,7 +111,6 @@ export const collections: Collection[] = [
 const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 const img = (name: string) => `/images/products/${name}.webp`;
 const look = (name: string) => `/images/lookbook/${name}.webp`;
-const TAGLINE = 'Bro, o básico nunca falha.';
 
 const careEmbroidery = [
   'Lavar na máquina a 40 °C no máximo',
@@ -156,11 +155,8 @@ const cap: ProductDetails = {
 
 const bucket: ProductDetails = {
   features: [
-    'Bucket hat que protege do sol e completa qualquer look',
     'Aba clássica e perfil alto',
-    'Tamanho único, que serve a maioria das pessoas',
-    'Tecido respirável e costura cuidada',
-    'Ideal para o verão',
+    'Tecido respirável',
   ],
   composition: [
     'Sarja 100% algodão orgânico',
@@ -178,29 +174,18 @@ const sweatshirt = (embroidery: string): ProductDetails => ({
 export const sweatshirtDetails: ProductDetails = {
   features: [
     'Sweatshirt unissexo de gola redonda clássica',
-    'Corte unissexo que valoriza a silhueta',
-    'Exterior macio',
-    'Malha de trama fechada com 3 fios',
-    'Costuras laterais',
-    'Aplique de tecido na parte de trás',
     'Gola, punhos e bainha em canelado com costura dupla',
-    'Etiqueta removível',
   ],
-  composition: ['100% algodão', '288 g/m², um tecido encorpado'],
+  composition: ['100% algodão', '288 g/m²'],
 };
 
 const toteDetails: ProductDetails = {
   features: [
-    'Tote bag em sarja de algodão orgânico, de cor lisa',
-    'Espaçosa: cabe compras, livros e muito mais',
-    'Compartimento principal aberto',
     'Alças duplas com 2,5 cm de largura e 62,2 cm de comprimento',
     'Dimensões: 40,6 × 35,6 × 12,7 cm',
     'Aguenta até 13,6 kg',
   ],
   composition: [
-    'Sarja 3/1 100% algodão orgânico',
-    '272 g/m²',
     'Algodão orgânico com certificações GOTS e OCS',
     'Certificação OEKO-TEX Standard 100',
     'Selo vegano aprovado pela PETA',
@@ -276,7 +261,7 @@ export const products: Product[] = [
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 2, L: 5, XL: 2 },
     images: [img('hoodie-cogumelos-yellow-1'), look('mushrooms-hoodie-yellow'), look('stack-leaves')],
-    description: TAGLINE,
+    description: '',
     details: hoodie('cogumelos'),
   },
   {
@@ -292,7 +277,7 @@ export const products: Product[] = [
     sizeStock: { XS: 0, S: 1, M: 3, L: 2, XL: 2 },
     sizeNotes: { S: 'Esta unidade não foi fabricada em Portugal.' },
     images: [img('hoodie-cogumelos-black-1'), look('hoodie-black-cuff')],
-    description: TAGLINE,
+    description: '',
     details: hoodie('cogumelos'),
   },
   {
@@ -307,7 +292,7 @@ export const products: Product[] = [
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 6, L: 7, XL: 2 },
     images: [img('hoodie-esqueleto-yellow-1'), look('esqueleto-duo')],
-    description: TAGLINE,
+    description: '',
     details: hoodie('esqueleto'),
   },
   {
@@ -323,7 +308,7 @@ export const products: Product[] = [
     sizeStock: { XS: 0, S: 1, M: 3, L: 4, XL: 0 },
     sizeNotes: { S: 'Esta unidade não foi fabricada em Portugal.' },
     images: [img('hoodie-skeleton-1'), look('esqueleto-black-hood'), look('hoodie-black-cuff')],
-    description: TAGLINE,
+    description: '',
     details: hoodie('esqueleto'),
   },
   {
@@ -337,7 +322,7 @@ export const products: Product[] = [
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 0, L: 0, XL: 0 },
     images: [img('sweat-mekie-cru-1'), look('sweat-cru-lake'), look('sweat-cru-bucket-tote'), look('cap-brown-sweat-duo')],
-    description: TAGLINE,
+    description: '',
     details: sweatshirt('Logótipo Mekie bordado no peito e na manga'),
   },
   {
@@ -351,7 +336,7 @@ export const products: Product[] = [
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 0, L: 0, XL: 0 },
     images: [img('sweat-planetas-black-1'), look('sweat-planetas-black-scrunchie'), look('sweat-planetas-duo')],
-    description: TAGLINE,
+    description: '',
     details: sweatshirt('Planetas bordados no peito e logótipo Mekie bordado na manga'),
   },
   {
@@ -365,7 +350,7 @@ export const products: Product[] = [
     sizes: SIZES,
     sizeStock: { XS: 0, S: 0, M: 0, L: 0, XL: 0 },
     images: [img('sweat-planetas-cru-1'), look('sweat-planetas-cru'), look('sweat-planetas-duo')],
-    description: TAGLINE,
+    description: '',
     details: sweatshirt('Planetas bordados no peito e logótipo Mekie bordado na manga'),
   },
   {
@@ -384,7 +369,7 @@ export const products: Product[] = [
       look('mushrooms-duo'),
       look('mushrooms-sleeve'),
     ],
-    description: TAGLINE,
+    description: '',
     details: tshirt('cogumelos'),
   },
   {
@@ -405,7 +390,7 @@ export const products: Product[] = [
       look('mushrooms-duo'),
       look('cap-brown-sweat-duo'),
     ],
-    description: TAGLINE,
+    description: '',
     details: tshirt('cogumelos'),
   },
   {
@@ -418,7 +403,7 @@ export const products: Product[] = [
     price: 30,
     stock: 1,
     images: [img('cap-black-1'), look('cap-black-sweat')],
-    description: TAGLINE,
+    description: '',
     details: cap,
   },
   {
@@ -431,7 +416,7 @@ export const products: Product[] = [
     price: 30,
     stock: 1,
     images: [img('cap-navy-1'), look('cap-navy-couple')],
-    description: TAGLINE,
+    description: '',
     details: cap,
   },
   {
@@ -444,7 +429,7 @@ export const products: Product[] = [
     price: 30,
     stock: 1,
     images: [img('cap-olive-1'), look('cap-olive-tee-black')],
-    description: TAGLINE,
+    description: '',
     details: cap,
   },
   {
@@ -457,7 +442,7 @@ export const products: Product[] = [
     price: 30,
     stock: 0,
     images: [img('cap-brown-1'), look('cap-brown-sweat-duo')],
-    description: TAGLINE,
+    description: '',
     details: cap,
   },
   {
@@ -471,7 +456,7 @@ export const products: Product[] = [
     stock: 1,
     images: [img('bucket-white-1'), look('bucket-tee'), look('sweat-cru-bucket-tote')],
     details: bucket,
-    description: 'Bro, o básico nunca falha. Feito em algodão orgânico certificado.',
+    description: '',
   },
   {
     id: 9013,
@@ -484,7 +469,7 @@ export const products: Product[] = [
     stock: 0,
     images: [img('bucket-black-1'), look('bucket-black-duo')],
     details: bucket,
-    description: 'Bro, o básico nunca falha. Feito em algodão orgânico certificado.',
+    description: '',
   },
   {
     id: 3294,
@@ -496,7 +481,7 @@ export const products: Product[] = [
     price: 20,
     stock: 1,
     images: [img('socks-mekie-1'), look('socks-lake'), img('socks-mekie-2')],
-    description: TAGLINE,
+    description: '',
     details: socks,
   },
   {
@@ -510,7 +495,7 @@ export const products: Product[] = [
     price: 20,
     stock: 1,
     images: [img('socks-esqueleto-1'), look('socks-esqueleto-tee-khaki')],
-    description: TAGLINE,
+    description: '',
     details: socks,
   },
   {
@@ -525,7 +510,7 @@ export const products: Product[] = [
     madeToOrderDays: 10,
     images: [img('scrunchie-rosa-1'), look('scrunchie-couple')],
     details: scrunchie,
-    description: TAGLINE,
+    description: '',
   },
   {
     id: 9002,
@@ -539,7 +524,7 @@ export const products: Product[] = [
     madeToOrderDays: 10,
     images: [img('scrunchie-dourado-1'), look('scrunchie-dourado-tote'), look('sweat-planetas-black-scrunchie')],
     details: scrunchie,
-    description: TAGLINE,
+    description: '',
   },
   {
     id: 9008,
@@ -566,7 +551,7 @@ export const products: Product[] = [
     price: 25,
     stock: 1,
     images: [img('tote-planetas-black-1'), look('tote-planetas-lake')],
-    description: TAGLINE,
+    description: '',
     details: toteDetails,
   },
   {
@@ -579,7 +564,7 @@ export const products: Product[] = [
     price: 25,
     stock: 0,
     images: [img('tote-planetas-beige-1'), look('tote-planetas-bege-detail')],
-    description: TAGLINE,
+    description: '',
     details: toteDetails,
   },
   {
@@ -593,7 +578,7 @@ export const products: Product[] = [
     price: 25,
     stock: 1,
     images: [img('tote-cogumelos-beige-1'), look('scrunchie-dourado-tote')],
-    description: TAGLINE,
+    description: '',
     details: toteDetails,
   },
   {
@@ -607,7 +592,7 @@ export const products: Product[] = [
     price: 25,
     stock: 0,
     images: [img('tote-cogumelos-black-1'), look('sweat-cru-bucket-tote')],
-    description: TAGLINE,
+    description: '',
     details: toteDetails,
   },
 ];
