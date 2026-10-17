@@ -39,7 +39,7 @@ export const POST: APIRoute = async ({ request }) => {
     const [sub] = await sql<any[]>`select * from subscribers where email = ${email}`;
     const subscribed = Boolean(sub && !sub.unsubscribed_at);
     const [welcome] = await sql<any[]>`select code from discount_codes where welcome = true and active = true limit 1`;
-    const used = welcome ? Boolean((await sql`select 1 from code_uses where code = ${welcome.code} and email = ${email}`).length) : false;
+    const used = welcome ? Boolean((await sql`select 1 from code_uses u where code = ${welcome.code} and email = ${email} and not exists (select 1 from orders o where o.number = u.order_number and (o.status = 'cancelada' or (o.status = 'pendente' and o.stripe_session <> '')))`).length) : false;
 
     if (action === 'check') return json({ status: subscribed ? 'exists' : 'new', subscribed, used });
     /* o uso do código fica registado quando a encomenda é gravada */

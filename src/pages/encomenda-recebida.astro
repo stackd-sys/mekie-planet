@@ -5,21 +5,43 @@ import { site } from '../data/site';
 <Base title="Encomenda recebida" noindex popup={false}>
   <section class="container ok">
     <p class="eyebrow ok__kicker">Obrigado</p>
-    <h1 class="display ok__title">Recebemos a tua encomenda</h1>
+    <h1 class="display ok__title" data-title>Recebemos a tua encomenda</h1>
     <p class="ok__num" data-ok-num hidden>Número da encomenda: <strong data-n></strong> · Total: <strong data-t></strong></p>
-    <p>Enviámos-te um email com o resumo. Em breve respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão). Assim que o pagamento estiver confirmado, preparamos tudo e avisamos-te quando seguir pelos CTT.</p>
+    <div data-paid hidden>
+      <p>Assim que o pagamento ficar confirmado, recebes um email com o resumo. Depois preparamos tudo e avisamos-te quando a encomenda seguir pelos CTT.</p>
+      <p>Se escolheste Multibanco, usa a referência que te mostrámos. A encomenda fica confirmada quando o pagamento entrar.</p>
+    </div>
+    <div data-unpaid>
+      <p>Enviámos-te um email com o resumo. Em breve respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão). Assim que o pagamento estiver confirmado, preparamos tudo e avisamos-te quando seguir pelos CTT.</p>
+    </div>
     <p>Alguma dúvida? Escreve para <a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a>.</p>
     <a href="/loja/" class="pill">Continuar a ver a loja</a>
   </section>
 </Base>
 
 <script>
+  import { cart } from '../scripts/cart';
+  import { track, consentSettled } from '../scripts/consent';
   const q = new URLSearchParams(location.search);
-  const n = q.get('n'), t = q.get('t');
+  const n = q.get('n'), t = q.get('t') || '';
+  const paid = q.get('pago') === '1';
   if (n) {
     document.querySelector('[data-n]')!.textContent = n;
-    document.querySelector('[data-t]')!.textContent = t || '';
+    document.querySelector('[data-t]')!.textContent = /€/.test(t) ? t : `${Number(t).toFixed(2).replace('.', ',')}€`;
     document.querySelector<HTMLElement>('[data-ok-num]')!.hidden = false;
+  }
+  if (paid) {
+    /* voltou da página de pagamento: o carrinho já não faz falta */
+    cart.clear();
+    try { localStorage.setItem('mekie-code-applied', ''); } catch {}
+    document.querySelector<HTMLElement>('[data-paid]')!.hidden = false;
+    document.querySelector<HTMLElement>('[data-unpaid]')!.hidden = true;
+    document.querySelector('[data-title]')!.textContent = 'Encomenda feita!';
+    const value = Number(t.replace(/[^\d,.]/g, '').replace(',', '.')) || 0;
+    const send = () => track('purchase', [], { transaction_id: n, value, currency: 'EUR' });
+    let sent = false;
+    try { sent = sessionStorage.getItem(`mekie-purchase-${n}`) === '1'; sessionStorage.setItem(`mekie-purchase-${n}`, '1'); } catch {}
+    if (!sent) consentSettled() ? send() : document.addEventListener('mekie:consent', send, { once: true });
   }
 </script>
 

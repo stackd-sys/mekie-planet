@@ -41,7 +41,7 @@ export async function checkCode(rawCode: string, email: string, goods: number): 
   if (c.ends_at && day(c.ends_at) < today) return { ok: false, message: 'Este código já expirou.' };
   if (goods > 0 && goods < Number(c.min_subtotal)) return { ok: false, message: `Este código é para compras a partir de ${euro(c.min_subtotal)}.` };
   if (c.max_uses) {
-    const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from code_uses where code = ${c.code}`;
+    const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from code_uses u where code = ${c.code} and not exists (select 1 from orders o where o.number = u.order_number and (o.status = 'cancelada' or (o.status = 'pendente' and o.stripe_session <> '')))`;
     if (n >= c.max_uses) return { ok: false, message: 'Este código já esgotou.' };
   }
   const mail = email.trim().toLowerCase();
@@ -50,7 +50,7 @@ export async function checkCode(rawCode: string, email: string, goods: number): 
     if (!s) return { ok: false, message: `O código ${c.code} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.` };
   }
   if (c.once_per_email && mail) {
-    const [u] = await sql<any[]>`select 1 from code_uses where code = ${c.code} and email = ${mail}`;
+    const [u] = await sql<any[]>`select 1 from code_uses u where code = ${c.code} and email = ${mail} and not exists (select 1 from orders o where o.number = u.order_number and (o.status = 'cancelada' or (o.status = 'pendente' and o.stripe_session <> '')))`;
     if (u) return { ok: false, message: `O código ${c.code} já foi usado numa encomenda com este email.` };
   }
   return { ok: true, code: c.code, kind: c.kind, value: Number(c.value), welcome: c.welcome };
@@ -258,9 +258,24 @@ async function sendOrderReceived(o: any) {
      <p>Qualquer dúvida, responde a este email.</p>`));
 }
 
-async function notifyShop(o: any) {
+/** Pagamento confirmado (Stripe): email ao cliente e aviso à Mekie */
+export async function sendOrderPaid(o: any) {
+  const first = String(o.name).split(' ')[0];
+  const gifts = (o.lines as OrderLine[]).some((l) => l.digital);
+  await Promise.allSettled([
+    sendMail(o.email, `Pagamento confirmado: encomenda ${o.number}`, layout(`Obrigado, ${escapeHtml(first)}!`,
+      `<p>Recebemos o pagamento da tua encomenda <strong>${o.number}</strong>. ${o.address ? 'Vamos prepará-la e avisamos-te quando seguir pelos CTT.' : ''}${gifts ? ' O cartão presente segue por email para quem o recebe.' : ''}</p>
+       ${linesHtml(o)}
+       ${o.address ? `<p style="color:#5c5c5c">Envio para: ${escapeHtml(o.address.morada)}, ${escapeHtml(o.address.codigo_postal)} ${escapeHtml(o.address.localidade)} (${escapeHtml(o.address.pais)})</p>` : ''}
+       <p>Qualquer dúvida, responde a este email.</p>`)),
+    notifyShop(o, 'paga'),
+  ]);
+}
+
+async function notifyShop(o: any, kind: 'nova' | 'paga' = 'nova') {
   const to = process.env.ORDERS_EMAIL || site.email;
-  await sendMail(to, `Nova encomenda ${o.number}: ${euro(o.total)}`, layout(`Nova encomenda ${o.number}`,
+  const title = kind === 'paga' ? `Encomenda paga ${o.number}` : `Nova encomenda ${o.number}`;
+  await sendMail(to, `${title}: ${euro(o.total)}`, layout(title,
     `<p><strong>${escapeHtml(o.name)}</strong> · ${escapeHtml(o.email)} · ${escapeHtml(o.phone)}</p>${linesHtml(o)}
      ${o.customer_notes ? `<p>Notas: ${escapeHtml(o.customer_notes)}</p>` : ''}
      <p><a href="${site.url}/admin/encomendas/${o.number}/">Abrir no CRM</a></p>`), o.email);

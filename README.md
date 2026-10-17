@@ -77,6 +77,18 @@ Tudo em Vercel > projeto `mekie-planet` > Settings > Environment Variables. Depo
 7. **Meta (opcional).** No [Meta Business](https://business.facebook.com/), Definições > Utilizadores do sistema: cria um utilizador de sistema, dá-lhe acesso à conta de anúncios e gera um token com a permissão `ads_read`. Variáveis: `META_ACCESS_TOKEN` e `META_AD_ACCOUNT_ID` (o número da conta de anúncios).
 8. Opcional: `CTT_TRACK_URL`, se o link de seguimento dos CTT mudar (usa `{code}` no sítio do número).
 
+### Pagamentos (Stripe)
+
+O checkout grava a encomenda no CRM e manda o cliente para a página de pagamento da Stripe (Checkout). Quando a Stripe confirma o pagamento, a encomenda passa a "paga" sozinha: o stock sai, os cartões presente são criados e enviados, e o cliente e a Mekie recebem um email. Multibanco fica "a aguardar pagamento" até a referência ser paga. Se a página de pagamento expirar, a encomenda é cancelada. Uma encomenda paga por inteiro com cartão presente não passa pela Stripe.
+
+1. No painel da Stripe, escolher "Checkout pré-construído".
+2. Definições > Pagamentos > Métodos de pagamento: ligar Cartões, MB WAY, Multibanco, Apple Pay e Google Pay.
+3. Programadores > Chaves da API: copiar a chave secreta para `STRIPE_SECRET_KEY` na Vercel.
+4. Programadores > Webhooks > Adicionar destino: URL `https://<o-site>/api/stripe/webhook/`, eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` e `checkout.session.expired`. Copiar o segredo de assinatura (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
+5. Redeploy na Vercel.
+
+Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 4242 4242`). Para vender a sério, ativar a conta (dados da empresa e IBAN), trocar para as chaves `sk_live_...`, criar o webhook também em modo real e fazer Redeploy. Os reembolsos fazem-se no painel da Stripe.
+
 ### Correr o CRM localmente
 
 Com um Postgres local: `DATABASE_URL=postgres://... ADMIN_EMAILS=eu@x.pt npm run build && node dist/server/entry.mjs`. Sem `RESEND_API_KEY`, o link de entrada aparece no terminal.
@@ -140,7 +152,7 @@ Fechado: preço das totes (25€), textos das opiniões confirmados por cada pes
 
 Próximas fases do site:
 
-1. Pagamento Stripe (MB WAY, Multibanco, cartão): a encomenda passa a "paga" sozinha, com evento `purchase` no Analytics e no Pixel.
+1. Pagamento Stripe: o código está feito; falta configurar a conta e as chaves (ver "Pagamentos (Stripe)").
 2. Domínio mekie-planet.com na Vercel, Google Search Console (enviar o sitemap) e Google Merchant Center.
 3. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
 4. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.

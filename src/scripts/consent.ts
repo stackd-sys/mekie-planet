@@ -134,7 +134,7 @@ export function track(event: 'view_item' | 'add_to_cart' | 'begin_checkout' | 'p
     PIXEL_EVENT[event],
     items.length
       ? { currency: 'EUR', value: v, content_type: 'product', content_ids: items.map((i) => String(i.id)), contents: items.map((i) => ({ id: String(i.id), quantity: i.qty ?? 1 })), num_items: items.reduce((n, i) => n + (i.qty ?? 1), 0) }
-      : {},
+      : 'value' in extra ? { currency: 'EUR', value: extra.value } : {},
   );
 }
 

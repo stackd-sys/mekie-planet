@@ -57,6 +57,8 @@ create table if not exists orders (
   delivered_at timestamptz
 );
 alter table orders add column if not exists utm jsonb;
+alter table orders add column if not exists stripe_session text not null default '';
+alter table orders add column if not exists payment_method text not null default '';
 create index if not exists orders_created on orders (created_at desc);
 create index if not exists orders_email on orders (email);
 

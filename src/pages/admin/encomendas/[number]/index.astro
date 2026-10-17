@@ -64,6 +64,10 @@ const gifts = await sql<any[]>`select * from gift_cards where order_number = ${n
 const returns = await sql<any[]>`select * from returns where order_id = ${o.id} order by created_at desc`;
 const [cust] = await sql<any[]>`select id, (select count(*)::int from orders where customer_id = customers.id) as n from customers where id = ${o.customer_id}`;
 const mail = hasMail();
+const METHODS: Record<string, string> = { card: 'Cartão', mb_way: 'MB WAY', multibanco: 'Multibanco', cartao_presente: 'Cartão presente', link: 'Link' };
+const paidWith = (o.payment_method as string).split(',').filter(Boolean).map((m) => METHODS[m] ?? m).join(', ');
+const stripeTest = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test');
+const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest ? 'test/' : ''}search?query=${encodeURIComponent(o.number)}` : '';
 ---
 <Admin title={`Encomenda ${o.number}`}>
   <p class="no-print"><a href="/admin/encomendas/" class="muted">← Encomendas</a></p>
@@ -117,6 +121,7 @@ const mail = hasMail();
   <div class="grid two" style="margin-top:14px">
     <section class="card">
       <h2 style="margin-top:0">Estado e envio</h2>
+      {(paidWith || stripeLink) && <p style="margin-top:0">Pagamento: <strong>{paidWith || 'por concluir'}</strong>{stripeLink && <> · <a href={stripeLink} target="_blank" rel="noopener">Ver na Stripe</a></>}</p>}
       <form method="post" class="stack">
         <input type="hidden" name="action" value="status" />
         <div class="fields">

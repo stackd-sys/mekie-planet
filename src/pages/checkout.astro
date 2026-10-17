@@ -2,10 +2,13 @@
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
 import { destinations } from '../data/shipping';
+/* com a Stripe ligada (na construção do site), o cliente paga logo na página seguinte */
+const stripe = Boolean(process.env.STRIPE_SECRET_KEY);
 ---
 <Base title="Finalizar compra" noindex popup={false}>
   <div class="container co">
     <h1 class="display co__title">Finalizar compra</h1>
+    <p class="co__code-msg is-error co__cancel" role="alert" data-co-cancel hidden>O pagamento não foi concluído. A encomenda continua no carrinho: podes tentar outra vez.</p>
 
     <div class="co__empty" data-co-empty hidden>
       <p>O teu carrinho está vazio.</p>
@@ -61,8 +64,10 @@ import { destinations } from '../data/shipping';
           <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
         </label>
         <p class="co__code-msg is-error" role="alert" data-co-error hidden></p>
-        <button type="submit" class="pill pill--accent pill--block co__submit">Enviar encomenda</button>
-        <p class="co__note">Ao enviar, recebes um email com o resumo da encomenda. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>
+        <button type="submit" class="pill pill--accent pill--block co__submit" data-label={stripe ? 'Continuar para o pagamento' : 'Enviar encomenda'}>{stripe ? 'Continuar para o pagamento' : 'Enviar encomenda'}</button>
+        {stripe
+          ? <p class="co__note">A seguir pagas numa página segura da Stripe, com MB WAY, Multibanco, cartão, Apple Pay ou Google Pay. A Mekie nunca vê os dados do teu cartão.</p>
+          : <p class="co__note">Ao enviar, recebes um email com o resumo da encomenda. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>}
       </form>
 
       <aside class="co__summary">
@@ -226,6 +231,8 @@ import { destinations } from '../data/shipping';
   };
 
   const coError = document.querySelector<HTMLElement>('[data-co-error]')!;
+  /* voltou da página de pagamento sem pagar */
+  if (new URLSearchParams(location.search).has('cancelado')) document.querySelector<HTMLElement>('[data-co-cancel]')!.hidden = false;
 
   /* Grava a encomenda no CRM. Devolve false quando o CRM não está disponível (segue por email). */
   const sendToCrm = async (f: FormData) => {
@@ -244,10 +251,16 @@ import { destinations } from '../data/shipping';
     }
     if (res.status === 503 || res.status === 404 || res.status === 405) return false;
     const data = await res.json().catch(() => ({}));
+    if (res.ok && data.payUrl) {
+      /* o carrinho só é esvaziado quando o pagamento for concluído */
+      if (submitBtn) submitBtn.textContent = 'A abrir o pagamento...';
+      location.href = data.payUrl;
+      return true;
+    }
     if (res.ok && data.number) {
       cart.clear();
       try { localStorage.setItem('mekie-code-applied', ''); } catch {}
-      location.href = `/encomenda-recebida/?n=${encodeURIComponent(data.number)}&t=${encodeURIComponent(money(data.total))}`;
+      location.href = `/encomenda-recebida/?n=${encodeURIComponent(data.number)}&t=${encodeURIComponent(money(data.total))}${data.paid ? '&pago=1' : ''}`;
       return true;
     }
     if (data.field === 'code') codeError(data.error);
@@ -309,6 +322,7 @@ import { destinations } from '../data/shipping';
 
 <style>
   .co { padding-top: clamp(32px, 5vw, 64px); padding-bottom: clamp(56px, 8vw, 110px); }
+  .co__cancel { margin: -20px 0 24px; }
   .co__title { font-size: clamp(32px, 4vw, 52px); text-transform: uppercase; margin: 0 0 36px; }
   .co__empty { display: grid; gap: 18px; justify-items: start; }
   .co__grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
