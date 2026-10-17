@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "astro",
+  "regions": ["fra1"],
   "trailingSlash": true,
   "redirects": [
     { "source": "/categoria-produto/acessorios/caps-acessorios/", "destination": "/loja/caps/", "statusCode": 301 },
