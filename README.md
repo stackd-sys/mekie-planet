@@ -155,9 +155,15 @@ No código não há nada a mudar: o site já usa `https://mekie-planet.com` nos 
 
 ## Por fazer
 
+Feito (17 de outubro): domínio mekie-planet.com na Vercel (o www reencaminha), base de dados Neon em Frankfurt, `ADMIN_EMAILS`, Resend com o domínio verificado, Stripe em modo de teste com webhook (compra de teste paga por MB WAY e confirmada no CRM).
+
 Pendente da Mekie:
 
-- [ ] Configurar o CRM na Vercel: base de dados Neon e `ADMIN_EMAILS` (obrigatórios); Resend, Deploy Hook, Google Analytics e Meta (ver "Configurar na Vercel").
+- [ ] Stripe em produção: ativar a conta (dados da empresa e IBAN), ligar as formas de pagamento na conta de produção (cartões, MB WAY, Multibanco, Apple Pay, Google Pay), criar o webhook de produção e trocar `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` na Vercel pelos de produção.
+- [ ] Fazer uma compra real com o produto teste (`/teste-pagamento/`, 1€) e reembolsá-la na Stripe. Depois tirar o produto teste (`testItem` em `src/data/giftcard.ts` e `src/pages/teste-pagamento.astro`).
+- [ ] Criar a caixa de email geral@mekie-planet.com (o domínio não tem registos MX, por isso as respostas dos clientes não chegam).
+- [ ] Opcional no CRM: Deploy Hook, Google Analytics e Meta (ver "Configurar na Vercel").
+- [ ] Google Search Console (enviar o sitemap) e Google Merchant Center.
 - [ ] Enviar as fotos das peças vestidas e a foto e o preço do crewneck.
 - [ ] Se já tinham emails na Google Sheet da newsletter, importá-los em CRM > Newsletter e avisos > Importar.
 
@@ -165,7 +171,6 @@ Fechado: preço das totes (25€), textos das opiniões confirmados por cada pes
 
 Próximas fases do site:
 
-1. Pagamento Stripe: o código está feito; falta configurar a conta e as chaves (ver "Pagamentos (Stripe)").
-2. Domínio mekie-planet.com na Vercel, Google Search Console (enviar o sitemap) e Google Merchant Center.
-3. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
-4. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.
+1. CRM em app.mekie-planet.com (à espera de confirmação).
+2. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
+3. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.
