@@ -140,6 +140,19 @@ O site antigo carregava também o Google Tag Manager (`GTM-T8HV3THK`) com estas 
 3. Os redirecionamentos dos URLs antigos do WooCommerce e os cabeçalhos de cache e segurança estão em `vercel.json`.
 4. Depois de mudar o domínio, submeter `https://mekie-planet.com/sitemap-index.xml` no Google Search Console.
 
+### Mudar para o domínio oficial
+
+No código não há nada a mudar: o site já usa `https://mekie-planet.com` nos links canónicos, no sitemap e nos emails (`site.url` em `src/data/site.ts`).
+
+1. **Antes de mexer no DNS**, tirar do WooCommerce o que ainda fizer falta (encomendas antigas, clientes, newsletter). O site antigo deixa de abrir quando o domínio passar para a Vercel.
+2. **Vercel > Settings > Domains**: juntar `mekie-planet.com` e `www.mekie-planet.com` (o `www` a reencaminhar para o principal) e copiar os registos DNS que a Vercel indica para o sítio onde o domínio está registado.
+3. **No DNS, mudar só os registos do site** (`A` / `CNAME`). Não apagar os registos `MX` nem os `TXT` do email, senão o `geral@mekie-planet.com` deixa de receber mensagens.
+4. **Stripe > Desenvolvedores > Webhooks**: editar o destino e trocar o URL para `https://mekie-planet.com/api/stripe/webhook/`. O segredo `whsec_` não muda. A Stripe não segue reencaminhamentos: se o URL ficar o antigo, os pagamentos entram mas as encomendas não passam a "paga". Na conta de produção, criar o webhook já com o domínio oficial.
+5. **Stripe > Configurações > Dados da empresa**: pôr o site oficial.
+6. **Google Search Console**: criar a propriedade do domínio e enviar o sitemap. Os URLs antigos do WooCommerce já reencaminham para os novos (`vercel.json`).
+7. **Google Analytics**: em Administração > Fluxos de dados, atualizar o URL do site. **Meta**: verificar o domínio no Business Manager (Segurança da marca > Domínios).
+8. Atualizar o link na bio do Instagram e noutras redes, se apontar para o endereço da Vercel.
+
 ## Por fazer
 
 Pendente da Mekie:
