@@ -1,9 +1,17 @@
 /* Protege o CRM: tudo em /admin precisa de sessão, menos a página de entrada. */
 import { defineMiddleware } from 'astro:middleware';
+import { site } from './data/site';
+
+/* Com ADMIN_HOST (ex.: app.mekie-planet.com), o CRM vive nesse subdomínio e o /admin do site principal reencaminha para lá.
+   O resto do subdomínio (página inicial, loja) é tratado em vercel.json. */
+const mainHosts = [new URL(site.url).host, `www.${new URL(site.url).host}`];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
   if (context.isPrerendered || !pathname.startsWith('/admin')) return next();
+  const adminHost = process.env.ADMIN_HOST;
+  const reqHost = context.request.headers.get('x-forwarded-host') || context.request.headers.get('host') || '';
+  if (adminHost && mainHosts.includes(reqHost)) return context.redirect(`https://${adminHost}${pathname}${context.url.search}`, 308);
   /* formulários do CRM só aceites a partir do próprio site */
   if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
     const origin = context.request.headers.get('origin');

@@ -281,7 +281,7 @@ async function notifyShop(o: any, kind: 'nova' | 'paga' = 'nova') {
   await sendMail(to, `${title}: ${euro(o.total)}`, layout(title,
     `<p><strong>${escapeHtml(o.name)}</strong> · ${escapeHtml(o.email)} · ${escapeHtml(o.phone)}</p>${linesHtml(o)}
      ${o.customer_notes ? `<p>Notas: ${escapeHtml(o.customer_notes)}</p>` : ''}
-     <p><a href="${site.url}/admin/encomendas/${o.number}/">Abrir no CRM</a></p>`), o.email);
+     <p><a href="${process.env.ADMIN_HOST ? `https://${process.env.ADMIN_HOST}` : site.url}/admin/encomendas/${o.number}/">Abrir no CRM</a></p>`), o.email);
 }
 
 export async function sendShipped(o: any) {

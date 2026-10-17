@@ -171,6 +171,6 @@ Fechado: preço das totes (25€), textos das opiniões confirmados por cada pes
 
 Próximas fases do site:
 
-1. CRM em app.mekie-planet.com (à espera de confirmação).
+1. CRM em app.mekie-planet.com: o código está feito e só liga com a variável `ADMIN_HOST`. Passos: em Vercel > Domains, adicionar `app.mekie-planet.com` (ligado a Production); na Hostinger, criar o CNAME `app` com o valor que a Vercel indicar; quando o domínio ficar verde, juntar `ADMIN_HOST=app.mekie-planet.com` e fazer Redeploy. O `mekie-planet.com/admin/` passa a reencaminhar para lá e o resto do subdomínio volta para a loja (`vercel.json`). É preciso entrar outra vez no CRM, porque a sessão fica presa ao endereço.
 2. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
 3. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.

@@ -4,6 +4,8 @@
   "regions": ["fra1"],
   "trailingSlash": true,
   "redirects": [
+    { "source": "/", "has": [{ "type": "host", "value": "app.mekie-planet.com" }], "destination": "/admin/", "statusCode": 302 },
+    { "source": "/:path((?!admin|_astro|api|images|_vercel).*)", "has": [{ "type": "host", "value": "app.mekie-planet.com" }], "destination": "https://mekie-planet.com/:path", "statusCode": 308 },
     { "source": "/categoria-produto/acessorios/caps-acessorios/", "destination": "/loja/caps/", "statusCode": 301 },
     { "source": "/categoria-produto/acessorios/meias-acessorios/", "destination": "/loja/meias/", "statusCode": 301 },
     { "source": "/categoria-produto/acessorios/bucket-hat-acessorios/", "destination": "/loja/bucket-hat/", "statusCode": 301 },

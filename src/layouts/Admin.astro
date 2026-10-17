@@ -2,6 +2,7 @@
 /* Moldura do CRM: menu lateral e estilos próprios. Nada de estatísticas, publicidade ou pop ups aqui. */
 import '@fontsource-variable/inter';
 import '@fontsource/syne/600.css';
+import { site } from '../data/site';
 interface Props { title: string; wide?: boolean }
 const { title, wide = false } = Astro.props;
 const admin = Astro.locals.admin ?? '';
@@ -37,7 +38,7 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
       </nav>
       <div class="adm__me">
         <p>{admin}</p>
-        <a href="/" target="_blank">Ver o site</a>
+        <a href={`${site.url}/`} target="_blank">Ver o site</a>
         <form method="post" action="/admin/sair/"><button type="submit">Sair</button></form>
       </div>
     </aside>
