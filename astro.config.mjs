@@ -17,7 +17,7 @@ export default defineConfig({
   integrations: [
     sitemap({
       filter: (page) =>
-        !page.includes('/404') && !page.includes('/checkout') && !page.includes('/admin') && !page.includes('/encomenda-recebida') && !page.includes('/teste-pagamento'),
+        !page.includes('/404') && !page.includes('/checkout') && !page.includes('/admin') && !page.includes('/encomenda-recebida') && !page.includes('/teste-pagamento') && !page.includes('/newsletter/'),
     }),
   ],
 });

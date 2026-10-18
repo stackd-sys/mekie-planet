@@ -1,0 +1,26 @@
+---
+/* Sair da newsletter pelo link do email (cada pessoa tem o seu código). */
+export const prerender = false;
+import Base from '../../layouts/Base.astro';
+import { hasDb } from '../../lib/server/sql';
+
+const token = (Astro.url.searchParams.get('t') || '').slice(0, 64);
+let done = false;
+if (token && hasDb()) {
+  const { db } = await import('../../lib/server/db');
+  const sql = await db();
+  done = (await sql`update subscribers set unsubscribed_at = coalesce(unsubscribed_at, now()) where token = ${token} returning email`).length > 0;
+}
+---
+<Base title="Newsletter" noindex popup={false}>
+  <section class="container ns">
+    <h1 class="ns__title">{done ? 'Saíste da newsletter' : 'Link inválido'}</h1>
+    <p>{done ? 'Já não vais receber os nossos emails. Se mudares de ideias, podes subscrever outra vez no fundo de qualquer página.' : 'Este link já não é válido. Se continuares a receber emails nossos, responde a um deles e tratamos disso.'}</p>
+    <a href="/loja/" class="pill">Ver a loja</a>
+  </section>
+</Base>
+<style>
+  .ns { min-height: 60vh; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; max-width: 560px; }
+  .ns__title { margin: 0; }
+  .ns p { margin: 0 0 12px; color: var(--ink-soft); }
+</style>

@@ -92,6 +92,7 @@ create table if not exists subscribers (
   consent text not null default '',
   unsubscribed_at timestamptz
 );
+alter table subscribers add column if not exists token text not null default md5(random()::text || clock_timestamp()::text);
 
 create table if not exists discount_codes (
   code text primary key,

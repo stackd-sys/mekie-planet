@@ -49,6 +49,11 @@ export const POST: APIRoute = async ({ request }) => {
     await sql`
       insert into subscribers (email, source, page, consent) values (${email}, ${cut('source', 40)}, ${cut('page')}, ${cut('consent', 10)})
       on conflict (email) do update set unsubscribed_at = null, consent = excluded.consent`;
+    /* o email de boas-vindas só segue a quem ainda não teve o desconto */
+    if (!sub && !used) {
+      const { sendWelcome } = await import('../../../lib/server/newsletter');
+      await sendWelcome(sql, email).catch((e) => console.error('[Mekie] Email de boas-vindas falhou:', e));
+    }
     return json({ status: 'new', subscribed: true, used });
   } catch (e) {
     console.error('[Mekie] Erro na API da newsletter:', e);
