@@ -11,6 +11,8 @@ import { site } from '../data/site';
       <dl class="ct__list">
         <div><dt class="eyebrow">Email</dt><dd><a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a></dd></div>
         <div><dt class="eyebrow">Instagram</dt><dd><a class="link-underline" href={site.instagram} target="_blank" rel="noopener"><Icon name="instagram" size={16} /> @mekie_planet</a></dd></div>
+        <div><dt class="eyebrow">Morada</dt><dd>{site.company.address}, Portugal</dd></div>
+        <div><dt class="eyebrow">Empresa</dt><dd>{site.company.legalName}, {site.company.kind}, NIF {site.company.nif}</dd></div>
       </dl>
     </div>
 
