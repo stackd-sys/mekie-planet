@@ -7,6 +7,13 @@ import { db } from '../../../lib/server/db';
 import { euro, date, STATUS } from '../../../lib/server/format';
 
 const sql = await db();
+/* encomendas do site que nunca chegaram à página de pagamento (a Stripe falhou) passam a canceladas ao fim de 1 hora */
+if (process.env.STRIPE_SECRET_KEY) {
+  const stale = await sql<any[]>`update orders set status = 'cancelada'
+    where source = 'site' and status = 'pendente' and stripe_session = '' and stock_applied = false and created_at < now() - interval '1 hour'
+    returning id`;
+  for (const o of stale) await sql`insert into order_events (order_id, text, by) values (${o.id}, 'Cancelada: o pagamento nunca chegou a abrir', 'site')`;
+}
 const status = Astro.url.searchParams.get('estado') || '';
 const q = (Astro.url.searchParams.get('q') || '').trim();
 const like = `%${q}%`;

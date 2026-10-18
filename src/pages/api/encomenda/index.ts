@@ -36,7 +36,16 @@ export const POST: APIRoute = async ({ request, url }) => {
       await sendOrderPaid(paid);
       return json({ ...res, paid: true });
     }
-    const session = await createCheckout({ number: o.number, email: o.email, total: Number(o.total), lines: o.lines }, url.origin);
+    let session;
+    try {
+      session = await createCheckout({ number: o.number, email: o.email, total: Number(o.total), lines: o.lines }, url.origin);
+    } catch (e) {
+      /* sem página de pagamento a encomenda nunca vai ser paga: cancela já, para não ficar pendente para sempre */
+      console.error('[Mekie] Stripe não abriu o pagamento:', e);
+      await setStatus(o.number, 'cancelada', 'site');
+      await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`A Stripe não abriu a página de pagamento: ${(e as Error).message.replace(/^Stripe: /, '').slice(0, 200)}`}, 'site')`;
+      return json({ error: 'O pagamento não está disponível neste momento. Tenta outra vez daqui a pouco ou escreve-nos.' }, 502);
+    }
     await sql`update orders set stripe_session = ${session.id} where id = ${o.id}`;
     return json({ ...res, payUrl: session.url });
   } catch (e) {
