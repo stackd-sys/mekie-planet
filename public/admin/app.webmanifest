@@ -1,0 +1,21 @@
+{
+  "id": "/admin/",
+  "name": "CRM Mekie",
+  "short_name": "Mekie",
+  "description": "Encomendas, stock e clientes da Mekie Planet.",
+  "lang": "pt-PT",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#1f1f1f",
+  "theme_color": "#1f1f1f",
+  "icons": [
+    { "src": "/admin/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/admin/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/admin/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Encomendas", "url": "/admin/encomendas/" },
+    { "name": "Stock", "url": "/admin/produtos/" }
+  ]
+}

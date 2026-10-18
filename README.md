@@ -105,6 +105,25 @@ Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 424
 
 Com um Postgres local: `DATABASE_URL=postgres://... ADMIN_EMAILS=eu@x.pt npm run build && node dist/server/entry.mjs`. Sem `RESEND_API_KEY`, o link de entrada aparece no terminal.
 
+## App do CRM e notificações
+
+O CRM instala-se como app, com o logótipo Mekie como ícone:
+
+- **iPhone:** abrir app.mekie-planet.com no Safari, tocar em Partilhar e depois em "Adicionar ao ecrã principal".
+- **Android:** no Chrome, abrir o menu e tocar em "Instalar app".
+- **Computador:** no Chrome ou no Edge, carregar no ícone de instalar, na barra do endereço.
+
+Em **Notificações** (no menu do CRM), cada aparelho liga os seus avisos e escolhe quais quer receber:
+
+- encomenda paga;
+- encomenda por pagar;
+- reembolso;
+- stock a acabar;
+- nova subscrição da newsletter;
+- "Avisa-me quando voltar".
+
+No iPhone, as notificações só funcionam com o CRM instalado como app (iOS 16.4 ou mais recente). As chaves das notificações são criadas sozinhas e ficam na base de dados, por isso não há nada para configurar na Vercel. Os ficheiros da app estão em `public/admin/` e o envio em `src/lib/server/push.ts`.
+
 ## Portes de envio
 
 Os valores estão em `src/data/shipping.ts` e o peso de cada peça em `src/data/products.ts` (`gramsByCategory`, valores padrão para este tipo de roupa). A cada encomenda somam-se 100 g de embalagem. O checkout calcula os portes conforme o país e o peso.

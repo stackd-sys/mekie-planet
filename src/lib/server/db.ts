@@ -176,6 +176,23 @@ create table if not exists admin_tokens (
   created_at timestamptz not null default now()
 );
 
+-- notificações da app do CRM: um registo por aparelho (telemóvel, computador)
+create table if not exists push_subs (
+  endpoint text primary key,
+  keys jsonb not null,
+  email text not null,
+  device text not null default '',
+  prefs jsonb not null default '{}',
+  created_at timestamptz not null default now(),
+  last_ok timestamptz
+);
+
+-- valores internos guardados pelo próprio CRM (ex.: chaves das notificações)
+create table if not exists settings (
+  key text primary key,
+  value jsonb not null
+);
+
 create table if not exists admin_sessions (
   hash text primary key,
   email text not null,

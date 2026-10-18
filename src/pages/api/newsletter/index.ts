@@ -35,6 +35,8 @@ export const POST: APIRoute = async ({ request }) => {
       const [dup] = await sql`select 1 from notify_requests where email = ${email} and product = ${product} and size = ${size} and notified_at is null`;
       if (dup) return json({ status: 'exists' });
       await sql`insert into notify_requests (email, product, size, page, lang) values (${email}, ${product}, ${size}, ${cut('page')}, ${lang})`;
+      const { pushNotify } = await import('../../../lib/server/push');
+      await pushNotify('aviso', 'Avisa-me quando voltar', `${product}${size ? ` (${size})` : ''} · ${email}`, '/admin/newsletter/?ver=avisos');
       return json({ status: 'new' });
     }
 
@@ -51,6 +53,8 @@ export const POST: APIRoute = async ({ request }) => {
     await sql`
       insert into subscribers (email, source, page, consent, lang) values (${email}, ${cut('source', 40)}, ${cut('page')}, ${cut('consent', 10)}, ${lang})
       on conflict (email) do update set unsubscribed_at = null, consent = excluded.consent, lang = excluded.lang`;
+    const { pushNotify } = await import('../../../lib/server/push');
+    await pushNotify('newsletter', 'Nova subscrição', email, '/admin/newsletter/');
     /* o email de boas-vindas só segue a quem ainda não teve o desconto */
     if (!sub && !used) {
       const { sendWelcome } = await import('../../../lib/server/newsletter');

@@ -1,0 +1,150 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { date } from '../../../lib/server/format';
+import { postForm, done, str } from '../../../lib/server/admin';
+import { KINDS } from '../../../lib/server/push';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f && str(f, 'action') === 'remove') {
+  await sql`delete from push_subs where endpoint = ${str(f, 'endpoint', 1000)}`;
+  return done(Astro, 'Aparelho removido. Deixa de receber notificações.');
+}
+const devices = await sql<any[]>`select endpoint, email, device, created_at, last_ok from push_subs order by created_at desc`;
+---
+<Admin title="Notificações">
+  <h1>Notificações</h1>
+  <p class="sub">Avisos no telemóvel ou no computador quando acontece alguma coisa na loja. Cada aparelho escolhe os seus.</p>
+  <Flash />
+
+  <section class="card" data-push>
+    <h2 style="margin-top:0">Este aparelho</h2>
+    <p data-state class="note" style="margin-top:0">A verificar...</p>
+
+    <div data-ios hidden class="note">
+      <p style="margin-top:0"><strong>No iPhone, as notificações só funcionam na app.</strong> Para a instalar:</p>
+      <ol style="margin:0 0 0 18px;padding:0">
+        <li>Abre este endereço no Safari.</li>
+        <li>Toca em <strong>Partilhar</strong> (o quadrado com a seta) e depois em <strong>Adicionar ao ecrã principal</strong>.</li>
+        <li>Abre a app Mekie que aparece no ecrã e volta a esta página para ligar as notificações.</li>
+      </ol>
+    </div>
+
+    <div class="bar" style="margin:14px 0 0">
+      <button type="button" class="btn" data-on hidden>Ligar notificações neste aparelho</button>
+      <button type="button" class="btn ghost" data-test hidden>Enviar notificação de teste</button>
+      <button type="button" class="btn ghost" data-off hidden>Desligar neste aparelho</button>
+    </div>
+
+    <fieldset data-prefs hidden style="border:0;padding:0;margin:18px 0 0">
+      <legend style="font-weight:600;margin-bottom:8px">Avisar-me quando houver</legend>
+      {Object.entries(KINDS).map(([k, v]) => (
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);color:var(--ink)">
+          <input type="checkbox" name={k} style="margin-top:3px" />
+          <span><strong style="font-weight:600">{v.label}</strong><br /><span class="muted">{v.hint}</span></span>
+        </label>
+      ))}
+      <p class="note" data-saved hidden>Guardado.</p>
+    </fieldset>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Aparelhos com notificações</h2>
+    {devices.length === 0 ? <p class="note" style="margin:0">Ainda nenhum.</p> : (
+      <table>
+        <thead><tr><th>Aparelho</th><th>Quem</th><th>Ligado em</th><th>Último aviso</th><th></th></tr></thead>
+        <tbody>
+          {devices.map((d) => (
+            <tr>
+              <td>{d.device || 'Aparelho'}</td>
+              <td class="muted">{d.email}</td>
+              <td>{date(d.created_at)}</td>
+              <td>{d.last_ok ? date(d.last_ok, true) : '—'}</td>
+              <td class="num"><form method="post" class="inline"><input type="hidden" name="action" value="remove" /><input type="hidden" name="endpoint" value={d.endpoint} /><button class="btn ghost small">Remover</button></form></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </section>
+
+  <p class="note" style="margin-top:14px">Para ter o CRM como app: no iPhone, Safari, Partilhar, Adicionar ao ecrã principal. No Android, Chrome, menu, Instalar app. No computador, Chrome ou Edge, o ícone de instalar na barra do endereço.</p>
+</Admin>
+
+<script is:inline>
+  (async () => {
+    const box = document.querySelector('[data-push]');
+    const $ = (s) => box.querySelector(s);
+    const state = $('[data-state]');
+    const show = (sel, on) => ($(sel).hidden = !on);
+    const api = (body) => fetch('/admin/push/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+    const ios = /iPhone|iPad/.test(navigator.userAgent);
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      state.textContent = ios && !standalone ? 'Primeiro instala o CRM como app.' : 'Este browser não suporta notificações.';
+      show('[data-ios]', ios);
+      return;
+    }
+    const reg = await navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin/' });
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    const fillPrefs = (prefs) => {
+      box.querySelectorAll('[data-prefs] input').forEach((i) => (i.checked = Boolean(prefs?.[i.name])));
+    };
+    const render = async () => {
+      const on = Boolean(sub);
+      let data = null;
+      if (on) data = await api({ action: 'get', endpoint: sub.endpoint });
+      const live = on && data?.subscribed;
+      if (on && !live) { await sub.unsubscribe(); sub = null; }
+      state.textContent = Notification.permission === 'denied'
+        ? 'As notificações estão bloqueadas neste aparelho. Ativa-as nas definições do browser ou do telemóvel e volta aqui.'
+        : live ? `Notificações ligadas neste aparelho (${data.device}).` : 'As notificações estão desligadas neste aparelho.';
+      show('[data-on]', !live && Notification.permission !== 'denied');
+      show('[data-test]', live);
+      show('[data-off]', live);
+      show('[data-prefs]', live);
+      if (live) fillPrefs(data.prefs);
+    };
+
+    $('[data-on]').addEventListener('click', async () => {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return render();
+      const { publicKey } = await fetch('/admin/push/').then((r) => r.json());
+      const key = Uint8Array.from(atob(publicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(publicKey.length / 4) * 4, '=')), (c) => c.charCodeAt(0));
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      await api({ action: 'subscribe', subscription: sub.toJSON() });
+      await render();
+      await api({ action: 'test', endpoint: sub.endpoint });
+    });
+    $('[data-test]').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      const r = await api({ action: 'test', endpoint: sub.endpoint });
+      e.target.textContent = r.sent ? 'Enviada ✓' : 'Não saiu. Tenta desligar e ligar outra vez.';
+      setTimeout(() => { e.target.textContent = 'Enviar notificação de teste'; e.target.disabled = false; }, 3000);
+    });
+    $('[data-off]').addEventListener('click', async () => {
+      await api({ action: 'unsubscribe', endpoint: sub.endpoint });
+      await sub.unsubscribe();
+      sub = null;
+      render();
+    });
+    box.querySelector('[data-prefs]').addEventListener('change', async () => {
+      const prefs = Object.fromEntries([...box.querySelectorAll('[data-prefs] input')].map((i) => [i.name, i.checked]));
+      await api({ action: 'prefs', endpoint: sub.endpoint, prefs });
+      show('[data-saved]', true);
+      setTimeout(() => show('[data-saved]', false), 1500);
+    });
+    show('[data-ios]', ios && !standalone);
+    render();
+  })();
+</script>
+
+<style>
+  [data-push] [hidden] { display: none !important; }
+</style>

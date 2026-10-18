@@ -12,6 +12,7 @@ import { money, amount, href, type Lang } from '../../i18n';
 import { serverT, asLang, mailDate } from '../../i18n/server';
 import { lineName, destinationsFor } from '../../i18n/data';
 import { trName, trColor } from '../../i18n/catalog';
+import { pushNotify } from './push';
 
 export type OrderLine = {
   id: number; slug: string; name: string; color: string; size: string; custom: string;
@@ -254,6 +255,7 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
   });
 
   if (opts.emails !== false) await Promise.allSettled([sendOrderReceived(order), notifyShop(order)]);
+  if (source === 'site') await pushNotify('nova', `Encomenda por pagar · ${euro(order.total)}`, `${order.number} · ${order.name}`, `/admin/encomendas/${order.number}/`);
   return { ok: true, number: order.number, total: Number(order.total) };
 }
 
@@ -304,6 +306,7 @@ export async function sendOrderPaid(o: any) {
        ${shipToHtml(o, lang)}
        <p>${t('m.questions')}</p>`, lang)),
     notifyShop(o, 'paga'),
+    pushNotify('paga', `Encomenda paga · ${euro(o.total)}`, `${o.number} · ${o.name} · ${(o.lines as OrderLine[]).map((l) => `${l.qty}× ${l.name}${l.color && !isGiftLine(l) ? ` ${l.color}` : ''}${l.size ? ` ${l.size}` : ''}`).join(', ')}`, `/admin/encomendas/${o.number}/`),
   ]);
 }
 
@@ -421,7 +424,21 @@ export async function setStatus(number: string, status: string, by: string, extr
     if (await sendShipped(o)) await sql`insert into order_events (order_id, text, by) values (${o.id}, 'Email de envio enviado ao cliente', ${by})`;
   }
   if (stockChanged) await rebuildSite('Stock mudou com a encomenda ' + number);
+  if (stockChanged && STOCK_OUT.includes(status)) await notifyLowStock(o.lines);
   return o;
+}
+
+/** Depois de uma venda: avisa no telemóvel das peças que ficaram com 1 unidade ou esgotaram */
+async function notifyLowStock(lines: OrderLine[]) {
+  const sql = await db();
+  const low: string[] = [];
+  for (const l of lines.filter((x) => !x.digital && !x.madeToOrder)) {
+    const [st] = await sql<any[]>`select stock, size_stock from products_state where id = ${l.id}`;
+    if (!st) continue;
+    const left = l.size && st.size_stock ? Number(st.size_stock[l.size] ?? 0) : st.stock;
+    if (left !== null && left !== undefined && left <= 1) low.push(`${l.name} ${l.color}${l.size ? ` ${l.size}` : ''}: ${left === 0 ? 'esgotou' : 'resta 1'}`);
+  }
+  if (low.length) await pushNotify('stock', low.length === 1 ? 'Stock a acabar' : `${low.length} peças a acabar`, low.join(' · '), '/admin/produtos/');
 }
 
 /** Depois de um reembolso: se já foi devolvido tudo, a encomenda muda de estado sozinha.
@@ -430,6 +447,7 @@ export async function setStatus(number: string, status: string, by: string, extr
 export async function afterRefund(number: string, by: string) {
   const sql = await db();
   const [o] = await sql<any[]>`select * from orders where number = ${number}`;
+  if (o) await pushNotify('reembolso', `Reembolso · ${o.number}`, `${o.name} · ${euro(o.refunded)} devolvidos de ${euro(o.total)}`, `/admin/encomendas/${o.number}/`);
   if (!o || Number(o.refunded) < Number(o.total)) return null;
   const next = o.status === 'paga' ? 'cancelada' : ['enviada', 'entregue'].includes(o.status) ? 'devolvida' : '';
   if (next) await setStatus(number, next, by);
