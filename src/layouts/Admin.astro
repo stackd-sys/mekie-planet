@@ -6,21 +6,29 @@ import { site } from '../data/site';
 interface Props { title: string; wide?: boolean }
 const { title, wide = false } = Astro.props;
 const admin = Astro.locals.admin ?? '';
-const nav = [
+type Link = [string, string];
+/* menu: ligações soltas e grupos (o título do grupo não é clicável) */
+const nav: (Link | { group: string; items: Link[] })[] = [
   ['/admin/', 'Painel'],
   ['/admin/encomendas/', 'Encomendas'],
   ['/admin/clientes/', 'Clientes'],
   ['/admin/produtos/', 'Stock e produtos'],
   ['/admin/devolucoes/', 'Trocas e devoluções'],
-  ['/admin/newsletter/', 'Newsletter e avisos'],
   ['/admin/cartoes/', 'Cartões presente'],
-  ['/admin/codigos/', 'Códigos e links'],
-  ['/admin/marketing/', 'Analytics e campanhas'],
+  { group: 'Marketing', items: [
+    ['/admin/marketing/visitas/', 'Visitas'],
+    ['/admin/marketing/google-analytics/', 'Google Analytics'],
+    ['/admin/marketing/meta/', 'Meta'],
+    ['/admin/marketing/google-ads/', 'Google Ads'],
+    ['/admin/codigos/', 'Códigos e links'],
+    ['/admin/newsletter/', 'Newsletter e avisos'],
+  ] },
 ];
+const links = nav.flatMap((x) => (Array.isArray(x) ? [x] : x.items));
 const path = Astro.url.pathname;
 /* atalhos da barra de baixo no telemóvel; o resto fica em "Mais" */
 const tabs = [['/admin/', 'Painel'], ['/admin/encomendas/', 'Encomendas'], ['/admin/clientes/', 'Clientes'], ['/admin/produtos/', 'Stock']];
-const current = nav.filter(([href]) => path === href || (href !== '/admin/' && path.startsWith(href))).sort((a, b) => b[0].length - a[0].length)[0]?.[0];
+const current = links.filter(([href]) => path === href || (href !== '/admin/' && path.startsWith(href))).sort((a, b) => b[0].length - a[0].length)[0]?.[0];
 ---
 <!doctype html>
 <html lang="pt-PT">
@@ -39,7 +47,9 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
         <button type="button" class="adm__toggle" data-menu aria-expanded="false" aria-controls="adm-nav">Menu</button>
       </div>
       <nav id="adm-nav">
-        {nav.map(([href, label]) => <a href={href} class:list={{ 'is-on': current === href }}>{label}</a>)}
+        {nav.map((x) => Array.isArray(x)
+          ? <a href={x[0]} class:list={{ 'is-on': current === x[0] }}>{x[1]}</a>
+          : <><p class="adm__group">{x.group}</p>{x.items.map(([href, label]) => <a href={href} class:list={['adm__sub', { 'is-on': current === href }]}>{label}</a>)}</>)}
       </nav>
       <div class="adm__me">
         <p>{admin}</p>
@@ -96,13 +106,15 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
   h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; margin: 28px 0 12px; }
   .sub { color: var(--soft); margin: 0 0 22px; }
   .adm { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
-  .adm__side { background: var(--ink); color: #eee; padding: 22px 16px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; }
+  .adm__side { background: var(--ink); color: #eee; padding: 22px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; }
   .adm__logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; font-size: 12px; letter-spacing: .1em; }
   .adm__logo img { filter: invert(1); height: 26px; width: auto; }
   .adm__side nav { display: grid; gap: 2px; }
   .adm__side nav a { text-decoration: none; padding: 8px 10px; border-radius: 6px; color: #cfcfcf; }
   .adm__side nav a:hover { background: #2c2c2c; color: #fff; }
   .adm__side nav a.is-on { background: #fff; color: var(--ink); }
+  .adm__group { margin: 14px 0 4px; padding: 0 10px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8a8a8a; }
+  .adm__side nav a.adm__sub { padding-left: 20px; }
   .adm__me { margin-top: auto; font-size: 12px; color: #aaa; display: grid; gap: 6px; }
   .adm__me p { margin: 0; word-break: break-all; }
   .adm__me button { background: none; border: 0; color: #fff; padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
@@ -174,6 +186,8 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
     .adm__side.is-open { position: fixed; inset: 0; overflow-y: auto; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
     .adm__side.is-open nav { display: grid; gap: 2px; margin-top: 18px; }
     .adm__side.is-open nav a { padding: 14px 12px; font-size: 16px; border-radius: 8px; }
+    .adm__side.is-open nav a.adm__sub { padding-left: 24px; }
+    .adm__side.is-open .adm__group { margin-top: 18px; font-size: 12px; }
     .adm__side.is-open .adm__me { display: grid; gap: 10px; margin-top: 24px; font-size: 14px; }
     .menu-open body { overflow: hidden; }
 

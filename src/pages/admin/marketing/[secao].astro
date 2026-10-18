@@ -1,0 +1,215 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import { db } from '../../../lib/server/db';
+import { euro } from '../../../lib/server/format';
+import { hasGa, gaReport, rows, range } from '../../../lib/server/google';
+import { hasMeta, metaCampaigns } from '../../../lib/server/meta';
+
+const SECTIONS: Record<string, [string, string]> = {
+  visitas: ['Visitas', 'Toda a gente que entra no site, com ou sem cookies, e o caminho até à compra.'],
+  'google-analytics': ['Google Analytics', 'Visitas, pessoas e peças vistas, de quem aceitou as estatísticas.'],
+  meta: ['Meta', 'Campanhas no Instagram e no Facebook: gasto, cliques e compras.'],
+  'google-ads': ['Google Ads', 'Campanhas no Google: gasto, impressões e cliques.'],
+};
+const secao = Astro.params.secao ?? '';
+if (!SECTIONS[secao]) return Astro.redirect('/admin/marketing/visitas/');
+const [title, intro] = SECTIONS[secao];
+const days = [7, 30, 90].includes(Number(Astro.url.searchParams.get('dias'))) ? Number(Astro.url.searchParams.get('dias')) : 30;
+const pct = (a: number, b: number) => (b ? `${(a / b * 100).toFixed(1).replace('.', ',')}%` : '—');
+const n = (v: number) => Math.round(v).toLocaleString('pt-PT');
+
+/* ---- Google Analytics ---- */
+let ga: any = null, gaError = '';
+if (hasGa()) {
+  try {
+    const dateRanges = range(days);
+    const [totals, funnel, sources, items, devices, ads] = await Promise.all([
+      gaReport({ dateRanges, metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'engagementRate' }] }),
+      gaReport({ dateRanges, dimensions: [{ name: 'eventName' }], metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+        dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: ['page_view', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase', 'sign_up'] } } } }),
+      gaReport({ dateRanges, dimensions: [{ name: 'sessionSourceMedium' }], metrics: [{ name: 'sessions' }, { name: 'engagementRate' }], limit: 10, orderBys: [{ metric: { metricName: 'sessions' }, desc: true }] }),
+      gaReport({ dateRanges, dimensions: [{ name: 'itemName' }], metrics: [{ name: 'itemsViewed' }, { name: 'itemsAddedToCart' }], limit: 12, orderBys: [{ metric: { metricName: 'itemsViewed' }, desc: true }] }).catch(() => null),
+      gaReport({ dateRanges, dimensions: [{ name: 'deviceCategory' }], metrics: [{ name: 'sessions' }] }),
+      gaReport({ dateRanges, dimensions: [{ name: 'sessionGoogleAdsCampaignName' }], metrics: [{ name: 'advertiserAdCost' }, { name: 'advertiserAdClicks' }, { name: 'advertiserAdImpressions' }],
+        orderBys: [{ metric: { metricName: 'advertiserAdCost' }, desc: true }] }).catch((e: Error) => ({ error: e.message })),
+    ]);
+    const ev = Object.fromEntries(rows(funnel).map((r) => [r.eventName, r]));
+    ga = {
+      t: rows(totals)[0] ?? {}, ev, sources: rows(sources), items: items ? rows(items) : [], devices: rows(devices),
+      ads: 'error' in ads ? { error: ads.error } : rows(ads).filter((r) => r.sessionGoogleAdsCampaignName && r.sessionGoogleAdsCampaignName !== '(not set)'),
+    };
+  } catch (e) { gaError = (e as Error).message; }
+}
+
+/* ---- Meta ---- */
+let meta: any[] | null = null, metaError = '';
+if (hasMeta()) {
+  try { meta = await metaCampaigns(days); } catch (e) { metaError = (e as Error).message; }
+}
+
+/* ---- Vendas reais no CRM ---- */
+const sql = await db();
+const [sales] = await sql<any[]>`
+  select count(*)::int as orders, coalesce(sum(total), 0) as revenue from orders
+  where status in ('paga','enviada','entregue') and created_at > now() - ${days + ' days'}::interval`;
+/* ---- Contagem anónima própria (toda a gente, com ou sem consentimento) ---- */
+const st = await sql<any[]>`select metric, dim, consent, sum(n)::int as n from stats
+  where day > (now() at time zone 'Europe/Lisbon')::date - ${days}::int group by 1, 2, 3`;
+const sumBy = (metric: string, f: (r: any) => boolean = () => true) => st.filter((r) => r.metric === metric && f(r)).reduce((a, r) => a + r.n, 0);
+const topOf = (metric: string, k = 10) => Object.entries(st.filter((r) => r.metric === metric).reduce((a: Record<string, number>, r) => ((a[r.dim] = (a[r.dim] ?? 0) + r.n), a), {}))
+  .sort((a, b) => b[1] - a[1]).slice(0, k) as [string, number][];
+const own = {
+  entries: sumBy('entrada'), pages: sumBy('pagina'),
+  consent: { sim: sumBy('entrada', (r) => r.consent === 'sim'), nao: sumBy('entrada', (r) => r.consent === 'nao'), sem: sumBy('entrada', (r) => r.consent === 'sem') },
+  ev: (e: string) => sumBy('evento', (r) => r.dim === e),
+  sources: topOf('entrada'), pagesTop: topOf('pagina', 12), devices: topOf('aparelho', 3),
+};
+const funnelSteps = ga ? [
+  ['Viram uma peça', ga.ev.view_item?.totalUsers ?? 0],
+  ['Puseram no carrinho', ga.ev.add_to_cart?.totalUsers ?? 0],
+  ['Foram ao checkout', ga.ev.begin_checkout?.totalUsers ?? 0],
+  ['Encomendas pagas (CRM)', sales.orders],
+] as [string, number][] : [];
+const metaTotal = meta ? meta.reduce((a, c) => ({ spend: a.spend + c.spend, clicks: a.clicks + c.clicks, value: a.value + c.value, purchases: a.purchases + c.purchases }), { spend: 0, clicks: 0, value: 0, purchases: 0 }) : null;
+const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any) => a + r.advertiserAdCost, 0) : 0;
+---
+<Admin title={title}>
+  <div class="bar" style="justify-content:space-between">
+    <div><h1>{title}</h1><p class="sub">{intro}</p></div>
+    <nav class="tabs">{[7, 30, 90].map((d) => <a href={`?dias=${d}`} class:list={{ 'is-on': d === days }}>{d} dias</a>)}</nav>
+  </div>
+
+  {secao === 'visitas' && (<>
+  <h2>Contagem anónima</h2>
+  <p class="note" style="margin-top:-6px">Conta toda a gente, incluindo quem recusou ou não respondeu aos cookies. Não usa cookies nem guarda dados pessoais: só totais por dia. Por isso não distingue pessoas, só visitas.</p>
+  {own.pages === 0 ? <div class="card empty">Ainda sem dados. Os números aparecem à medida que o site recebe visitas.</div> : (
+    <>
+      <div class="grid kpis">
+        <div class="card kpi"><p>Entradas no site</p><strong>{n(own.entries)}</strong><small>{n(own.pages)} páginas vistas</small></div>
+        <div class="card kpi"><p>Aceitaram estatísticas</p><strong>{pct(own.consent.sim, own.entries)}</strong><small>{n(own.consent.sim)} entradas · o que o Analytics vê</small></div>
+        <div class="card kpi"><p>Recusaram</p><strong>{pct(own.consent.nao, own.entries)}</strong><small>{n(own.consent.nao)} entradas</small></div>
+        <div class="card kpi"><p>Sem resposta</p><strong>{pct(own.consent.sem, own.entries)}</strong><small>{n(own.consent.sem)} entradas</small></div>
+        <div class="card kpi"><p>Conversão</p><strong>{pct(sales.orders, own.entries)}</strong><small>encomendas pagas por entrada</small></div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <section class="card">
+          <h2 style="margin-top:0">Caminho até à compra</h2>
+          <table><tbody>
+            {([['Viram uma peça', own.ev('view_item')], ['Puseram no carrinho', own.ev('add_to_cart')], ['Foram ao checkout', own.ev('begin_checkout')], ['Compras concluídas', own.ev('purchase')], ['Subscreveram a newsletter', own.ev('sign_up')]] as [string, number][]).map(([l, v]) => (
+              <tr><td>{l}</td><td class="num">{n(v)}</td></tr>
+            ))}
+          </tbody></table>
+        </section>
+        <section class="card">
+          <h2 style="margin-top:0">De onde vêm</h2>
+          <table><tbody>{own.sources.map(([k, v]) => <tr><td>{k}</td><td class="num">{n(v)}</td><td class="num muted">{pct(v, own.entries)}</td></tr>)}</tbody></table>
+          <p class="note">Aparelho: {own.devices.map(([k, v]) => `${k} ${pct(v, own.entries)}`).join(' · ')}</p>
+        </section>
+      </div>
+      <section class="card" style="margin-top:14px">
+        <h2 style="margin-top:0">Páginas mais vistas</h2>
+        <table><tbody>{own.pagesTop.map(([k, v]) => <tr><td><a href={k} target="_blank">{k}</a></td><td class="num">{n(v)}</td></tr>)}</tbody></table>
+      </section>
+    </>
+  )}
+
+  </>)}
+
+  {secao === 'google-analytics' && (<>
+  <h2>Resumo</h2>
+  {!hasGa() ? (
+    <div class="card setup">
+      <p style="margin-top:0"><strong>Por ligar.</strong> Para ver as visitas aqui:</p>
+      <ol>
+        <li>Na Google Cloud, cria uma conta de serviço e uma chave JSON (o README tem os passos).</li>
+        <li>No Google Analytics, em Administração &gt; Gestão de acessos à propriedade, junta o email da conta de serviço como Leitor.</li>
+        <li>Na Vercel, junta <code>GA4_PROPERTY_ID</code> e <code>GOOGLE_SERVICE_ACCOUNT</code> e faz Redeploy.</li>
+      </ol>
+    </div>
+  ) : gaError ? <p class="msg err">Google Analytics: {gaError}</p> : (
+    <>
+      <div class="grid kpis">
+        <div class="card kpi"><p>Visitas</p><strong>{n(ga.t.sessions ?? 0)}</strong></div>
+        <div class="card kpi"><p>Pessoas</p><strong>{n(ga.t.totalUsers ?? 0)}</strong><small>{n(ga.t.newUsers ?? 0)} novas</small></div>
+        <div class="card kpi"><p>Envolvimento</p><strong>{pct(ga.t.engagementRate ?? 0, 1)}</strong><small>visitas com interesse real</small></div>
+        <div class="card kpi"><p>Conversão</p><strong>{pct(sales.orders, ga.t.sessions ?? 0)}</strong><small>encomendas pagas por visita</small></div>
+        <div class="card kpi"><p>Newsletter</p><strong>{n(ga.ev.sign_up?.eventCount ?? 0)}</strong><small>subscrições</small></div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <section class="card">
+          <h2 style="margin-top:0">Caminho até à compra</h2>
+          {funnelSteps.map(([label, v], i) => (
+            <div style="margin:0 0 10px">
+              <div class="bar" style="justify-content:space-between;margin:0 0 4px"><span>{label}</span><strong>{n(v)}{i > 0 && <span class="muted" style="font-weight:400"> · {pct(v, funnelSteps[i - 1][1])}</span>}</strong></div>
+              <div style={`height:8px;border-radius:4px;background:#1f1f1f;width:${funnelSteps[0][1] ? Math.max(2, v / funnelSteps[0][1] * 100) : 2}%`}></div>
+            </div>
+          ))}
+          <p class="note">Contas de quem aceitou as estatísticas no aviso de cookies.</p>
+        </section>
+        <section class="card">
+          <h2 style="margin-top:0">De onde vêm</h2>
+          <table><tbody>{ga.sources.map((s: any) => <tr><td>{s.sessionSourceMedium}</td><td class="num">{n(s.sessions)}</td><td class="num muted">{pct(s.engagementRate, 1)}</td></tr>)}</tbody></table>
+          <p class="note">{ga.devices.map((d: any) => `${d.deviceCategory === 'mobile' ? 'Telemóvel' : d.deviceCategory === 'desktop' ? 'Computador' : 'Tablet'}: ${pct(d.sessions, ga.t.sessions)}`).join(' · ')}</p>
+        </section>
+      </div>
+      {ga.items.length > 0 && (
+        <section class="card" style="margin-top:14px">
+          <h2 style="margin-top:0">Peças mais vistas</h2>
+          <table><thead><tr><th>Peça</th><th class="num">Vistas</th><th class="num">Ao carrinho</th><th class="num">Taxa</th></tr></thead>
+            <tbody>{ga.items.map((r: any) => <tr><td>{r.itemName}</td><td class="num">{n(r.itemsViewed)}</td><td class="num">{n(r.itemsAddedToCart)}</td><td class="num">{pct(r.itemsAddedToCart, r.itemsViewed)}</td></tr>)}</tbody>
+          </table>
+        </section>
+      )}
+    </>
+  )}
+
+  </>)}
+
+  {secao === 'meta' && (<>
+  <h2>Campanhas</h2>
+  {!hasMeta() ? (
+    <div class="card setup">
+      <p style="margin-top:0"><strong>Por ligar.</strong> No Meta Business, cria um utilizador de sistema com acesso à conta de anúncios e um token com a permissão <code>ads_read</code>. Na Vercel, junta <code>META_ACCESS_TOKEN</code> e <code>META_AD_ACCOUNT_ID</code> e faz Redeploy. Os passos estão no README.</p>
+    </div>
+  ) : metaError ? <p class="msg err">Meta: {metaError}</p> : (
+    <>
+      <div class="grid kpis">
+        <div class="card kpi"><p>Gasto</p><strong>{euro(metaTotal!.spend)}</strong></div>
+        <div class="card kpi"><p>Cliques</p><strong>{n(metaTotal!.clicks)}</strong><small>{metaTotal!.clicks ? `${euro(metaTotal!.spend / metaTotal!.clicks)} por clique` : ''}</small></div>
+        <div class="card kpi"><p>Compras (Pixel)</p><strong>{n(metaTotal!.purchases)}</strong></div>
+        <div class="card kpi"><p>Retorno</p><strong>{metaTotal!.spend ? `${(metaTotal!.value / metaTotal!.spend).toFixed(1).replace('.', ',')}×` : '—'}</strong><small>vendas por cada euro gasto</small></div>
+      </div>
+      <div class="table" style="margin-top:14px">
+        {meta!.length ? (
+          <table>
+            <thead><tr><th>Campanha</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">Carrinhos</th><th class="num">Compras</th><th class="num">Retorno</th></tr></thead>
+            <tbody>{meta!.map((c) => <tr><td>{c.name}</td><td class="num">{euro(c.spend)}</td><td class="num">{n(c.reach)}</td><td class="num">{n(c.clicks)}</td><td class="num">{c.ctr.toFixed(2).replace('.', ',')}%</td><td class="num">{n(c.carts)}</td><td class="num">{n(c.purchases)}</td><td class="num">{c.spend ? `${c.roas.toFixed(1).replace('.', ',')}×` : '—'}</td></tr>)}</tbody>
+          </table>
+        ) : <p class="empty">Sem campanhas com gasto neste período.</p>}
+      </div>
+    </>
+  )}
+
+  </>)}
+
+  {secao === 'google-ads' && (<>
+  <h2>Campanhas</h2>
+  {!hasGa() ? (
+    <div class="card setup"><p style="margin:0">Aparecem aqui depois de ligar o Google Analytics (página Google Analytics) e de ligar o Google Ads ao Google Analytics: no Analytics, Administração &gt; Ligações de produtos &gt; Ligações do Google Ads.</p></div>
+  ) : gaError ? null : 'error' in (ga.ads ?? {}) ? <p class="msg err">Google Ads: {ga.ads.error}</p> : ga.ads.length ? (
+    <>
+      <div class="grid kpis"><div class="card kpi"><p>Gasto</p><strong>{euro(adsTotal)}</strong></div></div>
+      <div class="table" style="margin-top:14px">
+        <table>
+          <thead><tr><th>Campanha</th><th class="num">Gasto</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Custo por clique</th></tr></thead>
+          <tbody>{ga.ads.map((r: any) => <tr><td>{r.sessionGoogleAdsCampaignName}</td><td class="num">{euro(r.advertiserAdCost)}</td><td class="num">{n(r.advertiserAdImpressions)}</td><td class="num">{n(r.advertiserAdClicks)}</td><td class="num">{r.advertiserAdClicks ? euro(r.advertiserAdCost / r.advertiserAdClicks) : '—'}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </>
+  ) : <p class="card empty">Sem campanhas Google neste período. Se já têm campanhas, confirmem que o Google Ads está ligado ao Google Analytics.</p>}
+
+  </>)}
+
+  <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.</p>
+</Admin>
