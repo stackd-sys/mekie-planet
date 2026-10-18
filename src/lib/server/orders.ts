@@ -4,7 +4,7 @@ import { db } from './db';
 import { sendMail, layout, escapeHtml } from './mail';
 import { euro, trackingUrl } from './format';
 import { products, weightOf } from '../../data/products';
-import { giftCatalog, giftCard, customGiftValue } from '../../data/giftcard';
+import { giftCatalog, giftCard, customGiftValue, giftTitleFromPt } from '../../data/giftcard';
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';
 import { rebuildSite } from './deploy';
@@ -107,9 +107,10 @@ export async function sendGiftCard(code: string) {
   if (!g) return false;
   const to = g.recipient_email || (await sql<any[]>`select email from orders where number = ${g.order_number}`)[0]?.email;
   if (!to) return false;
-  const name = giftCard.names[Number(g.value)] ?? giftCard.name;
   /* na língua em que o cartão foi comprado */
   const lang = asLang(g.order_number ? (await sql<any[]>`select lang from orders where number = ${g.order_number}`)[0]?.lang : 'pt');
+  /* valores fixos têm nome próprio; os outros são o cartão à medida */
+  const name = giftCard.names[Number(g.value)] ? giftTitleFromPt(giftCard.names[Number(g.value)], lang) : giftTitleFromPt(giftCard.custom.title, lang);
   const t = serverT(lang);
   const shopLink = `<a href="${site.url}${href(lang, '/loja/')}">${site.url.replace('https://', '')}</a>`;
   const ok = await sendMail(to, g.buyer ? t('m.giftSubjectFrom', { buyer: g.buyer }) : t('m.giftSubject'), layout(
@@ -269,7 +270,7 @@ const linesHtml = (o: any, lang: Lang = 'pt') => {
   const t = serverT(lang);
   const eur = (v: unknown) => money(Number(v ?? 0), lang);
   return `<table style="width:100%;border-collapse:collapse;font-size:14px">${(o.lines as OrderLine[]).map((l) => `
-  <tr><td style="padding:6px 0;border-bottom:1px solid #e2e2df">${l.qty}× ${escapeHtml(isGiftLine(l) ? `${lineName(l.name, '', lang)}, ${amount(l.price, lang)} · ${l.color.split(' · ')[1] ?? ''}` : lineName(l.name, l.color, lang))}${l.size ? `, ${escapeHtml(l.size)}` : ''}${l.custom ? `<br><span style="color:#5c5c5c">${escapeHtml(l.custom)}</span>` : ''}</td>
+  <tr><td style="padding:6px 0;border-bottom:1px solid #e2e2df">${l.qty}× ${escapeHtml(isGiftLine(l) ? `${lineName(l.name, '', lang)}, ${amount(l.price, lang)} · ${giftTitleFromPt(l.color.split(' · ')[1] ?? '', lang)}` : lineName(l.name, l.color, lang))}${l.size ? `, ${escapeHtml(l.size)}` : ''}${l.custom ? `<br><span style="color:#5c5c5c">${escapeHtml(l.custom)}</span>` : ''}</td>
   <td style="padding:6px 0;border-bottom:1px solid #e2e2df;text-align:right">${eur(l.qty * l.price)}</td></tr>`).join('')}
   ${Number(o.discount) ? `<tr><td style="padding:6px 0">${t('m.discount', { code: escapeHtml(o.discount_code) })}</td><td style="text-align:right">-${eur(o.discount)}</td></tr>` : ''}
   <tr><td style="padding:6px 0">${t('m.shipping')}</td><td style="text-align:right">${Number(o.shipping) ? eur(o.shipping) : t('m.free')}</td></tr>

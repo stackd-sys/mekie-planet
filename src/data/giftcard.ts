@@ -12,6 +12,22 @@ export const giftCard = {
   names: { 25: 'Não sejas fuinha', 50: 'Tá-se bem', 75: 'Mekie bro', 100: 'Estás um mãos largas' } as Record<number, string>,
   /** cartão com o valor escolhido pelo cliente (euros inteiros, entre o mínimo e o máximo) */
   custom: { id: 9105, title: 'À tua medida', min: 25, max: 500 },
+  /** nomes impressos nos cartões em inglês e espanhol (as imagens têm o sufixo -en / -es) */
+  i18n: {
+    en: { 25: "Don't be stingy", 50: 'All good', 75: 'Mekie bro', 100: 'Big spender', custom: 'Your call' },
+    es: { 25: 'No seas rácano', 50: 'Todo bien', 75: 'Mekie bro', 100: 'Estás hecho un manirroto', custom: 'A tu medida' },
+  } as Record<'en' | 'es', Record<number | 'custom', string>>,
+};
+
+type CardLang = 'pt' | 'en' | 'es';
+/** Nome do cartão (o impresso na imagem) na língua: giftTitle(50, 'en') → "All good" */
+export const giftTitle = (value: number | 'custom', lang: CardLang = 'pt') =>
+  lang === 'pt' ? (value === 'custom' ? giftCard.custom.title : giftCard.names[value]) : giftCard.i18n[lang][value];
+/** Nome em português → nome na língua (para os textos guardados nas encomendas) */
+export const giftTitleFromPt = (pt: string, lang: CardLang) => {
+  if (lang === 'pt') return pt;
+  const key = pt === giftCard.custom.title ? 'custom' : Number(Object.entries(giftCard.names).find(([, n]) => n === pt)?.[0]);
+  return key === 'custom' || key ? giftTitle(key as number | 'custom', lang) : pt;
 };
 
 const slugify = (t: string) => t.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -23,7 +39,8 @@ export const giftValidity = (() => {
   return m === 12 ? '1 ano' : `${m / 12} anos`;
 })();
 
-export const giftImage = (value: number) => `/images/products/cartao-presente-${value}-${slugify(giftCard.names[value])}.webp`;
+export const giftImage = (value: number | 'custom', lang: CardLang = 'pt') =>
+  `/images/products/cartao-presente-${value === 'custom' ? '' : `${value}-`}${slugify(giftTitle(value, lang))}${lang === 'pt' ? '' : `-${lang}`}.webp`;
 
 /** Entradas do catálogo do carrinho, uma por valor (o id fixa o preço). */
 export const giftCatalog = giftCard.values.map((value, i) => ({
@@ -49,7 +66,7 @@ export const giftCatalog = giftCard.values.map((value, i) => ({
   value: giftCard.custom.min,
   title: giftCard.custom.title,
   price: giftCard.custom.min,
-  image: '/images/products/cartao-presente-a-tua-medida.webp',
+  image: giftImage('custom'),
   grams: 0,
   digital: true,
   variable: true,

@@ -22,7 +22,7 @@ const productLd = {
   '@type': 'Product',
   name: `${name} ${site.name}`,
   url,
-  image: giftCard.values.map((v) => new URL(giftImage(v), site.url).href),
+  image: giftCard.values.map((v) => new URL(giftImage(v, lang), site.url).href),
   description: t('gc.ldDesc', { min: amount(giftCard.custom.min, lang), max: amount(giftCard.custom.max, lang), validity: giftValidity }),
   brand: { '@type': 'Brand', name: site.name },
   offers: {
@@ -35,7 +35,7 @@ const productLd = {
   },
 };
 ---
-<Base title={name} description={t('gc.desc', { values: giftValues(lang), validity: giftValidity })} image={giftImage(first.price)} ogType="product">
+<Base title={name} description={t('gc.desc', { values: giftValues(lang), validity: giftValidity })} image={giftImage(first.price, lang)} ogType="product">
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd)} />
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: t('home'), path: href(lang, '/') }, { name, path }]))} />
 
@@ -126,8 +126,6 @@ const productLd = {
     customBox.hidden = !item.variable;
     amountEl.hidden = !item.variable;
     amountEl.textContent = lang === 'en' ? `€${item.price}` : `${item.price}€`;
-    /* 100€ ou mais: letra um pouco mais pequena, para não chegar ao texto do cartão */
-    amountEl.style.fontSize = item.price >= 100 ? '12.5cqw' : '';
     price.textContent = money(item.price);
     document.querySelectorAll<HTMLElement>('[data-gc-img]').forEach((img) => (img.hidden = img.dataset.gcImg !== String(item.id)));
   };
@@ -192,8 +190,8 @@ const productLd = {
   .gc__media { position: relative; container-type: inline-size; }
   /* o valor fica no canto do cartão, como nos cartões impressos (imagem 1200 × 1200, cartão de 100 a 1100) */
   .gc__amount {
-    position: absolute; right: 14.5%; top: 59.5%;
-    font-family: 'Syne', var(--font-display); font-weight: 700; font-size: 15.5cqw; line-height: 1;
+    position: absolute; right: 14.5%; top: 57.4%;
+    font-family: 'Syne', var(--font-display); font-weight: 700; font-size: 15.9cqw; line-height: 1;
     letter-spacing: -.01em; color: #1f1f1f; white-space: nowrap; pointer-events: none;
   }
   .gc__amount[hidden] { display: none; }
