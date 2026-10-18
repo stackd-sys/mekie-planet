@@ -163,8 +163,6 @@ Pendente da Mekie:
 - [ ] Opcional: ligar o Google Analytics e a Meta ao CRM (ver "Configurar na Vercel"), para ver as campanhas no CRM.
 - [ ] Opcional: juntar mekie-planet.pt na Vercel a reencaminhar para mekie-planet.com.
 - [ ] Google Merchant Center (produtos no separador Shopping do Google).
-- [ ] Enviar as fotos das peças vestidas e a foto e o preço do crewneck.
-- [ ] Se já tinham emails na Google Sheet da newsletter, importá-los em CRM > Newsletter e avisos > Importar.
 
 Próximas fases do site:
 

@@ -4,6 +4,9 @@
   "regions": ["fra1"],
   "trailingSlash": true,
   "redirects": [
+    { "source": "/produto/sweatshirt-mekie-cru/", "destination": "/produto/crewneck-mekie-cru/", "statusCode": 301 },
+    { "source": "/produto/sweatshirt-planetas-preta/", "destination": "/produto/crewneck-planetas-preta/", "statusCode": 301 },
+    { "source": "/produto/sweatshirt-planetas-cru/", "destination": "/produto/crewneck-planetas-cru/", "statusCode": 301 },
     { "source": "/teste-pagamento/", "destination": "/", "statusCode": 301 },
     { "source": "/", "has": [{ "type": "host", "value": "app.mekie-planet.com" }], "destination": "/admin/", "statusCode": 302 },
     { "source": "/:path((?!admin|_astro|api|images|_vercel).*)", "has": [{ "type": "host", "value": "app.mekie-planet.com" }], "destination": "https://mekie-planet.com/:path", "statusCode": 308 },

@@ -53,8 +53,8 @@ export type Product = {
 export const categories: Category[] = [
   {
     slug: 'hoodies-crewnecks', name: 'Hoodies & Crewnecks', image: '/images/lookbook/mushrooms-hoodie-yellow.webp',
-    seoTitle: 'Hoodies e sweatshirts bordadas',
-    intro: 'Hoodies e sweatshirts unissexo com os bordados Mekie: cogumelos, esqueleto, planetas e o logótipo. Do XS ao XL.',
+    seoTitle: 'Hoodies e crewnecks bordadas',
+    intro: 'Hoodies e crewnecks unissexo com os bordados Mekie: cogumelos, esqueleto, planetas e o logótipo. Do XS ao XL.',
   },
   {
     slug: 't-shirts', name: 'T-Shirts', image: '/images/lookbook/mushrooms-black.webp',
@@ -173,7 +173,7 @@ const sweatshirt = (embroidery: string): ProductDetails => ({
 
 export const sweatshirtDetails: ProductDetails = {
   features: [
-    'Sweatshirt unissexo de gola redonda clássica',
+    'Crewneck unissexo de gola redonda clássica',
     'Gola, punhos e bainha em canelado com costura dupla',
   ],
   composition: ['100% algodão', '288 g/m²'],
@@ -318,8 +318,8 @@ export const products: Product[] = [
   },
   {
     id: 9010,
-    slug: 'sweatshirt-mekie-cru',
-    name: 'Sweatshirt Mekie',
+    slug: 'crewneck-mekie-cru',
+    name: 'Crewneck Mekie',
     category: 'hoodies-crewnecks',
     color: 'Cru',
     regularPrice: 65,
@@ -332,8 +332,8 @@ export const products: Product[] = [
   },
   {
     id: 9011,
-    slug: 'sweatshirt-planetas-preta',
-    name: 'Sweatshirt Planetas',
+    slug: 'crewneck-planetas-preta',
+    name: 'Crewneck Planetas',
     category: 'hoodies-crewnecks',
     color: 'Preto',
     regularPrice: 65,
@@ -346,8 +346,8 @@ export const products: Product[] = [
   },
   {
     id: 9012,
-    slug: 'sweatshirt-planetas-cru',
-    name: 'Sweatshirt Planetas',
+    slug: 'crewneck-planetas-cru',
+    name: 'Crewneck Planetas',
     category: 'hoodies-crewnecks',
     color: 'Cru',
     regularPrice: 65,
