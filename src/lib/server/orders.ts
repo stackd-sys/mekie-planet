@@ -4,7 +4,7 @@ import { db } from './db';
 import { sendMail, layout, escapeHtml } from './mail';
 import { euro, trackingUrl } from './format';
 import { products, weightOf } from '../../data/products';
-import { giftCatalog, giftCard, testItem } from '../../data/giftcard';
+import { giftCatalog, giftCard } from '../../data/giftcard';
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';
 import { rebuildSite } from './deploy';
@@ -118,7 +118,7 @@ export async function sendGiftCard(code: string) {
 
 type RawLine = { id?: unknown; qty?: unknown; size?: unknown; custom?: unknown };
 
-/** linha de cartão presente (o produto teste também é digital, mas não gera cartão) */
+/** linha de cartão presente */
 const isGiftLine = (l: OrderLine) => giftCatalog.some((g) => g.id === l.id);
 
 export async function priceOrder(raw: RawLine[], country: string, codeRaw: string, giftRaw: string, email: string) {
@@ -130,7 +130,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
   for (const r of (Array.isArray(raw) ? raw : []).slice(0, 40)) {
     const id = Number(r.id), qty = Math.max(1, Math.min(20, Math.floor(Number(r.qty) || 1)));
     const size = clean(r.size, 10), custom = clean(r.custom, 400);
-    const gift = giftCatalog.find((g) => g.id === id) ?? (id === testItem.id ? testItem : undefined);
+    const gift = giftCatalog.find((g) => g.id === id);
     if (gift) {
       lines.push({ id, slug: gift.slug, name: gift.name, color: gift.color, size: '', custom, qty, price: gift.price, grams: 0, digital: true, madeToOrder: false });
       continue;
@@ -276,7 +276,7 @@ export async function sendOrderPaid(o: any) {
 }
 
 async function notifyShop(o: any, kind: 'nova' | 'paga' = 'nova') {
-  const to = process.env.ORDERS_EMAIL || site.email;
+  const to = process.env.ORDERS_EMAIL || site.inbox;
   const title = kind === 'paga' ? `Encomenda paga ${o.number}` : `Nova encomenda ${o.number}`;
   await sendMail(to, `${title}: ${euro(o.total)}`, layout(title,
     `<p><strong>${escapeHtml(o.name)}</strong> · ${escapeHtml(o.email)} · ${escapeHtml(o.phone)}</p>${linesHtml(o)}

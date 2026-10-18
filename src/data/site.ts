@@ -4,6 +4,8 @@ export const site = {
   tagline: 'Bro, o básico nunca falha.',
   url: 'https://mekie-planet.com',
   email: 'geral@mekie-planet.com',
+  // Caixa onde a Mekie lê o correio: respostas dos clientes aos emails e avisos de encomendas
+  inbox: 'mekieplanet@gmail.com',
   // Identificação do vendedor nos Termos e Condições (obrigatória por lei)
   company: {
     legalName: 'Mekie Planet',

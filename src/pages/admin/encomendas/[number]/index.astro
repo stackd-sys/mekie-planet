@@ -78,6 +78,7 @@ if (f) {
     }
     if (action === 'delete' && cur.status === 'cancelada') {
       if (cur.stock_applied && (await sql.begin((tx: any) => moveStock(tx, cur.lines, 1)))) await rebuildSite('Encomenda apagada');
+      await sql`delete from code_uses where order_number = ${cur.number}`;
       await sql`delete from orders where id = ${cur.id}`;
       return Astro.redirect('/admin/encomendas/?ok=' + encodeURIComponent(`Encomenda ${number} apagada.`));
     }

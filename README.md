@@ -160,7 +160,6 @@ Feito (17 de outubro): domínio mekie-planet.com na Vercel (o www reencaminha), 
 Pendente da Mekie:
 
 - [ ] Stripe em produção: ativar a conta (dados da empresa e IBAN), ligar as formas de pagamento na conta de produção (cartões, MB WAY, Multibanco, Apple Pay, Google Pay), criar o webhook de produção e trocar `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` na Vercel pelos de produção.
-- [ ] Fazer uma compra real com o produto teste (`/teste-pagamento/`, 1€) e reembolsá-la na Stripe. Depois tirar o produto teste (`testItem` em `src/data/giftcard.ts` e `src/pages/teste-pagamento.astro`).
 - [ ] Criar a caixa de email geral@mekie-planet.com (o domínio não tem registos MX, por isso as respostas dos clientes não chegam).
 - [ ] Opcional no CRM: Deploy Hook, Google Analytics e Meta (ver "Configurar na Vercel").
 - [ ] Google Search Console (enviar o sitemap) e Google Merchant Center.

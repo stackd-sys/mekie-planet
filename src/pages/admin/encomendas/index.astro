@@ -5,6 +5,7 @@ import Flash from '../../../components/admin/Flash.astro';
 import Status from '../../../components/admin/Status.astro';
 import { db } from '../../../lib/server/db';
 import { euro, date, STATUS } from '../../../lib/server/format';
+import { postForm, done } from '../../../lib/server/admin';
 
 const sql = await db();
 /* encomendas do site que nunca chegaram à página de pagamento (a Stripe falhou) passam a canceladas ao fim de 1 hora */
@@ -14,6 +15,16 @@ if (process.env.STRIPE_SECRET_KEY) {
     returning id`;
   for (const o of stale) await sql`insert into order_events (order_id, text, by) values (${o.id}, 'Cancelada: o pagamento nunca chegou a abrir', 'site')`;
 }
+/* canceladas que nunca foram pagas a sério (tentativas falhadas e testes): podem ir todas de uma vez */
+const neverPaid = sql`status = 'cancelada' and stock_applied = false and refunded = 0 and (paid_at is null or stripe_session like 'cs_test_%')`;
+const f = await postForm(Astro);
+if (f && f.get('action') === 'purge') {
+  const gone = await sql<any[]>`delete from orders where ${neverPaid} returning number`;
+  const nums = gone.map((o) => o.number);
+  if (nums.length) await sql`delete from code_uses where order_number in ${sql(nums)}`;
+  return done(Astro, nums.length ? `${nums.length} encomendas apagadas: ${nums.join(', ')}.` : 'Não havia nada para apagar.', '/admin/encomendas/?estado=cancelada');
+}
+const [{ purgeable }] = await sql<any[]>`select count(*)::int as purgeable from orders where ${neverPaid}`;
 const status = Astro.url.searchParams.get('estado') || '';
 const q = (Astro.url.searchParams.get('q') || '').trim();
 const like = `%${q}%`;
@@ -41,6 +52,13 @@ const pieces = (lines: any[]) => lines.reduce((n, l) => n + l.qty, 0);
     <input name="q" value={q} placeholder="Número, nome ou email" style="width:260px" />
     <button class="btn ghost small">Procurar</button>
   </form>
+  {status === 'cancelada' && purgeable > 0 && (
+    <form method="post" class="bar" onsubmit={`return confirm('Apagar ${purgeable} encomendas canceladas que nunca foram pagas? Não dá para desfazer.')`}>
+      <input type="hidden" name="action" value="purge" />
+      <button class="btn ghost small">Apagar as que nunca foram pagas ({purgeable})</button>
+      <span class="note">Tentativas que não chegaram a pagamento e compras de teste. As que foram pagas e reembolsadas ficam.</span>
+    </form>
+  )}
   <div class="table">
     {orders.length ? (
       <table>
