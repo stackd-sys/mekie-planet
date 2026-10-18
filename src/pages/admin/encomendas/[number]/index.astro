@@ -4,6 +4,7 @@ import Admin from '../../../../layouts/Admin.astro';
 import Flash from '../../../../components/admin/Flash.astro';
 import Status from '../../../../components/admin/Status.astro';
 import { db } from '../../../../lib/server/db';
+import { products } from '../../../../data/products';
 import { euro, date, STATUS, trackingUrl } from '../../../../lib/server/format';
 import { postForm, done, str, num } from '../../../../lib/server/admin';
 import { setStatus, sendShipped, sendGiftCard, moveStock, sendRefunded, afterRefund } from '../../../../lib/server/orders';
@@ -13,6 +14,8 @@ import { rebuildSite } from '../../../../lib/server/deploy';
 
 const sql = await db();
 const number = Astro.params.number!;
+/* peças feitas à medida (scrunchie personalizado) não têm devolução */
+const madeToMeasure = new Set(products.filter((p) => p.customizable).map((p) => p.id));
 /* pagamento feito com as chaves de teste, mas o site já usa as reais: não há dinheiro a devolver */
 const liveKey = /^(sk|rk)_live_/.test((process.env.STRIPE_SECRET_KEY || '').trim());
 const testPayment = (o: any) => liveKey && String(o.stripe_session).startsWith('cs_test_');
@@ -43,7 +46,7 @@ if (f) {
     if (action === 'return') {
       const items = (cur.lines as any[])
         .map((l, i) => ({ ...l, qty: Math.min(l.qty, Math.max(0, Math.floor(num(f, `q${i}`) ?? 0))) }))
-        .filter((l) => l.qty > 0 && !l.digital);
+        .filter((l) => l.qty > 0 && !l.digital && !madeToMeasure.has(l.id));
       if (!items.length) return done(Astro, 'Escolhe pelo menos uma peça.', undefined, true);
       const kind = str(f, 'kind') === 'troca' ? 'troca' : 'devolucao';
       await sql`insert into returns (order_id, kind, items, reason, refund, restock, notes)
@@ -222,7 +225,7 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
         <input type="hidden" name="action" value="return" />
         <table>
           <tbody>
-            {(o.lines as any[]).map((l, i) => !l.digital && (
+            {(o.lines as any[]).map((l, i) => !l.digital && !madeToMeasure.has(l.id) && (
               <tr><td>{l.name}{l.color && `, ${l.color}`}{l.size && ` · ${l.size}`}</td><td class="num"><label style="display:flex;gap:6px;align-items:center">Qtd. <input type="number" name={`q${i}`} min="0" max={l.qty} value="0" style="width:70px" /></label></td></tr>
             ))}
           </tbody>

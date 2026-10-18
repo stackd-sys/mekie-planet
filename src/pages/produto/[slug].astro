@@ -188,7 +188,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
       <ul class="perks eyebrow">
         <li>Envio grátis em Portugal acima de {site.freeShippingFrom}€</li>
-        <li>Devoluções em 14 dias</li>
+        <li>{p.customizable ? 'Feito por encomenda, sem devolução' : 'Devoluções em 14 dias'}</li>
         <li>Envio em {site.deliveryDays} dias úteis via CTT</li>
         <li>Portugal, ilhas e União Europeia</li>
       </ul>

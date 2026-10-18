@@ -2,8 +2,10 @@
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
 import { destinations } from '../data/shipping';
+import { products } from '../data/products';
 /* com a Stripe ligada (na construção do site), o cliente paga logo na página seguinte */
 const stripe = Boolean(process.env.STRIPE_SECRET_KEY);
+const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
 ---
 <Base title="Finalizar compra" noindex popup={false}>
   <div class="container co">
@@ -59,6 +61,7 @@ const stripe = Boolean(process.env.STRIPE_SECRET_KEY);
           </div>
           <p class="co__code-msg" data-gift-msg hidden></p>
         </fieldset>
+        <p class="co__code-msg" data-custom-note data-ids={JSON.stringify(madeToMeasure)} hidden>O scrunchie personalizado é feito à mão com as cores que escolheste, por isso não tem devolução. Se tiver algum defeito, está coberto pela garantia.</p>
         <label class="co__terms">
           <input type="checkbox" required />
           <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
@@ -193,6 +196,8 @@ const stripe = Boolean(process.env.STRIPE_SECRET_KEY);
     shipFields.hidden = !physical;
     shipFields.querySelectorAll<HTMLInputElement>('[data-req]').forEach((el) => (el.required = physical));
     document.querySelector<HTMLElement>('[data-digital-note]')!.hidden = physical || lines.length === 0;
+    const customNote = document.querySelector<HTMLElement>('[data-custom-note]')!;
+    customNote.hidden = !lines.some((l) => (JSON.parse(customNote.dataset.ids || '[]') as number[]).includes(Number(l.id)));
     document.querySelector<HTMLElement>('[data-ship-legend]')!.textContent = physical ? 'Entrega' : 'Os teus dados';
     document.querySelector<HTMLElement>('[data-co-ship-row]')!.hidden = !physical;
     document.querySelector<HTMLElement>('[data-co-gift-row]')!.hidden = giftUsed === 0;

@@ -100,7 +100,7 @@ export const legalPages: LegalPage[] = [
         heading: 'Envios, devoluções e garantia',
         body: [
           'Os destinos, preços e prazos de envio estão na Política de Envios e Entregas.',
-          'Tens 14 dias para devolver uma compra sem indicar o motivo, nos termos da Política de Devoluções e Reembolsos.',
+          'Tens 14 dias para devolver uma compra sem indicar o motivo, nos termos da Política de Devoluções e Reembolsos. As peças personalizadas, como o scrunchie com as cores que escolhes, não têm devolução, mas estão cobertas pela garantia.',
           'Todas as peças têm a garantia legal de conformidade de 3 anos a contar da entrega, prevista no Decreto-Lei n.º 84/2021. Se uma peça tiver um defeito, fala connosco e resolvemos por reparação, substituição, redução do preço ou reembolso, conforme a lei.',
         ],
       },
