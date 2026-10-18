@@ -5,6 +5,9 @@ import { db } from '../../../lib/server/db';
 import { euro } from '../../../lib/server/format';
 import { hasGa, gaReport, rows, range } from '../../../lib/server/google';
 import { hasMeta, metaCampaigns } from '../../../lib/server/meta';
+import WorldMap from '../../../components/admin/WorldMap.astro';
+import worldmap from '../../../data/worldmap.json';
+const countryName = Object.fromEntries((worldmap.countries as [string, string, string][]).map(([c, name]) => [c, name]));
 
 const SECTIONS: Record<string, [string, string]> = {
   visitas: ['Visitas', 'Toda a gente que entra no site, com ou sem cookies, e o caminho até à compra.'],
@@ -24,7 +27,7 @@ let ga: any = null, gaError = '';
 if (hasGa()) {
   try {
     const dateRanges = range(days);
-    const [totals, funnel, sources, items, devices, ads] = await Promise.all([
+    const [totals, funnel, sources, items, devices, ads, geo, cities] = await Promise.all([
       gaReport({ dateRanges, metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'engagementRate' }] }),
       gaReport({ dateRanges, dimensions: [{ name: 'eventName' }], metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
         dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: ['page_view', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase', 'sign_up'] } } } }),
@@ -33,10 +36,14 @@ if (hasGa()) {
       gaReport({ dateRanges, dimensions: [{ name: 'deviceCategory' }], metrics: [{ name: 'sessions' }] }),
       gaReport({ dateRanges, dimensions: [{ name: 'sessionGoogleAdsCampaignName' }], metrics: [{ name: 'advertiserAdCost' }, { name: 'advertiserAdClicks' }, { name: 'advertiserAdImpressions' }],
         orderBys: [{ metric: { metricName: 'advertiserAdCost' }, desc: true }] }).catch((e: Error) => ({ error: e.message })),
+      gaReport({ dateRanges, dimensions: [{ name: 'countryId' }, { name: 'country' }], metrics: [{ name: 'activeUsers' }], limit: 250, orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }] }).catch(() => null),
+      gaReport({ dateRanges, dimensions: [{ name: 'city' }, { name: 'countryId' }], metrics: [{ name: 'activeUsers' }], limit: 10, orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }] }).catch(() => null),
     ]);
     const ev = Object.fromEntries(rows(funnel).map((r) => [r.eventName, r]));
     ga = {
       t: rows(totals)[0] ?? {}, ev, sources: rows(sources), items: items ? rows(items) : [], devices: rows(devices),
+      geo: geo ? rows(geo).filter((r) => r.countryId && r.countryId !== '(not set)') : [],
+      cities: cities ? rows(cities).filter((r) => r.city && r.city !== '(not set)') : [],
       ads: 'error' in ads ? { error: ads.error } : rows(ads).filter((r) => r.sessionGoogleAdsCampaignName && r.sessionGoogleAdsCampaignName !== '(not set)'),
     };
   } catch (e) { gaError = (e as Error).message; }
@@ -153,6 +160,24 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
           <p class="note">{ga.devices.map((d: any) => `${d.deviceCategory === 'mobile' ? 'Telemóvel' : d.deviceCategory === 'desktop' ? 'Computador' : 'Tablet'}: ${pct(d.sessions, ga.t.sessions)}`).join(' · ')}</p>
         </section>
       </div>
+      <section class="card" style="margin-top:14px">
+        <h2 style="margin-top:0">Utilizadores por país</h2>
+        <WorldMap values={Object.fromEntries(ga.geo.map((r: any) => [r.countryId, r.activeUsers]))} label="utilizadores" />
+        <div class="grid two" style="margin-top:14px">
+          <div>
+            <h2>Países</h2>
+            <table><thead><tr><th>País</th><th class="num">Utilizadores</th><th class="num">%</th></tr></thead>
+              <tbody>{ga.geo.slice(0, 10).map((r: any) => <tr><td>{countryName[r.countryId] ?? r.country}</td><td class="num">{n(r.activeUsers)}</td><td class="num muted">{pct(r.activeUsers, ga.geo.reduce((a: number, x: any) => a + x.activeUsers, 0))}</td></tr>)}</tbody>
+            </table>
+          </div>
+          <div>
+            <h2>Cidades</h2>
+            <table><thead><tr><th>Cidade</th><th class="num">Utilizadores</th></tr></thead>
+              <tbody>{ga.cities.map((r: any) => <tr><td>{r.city}<span class="muted"> · {countryName[r.countryId] ?? r.countryId}</span></td><td class="num">{n(r.activeUsers)}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </section>
       {ga.items.length > 0 && (
         <section class="card" style="margin-top:14px">
           <h2 style="margin-top:0">Peças mais vistas</h2>

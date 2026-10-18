@@ -1,0 +1,37 @@
+---
+/* Mapa do mundo do CRM: cada país pintado pela quantidade (uma só cor, de clara a escura).
+   As formas vêm de src/data/worldmap.json (Natural Earth 1:110m, já projetadas). */
+import map from '../../data/worldmap.json';
+interface Props { values: Record<string, number>; label: string }
+const { values, label } = Astro.props;
+const max = Math.max(0, ...Object.values(values));
+const STEPS = ['#bcd4ee', '#8ab2df', '#5a8ec9', '#2f67a8', '#173f6e'];
+/* raiz quadrada: Portugal costuma ter quase tudo, assim os outros países ainda se veem */
+const step = (v: number) => (v > 0 && max ? Math.min(STEPS.length - 1, Math.floor(Math.sqrt(v / max) * STEPS.length - 1e-9)) : -1);
+const n = (v: number) => Math.round(v).toLocaleString('pt-PT');
+---
+<figure class="wmap">
+  <svg viewBox={`0 0 ${map.w} ${map.h}`} role="img" aria-label={`Mapa: ${label} por país`}>
+    {(map.countries as [string, string, string][]).map(([code, name, d]) => {
+      const v = values[code] ?? 0;
+      const s = step(v);
+      return <path d={d} fill={s < 0 ? 'var(--map-empty)' : STEPS[s]} class:list={{ 'has-data': s >= 0 }}><title>{`${name}: ${v ? n(v) : 'sem'} ${label}`}</title></path>;
+    })}
+  </svg>
+  {max > 0 && (
+    <figcaption class="wmap__legend">
+      <span>1</span>
+      {STEPS.map((c) => <i style={`background:${c}`}></i>)}
+      <span>{n(max)} {label}</span>
+    </figcaption>
+  )}
+</figure>
+<style>
+  .wmap { margin: 0; --map-empty: #ecebe8; }
+  .wmap svg { width: 100%; height: auto; display: block; }
+  .wmap path { stroke: var(--surface, #fff); stroke-width: .6; }
+  .wmap path.has-data:hover { stroke: var(--ink); stroke-width: 1.2; }
+  .wmap__legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 8px; font-size: 12px; color: var(--soft); }
+  .wmap__legend i { width: 22px; height: 8px; border-radius: 2px; }
+  .wmap__legend span { margin: 0 4px; }
+</style>
