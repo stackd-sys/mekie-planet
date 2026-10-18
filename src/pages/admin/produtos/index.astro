@@ -69,7 +69,7 @@ const sizes = ['XS', 'S', 'M', 'L', 'XL'];
                 </td>
                 <td class="num"><input name={`price-${p.id}`} value={Number(s?.price ?? p.price).toFixed(2)} inputmode="decimal" style="width:80px;text-align:right" /></td>
                 {sizes.map((z) => (
-                  <td class="num">{p.sizeStock && p.sizes?.includes(z)
+                  <td class="num sz">{p.sizeStock && p.sizes?.includes(z)
                     ? <input type="number" min="0" name={`s-${p.id}-${z}`} value={(ss as any)?.[z] ?? 0} style={`width:58px;text-align:right;${!((ss as any)?.[z]) ? 'color:var(--bad)' : ''}`} />
                     : ''}</td>
                 ))}

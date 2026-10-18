@@ -18,6 +18,8 @@ const nav = [
   ['/admin/marketing/', 'Analytics e campanhas'],
 ];
 const path = Astro.url.pathname;
+/* atalhos da barra de baixo no telemóvel; o resto fica em "Mais" */
+const tabs = [['/admin/', 'Painel'], ['/admin/encomendas/', 'Encomendas'], ['/admin/clientes/', 'Clientes'], ['/admin/produtos/', 'Stock']];
 const current = nav.filter(([href]) => path === href || (href !== '/admin/' && path.startsWith(href))).sort((a, b) => b[0].length - a[0].length)[0]?.[0];
 ---
 <!doctype html>
@@ -31,9 +33,12 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
 </head>
 <body>
   <div class="adm">
-    <aside class="adm__side">
-      <a href="/admin/" class="adm__logo"><img src="/images/site/logo.png" alt="Mekie" width="96" height="32" /> <span>CRM</span></a>
-      <nav>
+    <aside class="adm__side" data-side>
+      <div class="adm__head">
+        <a href="/admin/" class="adm__logo"><img src="/images/site/logo.png" alt="Mekie" width="96" height="32" /> <span>CRM</span></a>
+        <button type="button" class="adm__toggle" data-menu aria-expanded="false" aria-controls="adm-nav">Menu</button>
+      </div>
+      <nav id="adm-nav">
         {nav.map(([href, label]) => <a href={href} class:list={{ 'is-on': current === href }}>{label}</a>)}
       </nav>
       <div class="adm__me">
@@ -46,6 +51,35 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
       <slot />
     </main>
   </div>
+  <nav class="adm__tabs" aria-label="Atalhos">
+    {tabs.map(([href, label]) => <a href={href} class:list={{ 'is-on': current === href }}>{label}</a>)}
+    <button type="button" data-menu class:list={{ 'is-on': current && !tabs.some(([h]) => h === current) }}>Mais</button>
+  </nav>
+  <script is:inline>
+    /* menu do telemóvel */
+    (() => {
+      const side = document.querySelector('[data-side]');
+      document.querySelectorAll('[data-menu]').forEach((b) => b.addEventListener('click', () => {
+        const open = side.classList.toggle('is-open');
+        document.querySelectorAll('[data-menu][aria-expanded]').forEach((x) => x.setAttribute('aria-expanded', String(open)));
+        document.documentElement.classList.toggle('menu-open', open);
+        document.querySelector('.adm__toggle').textContent = open ? 'Fechar' : 'Menu';
+      }));
+      /* tabelas: cada coluna ganha o seu nome, para no telemóvel as linhas virarem cartões */
+      document.querySelectorAll('table').forEach((t) => {
+        const heads = [...t.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+        if (!heads.length) return;
+        t.classList.add('rt');
+        t.querySelectorAll('tbody tr').forEach((tr) => {
+          [...tr.children].forEach((td, i) => { if (heads[i]) td.dataset.label = heads[i]; });
+          /* a linha toda abre o registo, não só o número */
+          const link = tr.querySelector('a.row-link');
+          if (link) tr.addEventListener('click', (e) => { if (!e.target.closest('a, button, input, select, textarea, label')) location.href = link.href; });
+          if (link) tr.style.cursor = 'pointer';
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
 
@@ -123,13 +157,61 @@ const current = nav.filter(([href]) => path === href || (href !== '/admin/' && p
   .note { font-size: 12.5px; color: var(--soft); }
   .setup { border-style: dashed; background: #fbfbfa; }
   .setup code { background: #eee; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .adm__head { display: contents; }
+  .adm__toggle, .adm__tabs { display: none; }
   @media (max-width: 860px) {
     .two { grid-template-columns: minmax(0, 1fr); }
-    .adm__main { padding-top: 20px; }
     .adm { grid-template-columns: minmax(0, 1fr); }
-    .adm__side { position: static; height: auto; padding: 14px; gap: 12px; }
-    .adm__side nav { display: flex; flex-wrap: wrap; }
-    .adm__me { flex-direction: row; display: flex; gap: 14px; align-items: center; }
+    .adm__main { padding: 20px 16px calc(84px + env(safe-area-inset-bottom, 0px)); }
+    h1 { font-size: 22px; }
+
+    /* barra de cima: logótipo e menu */
+    .adm__side { position: sticky; top: 0; z-index: 30; height: auto; padding: 10px 16px; gap: 0; }
+    .adm__head { display: flex; align-items: center; justify-content: space-between; }
+    .adm__logo img { height: 22px; }
+    .adm__toggle { display: inline-flex; background: none; border: 1px solid #555; color: #fff; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+    .adm__side nav, .adm__me { display: none; }
+    .adm__side.is-open { position: fixed; inset: 0; overflow-y: auto; padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+    .adm__side.is-open nav { display: grid; gap: 2px; margin-top: 18px; }
+    .adm__side.is-open nav a { padding: 14px 12px; font-size: 16px; border-radius: 8px; }
+    .adm__side.is-open .adm__me { display: grid; gap: 10px; margin-top: 24px; font-size: 14px; }
+    .menu-open body { overflow: hidden; }
+
+    /* barra de baixo, como numa app */
+    .adm__tabs {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      background: var(--ink); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+    .adm__tabs a, .adm__tabs button {
+      display: grid; place-items: center; min-height: 48px; padding: 0 2px;
+      color: #bdbdbd; text-decoration: none; font: inherit; font-size: 12px; font-weight: 600;
+      background: none; border: 0; border-radius: 8px; cursor: pointer;
+    }
+    .adm__tabs .is-on { background: #fff; color: var(--ink); }
+
+    /* tabelas viram cartões: uma linha por registo, com o nome de cada coluna */
+    table.rt thead { display: none; }
+    table.rt, table.rt tbody, table.rt tr, table.rt td { display: block; width: 100%; }
+    table.rt tr { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    table.rt tr:last-child { border-bottom: 0; }
+    table.rt td { padding: 5px 0; border: 0; text-align: right; overflow: hidden; }
+    table.rt td::before { content: attr(data-label); float: left; margin-right: 14px; color: var(--soft); font-size: 12px; line-height: 2; text-align: left; }
+    /* stock por tamanho: os tamanhos ficam lado a lado */
+    table.rt tr:has(td.sz) { display: flex; flex-wrap: wrap; column-gap: 8px; }
+    table.rt tr:has(td.sz) td:not(.sz) { flex: 0 0 100%; }
+    table.rt td.sz { flex: 1 0 15%; width: auto; text-align: center; }
+    table.rt td.sz::before { float: none; display: block; margin: 0; line-height: 1.6; text-align: center; }
+    table.rt td.sz input { width: 100% !important; max-width: none; text-align: center !important; }
+    table.rt td:first-child { display: block; text-align: left; font-size: 15px; padding-bottom: 8px; }
+    table.rt td:first-child::before { content: none; }
+    table.rt td:empty { display: none; }
+    table.rt td input, table.rt td select { max-width: 60%; }
+    .card:has(> table.rt), .table:has(> table.rt) { padding: 0; }
+    .bar > * { flex: 1 1 auto; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -16px; margin-right: -16px; padding: 0 16px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tabs a { flex: none; }
   }
   @media print {
     .adm { display: block; }
