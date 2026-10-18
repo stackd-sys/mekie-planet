@@ -142,6 +142,7 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
         <dt>Nome</dt><dd>{cust ? <a href={`/admin/clientes/${cust.id}/`}>{o.name}</a> : o.name}{cust && cust.n > 1 && <span class="badge info" style="margin-left:6px">{cust.n}.ª encomenda</span>}</dd>
         <dt>Email</dt><dd><a href={`mailto:${o.email}?subject=${encodeURIComponent(`A tua encomenda ${o.number}`)}`}>{o.email}</a></dd>
         <dt>Telemóvel</dt><dd><a href={`tel:${o.phone}`}>{o.phone}</a></dd>
+        {o.lang && o.lang !== 'pt' && <><dt>Língua</dt><dd>{o.lang === 'en' ? 'Inglês' : 'Espanhol'} <span class="muted">(os emails seguem nesta língua)</span></dd></>}
         {o.nif && <><dt>NIF</dt><dd>{o.nif}</dd></>}
         {o.address ? (
           <><dt>Morada</dt><dd>{o.address.morada}<br />{o.address.codigo_postal} {o.address.localidade}<br />{o.address.pais}</dd></>

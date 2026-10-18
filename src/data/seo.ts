@@ -3,6 +3,9 @@ import { site } from './site';
 import { shippingCost, type Zone } from './shipping';
 import { reviewsOf, ratingOf } from './reviews';
 import { getCategory, totalStock, isSoldOut, fullName, weightOf, type Product } from './products';
+import { href, type Lang } from '../i18n';
+import { trCategory } from '../i18n/catalog';
+import { useT } from '../i18n/ui';
 
 const abs = (path: string) => new URL(path, site.url).href;
 
@@ -68,14 +71,18 @@ export const breadcrumbLd = (items: { name: string; path: string }[]) => ({
   itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, item: abs(it.path) })),
 });
 
-/** Caminho de navegação de uma categoria: Início > Loja > [Mãe] > Categoria */
-export const categoryTrail = (slug: string) => {
-  const trail = [{ name: 'Início', path: '/' }, { name: 'Loja', path: '/loja/' }];
-  const cat = getCategory(slug);
-  if (!cat) return trail;
-  const parent = cat.parent && getCategory(cat.parent);
-  if (parent) trail.push({ name: parent.name, path: `/loja/${parent.slug}/` });
-  trail.push({ name: cat.name, path: `/loja/${cat.slug}/` });
+/** Caminho de navegação de uma categoria: Início > Loja > [Mãe] > Categoria (caminhos já na língua) */
+export const categoryTrail = (slug: string, lang: Lang = 'pt') => {
+  const t = useT(lang);
+  const h = (p: string) => href(lang, p);
+  const trail = [{ name: t('home'), path: h('/') }, { name: t('shop'), path: h('/loja/') }];
+  const found = getCategory(slug);
+  if (!found) return trail;
+  const cat = trCategory(found, lang);
+  const parentPt = cat.parent && getCategory(cat.parent);
+  const parent = parentPt && trCategory(parentPt, lang);
+  if (parent) trail.push({ name: parent.name, path: h(`/loja/${parent.slug}/`) });
+  trail.push({ name: cat.name, path: h(`/loja/${cat.slug}/`) });
   return trail;
 };
 
@@ -99,18 +106,20 @@ const reviewsLd = (p: Product) => {
   };
 };
 
-export const productLd = (p: Product) => {
+/** Produto já na língua da página (os textos vêm de p) */
+export const productLd = (p: Product, lang: Lang = 'pt') => {
   const total = totalStock(p);
+  const cat = getCategory(p.category);
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: fullName(p),
     sku: String(p.id),
-    url: abs(`/produto/${p.slug}/`),
+    url: abs(href(lang, `/produto/${p.slug}/`)),
     image: p.images.map(abs),
     description: [productSummary(p), ...(p.details?.features.slice(1) ?? [])].join(' '),
     color: p.color,
-    category: getCategory(p.category)?.name,
+    category: cat && trCategory(cat, lang).name,
     ...(p.details?.composition.length ? { material: p.details.composition.join(', ') } : {}),
     ...(p.sizes ? { size: p.sizes.join(', ') } : {}),
     brand: { '@type': 'Brand', name: site.name },
@@ -127,7 +136,7 @@ export const productLd = (p: Product) => {
             ? 'https://schema.org/LimitedAvailability'
             : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/NewCondition',
-      url: abs(`/produto/${p.slug}/`),
+      url: abs(href(lang, `/produto/${p.slug}/`)),
       seller: { '@id': abs('/#org') },
       shippingDetails: (['pt', 'eu'] as Zone[]).map((z) => shippingLd(z, shippingCost(z, p.price, weightOf(p)))),
       hasMerchantReturnPolicy: returnPolicyLd,

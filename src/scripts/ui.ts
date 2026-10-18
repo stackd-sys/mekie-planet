@@ -1,6 +1,7 @@
 import { cart, money, href, maxQty } from './cart';
 import * as newsletter from './newsletter';
 import { track, consentSettled } from './consent';
+import { tc, localPath } from '../i18n/client';
 
 const FREE_FROM = Number(document.documentElement.dataset.freeShipping || 65);
 
@@ -77,7 +78,7 @@ cart.subscribe((lines) => {
   const missing = Math.max(0, FREE_FROM - goods);
   const shipText = document.querySelector<HTMLElement>('[data-ship-text]');
   const shipBar = document.querySelector<HTMLElement>('[data-ship-bar]');
-  if (shipText) shipText.innerHTML = missing > 0 ? `Faltam <strong>${money(missing)}</strong> para teres envio gratuito em Portugal.` : 'Tens <strong>envio gratuito</strong> em Portugal.';
+  if (shipText) shipText.innerHTML = missing > 0 ? tc('ship.missing', { n: money(missing) }) : tc('ship.free');
   if (shipBar) shipBar.style.width = `${Math.min(100, (goods / FREE_FROM) * 100)}%`;
 
   const empty = document.querySelector<HTMLElement>('[data-cart-empty]');
@@ -98,19 +99,19 @@ cart.subscribe((lines) => {
       .map(
         (l) => `
       <li class="line" data-key="${esc(l.key)}">
-        <a href="${href(esc(l.href || `/produto/${l.slug}/`))}"><img class="line__img" src="${href(esc(l.image))}" alt="" width="84" height="105" /></a>
+        <a href="${href(esc(l.href || localPath(`/produto/${l.slug}/`)))}"><img class="line__img" src="${href(esc(l.image))}" alt="" width="84" height="105" /></a>
         <div>
-          <p class="line__name"><a href="${href(esc(l.href || `/produto/${l.slug}/`))}">${esc(l.name)}</a></p>
-          <p class="line__meta">${esc(l.custom || l.color)}${l.size ? ` · Tamanho ${esc(l.size)}` : ''}${l.madeToOrderDays && l.qty > (l.stock ?? 0) ? `<br>${l.qty - (l.stock ?? 0)} por encomenda, entrega em ${l.madeToOrderDays} dias úteis` : ''}</p>
+          <p class="line__name"><a href="${href(esc(l.href || localPath(`/produto/${l.slug}/`)))}">${esc(l.name)}</a></p>
+          <p class="line__meta">${esc(l.custom || l.color)}${l.size ? ` · ${tc('line.size', { s: esc(l.size) })}` : ''}${l.madeToOrderDays && l.qty > (l.stock ?? 0) ? `<br>${tc('line.made', { n: l.qty - (l.stock ?? 0), d: l.madeToOrderDays })}` : ''}</p>
           <div class="qty">
-            <button type="button" data-qty="-1" aria-label="Diminuir quantidade">−</button>
+            <button type="button" data-qty="-1" aria-label="${tc('qty.less')}">−</button>
             <span aria-live="polite">${l.qty}</span>
-            <button type="button" data-qty="1" aria-label="Aumentar quantidade"${l.qty >= maxQty(l) ? ' disabled title="Sem mais unidades em stock"' : ''}>+</button>
+            <button type="button" data-qty="1" aria-label="${tc('qty.more')}"${l.qty >= maxQty(l) ? ` disabled title="${tc('qty.max')}"` : ''}>+</button>
           </div>
         </div>
         <div class="line__right">
           <span class="line__price">${money(l.price * l.qty)}</span>
-          <button type="button" class="line__remove" data-remove>Remover</button>
+          <button type="button" class="line__remove" data-remove>${tc('remove')}</button>
         </div>
       </li>`,
       )
@@ -139,13 +140,9 @@ const subscribed = () => store.get('mekie-newsletter') === 'subscribed';
 
 type Outcome = 'new' | 'exists' | 'used';
 const SUCCESS: Record<Outcome, { title: string; sub: string; code: boolean }> = {
-  new: { title: 'Já estás na lista.', sub: 'Usa este código no checkout:', code: true },
-  exists: { title: 'Este email já estava na lista.', sub: 'O teu código continua válido:', code: true },
-  used: {
-    title: 'Este email já está na lista.',
-    sub: 'O código de boas-vindas já foi usado numa encomenda com este email. É válido uma vez por cliente.',
-    code: false,
-  },
+  new: { title: tc('news.new'), sub: tc('news.newSub'), code: true },
+  exists: { title: tc('news.exists'), sub: tc('news.existsSub'), code: true },
+  used: { title: tc('news.used'), sub: tc('news.usedSub'), code: false },
 };
 
 function showSuccess(form: HTMLFormElement, outcome: Outcome = 'new') {
@@ -168,11 +165,11 @@ document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) =
     const msg = form.querySelector<HTMLElement>('[data-msg]');
     const btn = form.querySelector<HTMLButtonElement>('button[type=submit]');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      if (msg) { msg.textContent = 'Escreve um email válido.'; msg.hidden = false; }
+      if (msg) { msg.textContent = tc('news.badEmail'); msg.hidden = false; }
       return;
     }
     if (form.querySelector('[name=consent]') && !data.get('consent')) {
-      if (msg) { msg.textContent = 'Para continuar, aceita receber os nossos emails.'; msg.hidden = false; }
+      if (msg) { msg.textContent = tc('news.consent'); msg.hidden = false; }
       return;
     }
     if (msg) msg.hidden = true;
@@ -188,7 +185,7 @@ document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) =
       document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((f) => showSuccess(f, outcome));
       document.querySelector<HTMLElement>('[data-popup-tab]')?.setAttribute('hidden', '');
     } catch {
-      if (msg) { msg.textContent = 'Não conseguimos guardar o teu email. Tenta outra vez daqui a pouco.'; msg.hidden = false; }
+      if (msg) { msg.textContent = tc('news.error'); msg.hidden = false; }
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -200,13 +197,13 @@ document.querySelectorAll<HTMLButtonElement>('[data-copy-code]').forEach((btn) =
   btn.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(CODE);
-      btn.textContent = 'Copiado';
+      btn.textContent = tc('copied');
     } catch {
       const code = btn.parentElement?.querySelector('code');
       if (code) getSelection()?.selectAllChildren(code);
-      btn.textContent = 'Seleciona e copia';
+      btn.textContent = tc('copySelect');
     }
-    setTimeout(() => (btn.textContent = 'Copiar'), 2000);
+    setTimeout(() => (btn.textContent = tc('copy')), 2000);
   }),
 );
 

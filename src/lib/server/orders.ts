@@ -8,6 +8,10 @@ import { giftCatalog, giftCard } from '../../data/giftcard';
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';
 import { rebuildSite } from './deploy';
+import { money, amount, href, type Lang } from '../../i18n';
+import { serverT, asLang, mailDate } from '../../i18n/server';
+import { lineName, destinationsFor } from '../../i18n/data';
+import { trName, trColor } from '../../i18n/catalog';
 
 export type OrderLine = {
   id: number; slug: string; name: string; color: string; size: string; custom: string;
@@ -29,29 +33,30 @@ export type CodeCheck =
   | { ok: true; code: string; kind: 'percent' | 'fixed'; value: number; welcome: boolean }
   | { ok: false; message: string };
 
-export async function checkCode(rawCode: string, email: string, goods: number): Promise<CodeCheck> {
+export async function checkCode(rawCode: string, email: string, goods: number, lang: Lang = 'pt'): Promise<CodeCheck> {
+  const t = serverT(lang);
   const code = clean(rawCode, 40).toUpperCase();
-  if (!code) return { ok: false, message: 'Escreve um código.' };
+  if (!code) return { ok: false, message: t('code.write') };
   const sql = await db();
   const [c] = await sql<any[]>`select * from discount_codes where upper(code) = ${code}`;
-  if (!c || !c.active) return { ok: false, message: 'Este código não é válido.' };
+  if (!c || !c.active) return { ok: false, message: t('code.invalid') };
   const today = new Date().toISOString().slice(0, 10);
   const day = (d: unknown) => (d ? new Date(d as string).toISOString().slice(0, 10) : '');
-  if (c.starts_at && day(c.starts_at) > today) return { ok: false, message: 'Este código ainda não está ativo.' };
-  if (c.ends_at && day(c.ends_at) < today) return { ok: false, message: 'Este código já expirou.' };
-  if (goods > 0 && goods < Number(c.min_subtotal)) return { ok: false, message: `Este código é para compras a partir de ${euro(c.min_subtotal)}.` };
+  if (c.starts_at && day(c.starts_at) > today) return { ok: false, message: t('code.notYet') };
+  if (c.ends_at && day(c.ends_at) < today) return { ok: false, message: t('code.expired') };
+  if (goods > 0 && goods < Number(c.min_subtotal)) return { ok: false, message: t('code.min', { n: money(Number(c.min_subtotal), lang) }) };
   if (c.max_uses) {
     const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from code_uses u where code = ${c.code} and not exists (select 1 from orders o where o.number = u.order_number and (o.status = 'cancelada' or (o.status = 'pendente' and o.stripe_session <> '')))`;
-    if (n >= c.max_uses) return { ok: false, message: 'Este código já esgotou.' };
+    if (n >= c.max_uses) return { ok: false, message: t('code.out') };
   }
   const mail = email.trim().toLowerCase();
   if (c.welcome && mail) {
     const [s] = await sql<any[]>`select 1 from subscribers where email = ${mail} and unsubscribed_at is null`;
-    if (!s) return { ok: false, message: `O código ${c.code} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.` };
+    if (!s) return { ok: false, message: t('code.welcome', { code: c.code }) };
   }
   if (c.once_per_email && mail) {
     const [u] = await sql<any[]>`select 1 from code_uses u where code = ${c.code} and email = ${mail} and not exists (select 1 from orders o where o.number = u.order_number and (o.status = 'cancelada' or (o.status = 'pendente' and o.stripe_session <> '')))`;
-    if (u) return { ok: false, message: `O código ${c.code} já foi usado numa encomenda com este email.` };
+    if (u) return { ok: false, message: t('code.used', { code: c.code }) };
   }
   return { ok: true, code: c.code, kind: c.kind, value: Number(c.value), welcome: c.welcome };
 }
@@ -102,13 +107,18 @@ export async function sendGiftCard(code: string) {
   const to = g.recipient_email || (await sql<any[]>`select email from orders where number = ${g.order_number}`)[0]?.email;
   if (!to) return false;
   const name = giftCard.names[Number(g.value)] ?? giftCard.name;
-  const ok = await sendMail(to, `${g.buyer ? `${g.buyer} ofereceu-te` : 'Tens'} um cartão presente Mekie`, layout(
-    `${name}: ${euro(g.value)} para gastar na Mekie`,
-    `${g.recipient_name ? `<p>Olá ${escapeHtml(g.recipient_name)},</p>` : ''}
-     ${g.buyer ? `<p><strong>${escapeHtml(g.buyer)}</strong> ofereceu-te um cartão presente Mekie.</p>` : ''}
+  /* na língua em que o cartão foi comprado */
+  const lang = asLang(g.order_number ? (await sql<any[]>`select lang from orders where number = ${g.order_number}`)[0]?.lang : 'pt');
+  const t = serverT(lang);
+  const shopLink = `<a href="${site.url}${href(lang, '/loja/')}">${site.url.replace('https://', '')}</a>`;
+  const ok = await sendMail(to, g.buyer ? t('m.giftSubjectFrom', { buyer: g.buyer }) : t('m.giftSubject'), layout(
+    t('m.giftTitle', { name, value: money(Number(g.value), lang) }),
+    `${g.recipient_name ? `<p>${t('m.giftHello', { name: escapeHtml(g.recipient_name) })}</p>` : ''}
+     ${g.buyer ? `<p>${t('m.giftFrom', { buyer: escapeHtml(g.buyer) })}</p>` : ''}
      ${g.message ? `<p style="font-style:italic">"${escapeHtml(g.message)}"</p>` : ''}
      <p style="font-size:22px;letter-spacing:.08em;font-weight:700;background:#f5f5f4;padding:14px;text-align:center">${escapeHtml(g.code)}</p>
-     <p>Escreve este código no checkout em <a href="${site.url}/loja/">${site.url.replace('https://', '')}</a>. Podes usá-lo em várias compras até acabar o saldo. É válido até ${new Date(g.expires_at).toLocaleDateString('pt-PT')}.</p>`,
+     <p>${t('m.giftUse', { site: shopLink, date: mailDate(g.expires_at, lang) })}</p>`,
+    lang,
   ));
   if (ok) await sql`update gift_cards set sent_at = now() where code = ${code}`;
   return ok;
@@ -121,7 +131,10 @@ type RawLine = { id?: unknown; qty?: unknown; size?: unknown; custom?: unknown }
 /** linha de cartão presente */
 const isGiftLine = (l: OrderLine) => giftCatalog.some((g) => g.id === l.id);
 
-export async function priceOrder(raw: RawLine[], country: string, codeRaw: string, giftRaw: string, email: string) {
+export async function priceOrder(raw: RawLine[], country: string, codeRaw: string, giftRaw: string, email: string, lang: Lang = 'pt') {
+  const t = serverT(lang);
+  /* nome do artigo nas mensagens de erro, na língua do cliente */
+  const nameOf = (p: (typeof products)[number], size = '') => `${trName(p.name, lang)} ${trColor(p.color, lang)}${size ? ` (${size})` : ''}`;
   const sql = await db();
   const state = new Map((await sql<any[]>`select id, price, stock, size_stock from products_state`).map((r) => [r.id, r]));
   const lines: OrderLine[] = [];
@@ -136,13 +149,13 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
       continue;
     }
     const p = products.find((x) => x.id === id);
-    if (!p) { errors.push('Um dos artigos já não existe.'); continue; }
+    if (!p) { errors.push(t('err.gone')); continue; }
     const s = state.get(id);
     const price = s ? Number(s.price) : p.price;
-    if (p.sizes && !p.sizes.includes(size)) { errors.push(`Escolhe um tamanho válido para ${p.name}.`); continue; }
+    if (p.sizes && !p.sizes.includes(size)) { errors.push(t('err.size', { name: trName(p.name, lang) })); continue; }
     const stock = p.sizeStock ? Number((s?.size_stock ?? p.sizeStock)[size] ?? 0) : s?.stock ?? p.stock;
     if (!p.madeToOrderDays && stock !== undefined && stock !== null && qty > stock) {
-      errors.push(stock > 0 ? `Só temos ${stock} de ${p.name} ${p.color}${size ? ` (${size})` : ''}.` : `${p.name} ${p.color}${size ? ` (${size})` : ''} esgotou.`);
+      errors.push(stock > 0 ? t('err.only', { n: stock, name: nameOf(p, size) }) : t('err.soldout', { name: nameOf(p, size) }));
       continue;
     }
     lines.push({ id, slug: p.slug, name: p.name, color: p.customizable ? '' : p.color, size, custom, qty, price, grams: weightOf(p), digital: false, madeToOrder: Boolean(p.madeToOrderDays) });
@@ -156,7 +169,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
 
   let discount = 0, discountCode = '', codeError = '';
   if (clean(codeRaw)) {
-    const c = await checkCode(codeRaw, email, goods);
+    const c = await checkCode(codeRaw, email, goods, lang);
     if (c.ok) {
       discountCode = c.code;
       discount = round(c.kind === 'percent' ? goods * c.value / 100 : Math.min(c.value, goods));
@@ -170,7 +183,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
     if (g.status === 'ok') {
       giftCodeUsed = clean(giftRaw, 40).toUpperCase();
       giftAmount = round(Math.min(g.balance, beforeGift));
-    } else giftError = g.status === 'empty' ? 'Este cartão já não tem saldo.' : g.status === 'expired' ? 'Este cartão já passou a validade.' : 'Não encontrámos este cartão presente.';
+    } else giftError = g.status === 'empty' ? t('gift.empty') : g.status === 'expired' ? t('gift.expired') : t('gift.notFound');
   }
 
   return { lines, errors, dest, subtotal, goods, shipping, discount, discountCode, codeError, giftAmount, giftCode: giftCodeUsed, giftError, total: round(beforeGift - giftAmount) };
@@ -185,6 +198,8 @@ const cleanUtm = (u: Record<string, unknown>) =>
 
 export async function createOrder(body: any, opts: { source?: string; emails?: boolean } = {}) {
   const source = opts.source ?? 'site';
+  const lang = asLang(body?.lang);
+  const t = serverT(lang);
   const c: Customer = {
     email: clean(body?.customer?.email, 160).toLowerCase(),
     phone: clean(body?.customer?.phone, 40),
@@ -197,18 +212,18 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
     localidade: clean(body?.customer?.localidade, 80),
     pais: clean(body?.customer?.pais, 60),
   };
-  if (!isEmail(c.email)) return { error: 'O email não parece válido.' };
-  if (!c.nome || !c.phone) return { error: 'Preenche o nome e o telemóvel.' };
+  if (!isEmail(c.email)) return { error: t('err.email') };
+  if (!c.nome || !c.phone) return { error: t('err.namePhone') };
 
-  const priced = await priceOrder(body?.lines, c.pais, body?.code ?? '', body?.gift ?? '', c.email);
+  const priced = await priceOrder(body?.lines, c.pais, body?.code ?? '', body?.gift ?? '', c.email, lang);
   if (priced.errors.length) return { error: priced.errors.join(' ') };
-  if (!priced.lines.length) return { error: 'O carrinho está vazio.' };
+  if (!priced.lines.length) return { error: t('err.empty') };
   if (priced.codeError) return { error: priced.codeError, field: 'code' };
   if (priced.giftError) return { error: priced.giftError, field: 'gift' };
   const physical = priced.lines.some((l) => !l.digital);
   const hasAddress = Boolean(c.morada && c.codigo_postal && c.localidade);
   /* no site a morada é obrigatória; numa venda registada à mão (em mão, feira) pode não haver */
-  if (physical && !hasAddress && source === 'site') return { error: 'Preenche a morada completa.' };
+  if (physical && !hasAddress && source === 'site') return { error: t('err.address') };
   /* venda entregue em mão: sem portes */
   if (physical && !hasAddress && priced.shipping) {
     priced.total = round(Math.max(0, priced.total - priced.shipping));
@@ -228,10 +243,10 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
     const address = physical && hasAddress ? { morada: c.morada, codigo_postal: c.codigo_postal, localidade: c.localidade, pais: priced.dest.name, zone: priced.dest.zone } : null;
     const [o] = await tx`
       insert into orders (number, customer_id, email, name, phone, nif, address, lines, subtotal, discount, discount_code,
-        shipping, gift_code, gift_amount, total, customer_notes, source, utm)
+        shipping, gift_code, gift_amount, total, customer_notes, source, utm, lang)
       values (${number}, ${cust.id}, ${c.email}, ${name}, ${c.phone}, ${c.nif}, ${address ? tx.json(address) : null}, ${tx.json(priced.lines)},
         ${priced.subtotal}, ${priced.discount}, ${priced.discountCode}, ${priced.shipping}, ${priced.giftCode}, ${priced.giftAmount},
-        ${priced.total}, ${c.notas}, ${source}, ${body?.utm && typeof body.utm === 'object' ? tx.json(cleanUtm(body.utm)) : null})
+        ${priced.total}, ${c.notas}, ${source}, ${body?.utm && typeof body.utm === 'object' ? tx.json(cleanUtm(body.utm)) : null}, ${lang})
       returning *`;
     await tx`insert into order_events (order_id, text) values (${o.id}, ${source === 'site' ? 'Encomenda recebida no site' : 'Encomenda registada no CRM'})`;
     if (priced.discountCode) await tx`insert into code_uses (code, email, order_number) values (${priced.discountCode}, ${c.email}, ${number})`;
@@ -244,61 +259,84 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
 
 /* ---------- Emails da encomenda ---------- */
 
-const linesHtml = (o: any) => `<table style="width:100%;border-collapse:collapse;font-size:14px">${(o.lines as OrderLine[]).map((l) => `
-  <tr><td style="padding:6px 0;border-bottom:1px solid #e2e2df">${l.qty}× ${escapeHtml(l.name)}${l.color ? `, ${escapeHtml(l.color)}` : ''}${l.size ? `, ${escapeHtml(l.size)}` : ''}${l.custom ? `<br><span style="color:#5c5c5c">${escapeHtml(l.custom)}</span>` : ''}</td>
-  <td style="padding:6px 0;border-bottom:1px solid #e2e2df;text-align:right">${euro(l.qty * l.price)}</td></tr>`).join('')}
-  ${Number(o.discount) ? `<tr><td style="padding:6px 0">Desconto ${escapeHtml(o.discount_code)}</td><td style="text-align:right">-${euro(o.discount)}</td></tr>` : ''}
-  <tr><td style="padding:6px 0">Envio</td><td style="text-align:right">${Number(o.shipping) ? euro(o.shipping) : 'Grátis'}</td></tr>
-  ${Number(o.gift_amount) ? `<tr><td style="padding:6px 0">Cartão presente</td><td style="text-align:right">-${euro(o.gift_amount)}</td></tr>` : ''}
-  <tr><td style="padding:8px 0;font-weight:700">Total</td><td style="text-align:right;font-weight:700">${euro(o.total)}</td></tr></table>`;
+/** Linhas da encomenda para os emails. Os nomes estão guardados em português: traduzem-se para a língua do cliente. */
+const linesHtml = (o: any, lang: Lang = 'pt') => {
+  const t = serverT(lang);
+  const eur = (v: unknown) => money(Number(v ?? 0), lang);
+  return `<table style="width:100%;border-collapse:collapse;font-size:14px">${(o.lines as OrderLine[]).map((l) => `
+  <tr><td style="padding:6px 0;border-bottom:1px solid #e2e2df">${l.qty}× ${escapeHtml(isGiftLine(l) ? `${lineName(l.name, '', lang)}, ${amount(l.price, lang)} · ${giftCard.names[l.price] ?? ''}` : lineName(l.name, l.color, lang))}${l.size ? `, ${escapeHtml(l.size)}` : ''}${l.custom ? `<br><span style="color:#5c5c5c">${escapeHtml(l.custom)}</span>` : ''}</td>
+  <td style="padding:6px 0;border-bottom:1px solid #e2e2df;text-align:right">${eur(l.qty * l.price)}</td></tr>`).join('')}
+  ${Number(o.discount) ? `<tr><td style="padding:6px 0">${t('m.discount', { code: escapeHtml(o.discount_code) })}</td><td style="text-align:right">-${eur(o.discount)}</td></tr>` : ''}
+  <tr><td style="padding:6px 0">${t('m.shipping')}</td><td style="text-align:right">${Number(o.shipping) ? eur(o.shipping) : t('m.free')}</td></tr>
+  ${Number(o.gift_amount) ? `<tr><td style="padding:6px 0">${t('m.gift')}</td><td style="text-align:right">-${eur(o.gift_amount)}</td></tr>` : ''}
+  <tr><td style="padding:8px 0;font-weight:700">Total</td><td style="text-align:right;font-weight:700">${eur(o.total)}</td></tr></table>`;
+};
+
+/** Morada de envio, com o país na língua do cliente */
+const shipToHtml = (o: any, lang: Lang) => {
+  if (!o.address) return '';
+  const a = o.address;
+  const country = destinationsFor(lang).find((d) => d.name === a.pais)?.label ?? a.pais;
+  return `<p style="color:#5c5c5c">${serverT(lang)('m.shipTo', { address: `${escapeHtml(a.morada)}, ${escapeHtml(a.codigo_postal)} ${escapeHtml(a.localidade)} (${escapeHtml(country)})` })}</p>`;
+};
 
 async function sendOrderReceived(o: any) {
+  const lang = asLang(o.lang);
+  const t = serverT(lang);
   const first = String(o.name).split(' ')[0];
-  await sendMail(o.email, `Recebemos a tua encomenda ${o.number}`, layout(`Obrigado, ${escapeHtml(first)}!`,
-    `<p>Recebemos a tua encomenda <strong>${o.number}</strong>. ${Number(o.total) > 0 ? 'Vamos enviar-te em breve os dados de pagamento (MB WAY, Multibanco ou cartão).' : 'Vamos tratar dela já.'}</p>
-     ${linesHtml(o)}
-     ${o.address ? `<p style="color:#5c5c5c">Envio para: ${escapeHtml(o.address.morada)}, ${escapeHtml(o.address.codigo_postal)} ${escapeHtml(o.address.localidade)} (${escapeHtml(o.address.pais)})</p>` : ''}
-     <p>Qualquer dúvida, responde a este email.</p>`));
+  await sendMail(o.email, t('m.receivedSubject', { n: o.number }), layout(t('m.thanks', { name: escapeHtml(first) }),
+    `<p>${t('m.received', { n: o.number })} ${Number(o.total) > 0 ? t('m.payDetails') : t('m.onIt')}</p>
+     ${linesHtml(o, lang)}
+     ${shipToHtml(o, lang)}
+     <p>${t('m.questions')}</p>`, lang));
 }
 
 /** Pagamento confirmado (Stripe): email ao cliente e aviso à Mekie */
 export async function sendOrderPaid(o: any) {
+  const lang = asLang(o.lang);
+  const t = serverT(lang);
   const first = String(o.name).split(' ')[0];
   const gifts = (o.lines as OrderLine[]).some((l) => isGiftLine(l));
   await Promise.allSettled([
-    sendMail(o.email, `Pagamento confirmado: encomenda ${o.number}`, layout(`Obrigado, ${escapeHtml(first)}!`,
-      `<p>Recebemos o pagamento da tua encomenda <strong>${o.number}</strong>. ${o.address ? 'Vamos prepará-la e avisamos-te quando seguir pelos CTT.' : ''}${gifts ? ' O cartão presente segue por email para quem o recebe.' : ''}</p>
-       ${linesHtml(o)}
-       ${o.address ? `<p style="color:#5c5c5c">Envio para: ${escapeHtml(o.address.morada)}, ${escapeHtml(o.address.codigo_postal)} ${escapeHtml(o.address.localidade)} (${escapeHtml(o.address.pais)})</p>` : ''}
-       <p>Qualquer dúvida, responde a este email.</p>`)),
+    sendMail(o.email, t('m.paidSubject', { n: o.number }), layout(t('m.thanks', { name: escapeHtml(first) }),
+      `<p>${t('m.paid', { n: o.number })} ${o.address ? t('m.prepare') : ''}${gifts ? ` ${t('m.giftByEmail')}` : ''}</p>
+       ${linesHtml(o, lang)}
+       ${shipToHtml(o, lang)}
+       <p>${t('m.questions')}</p>`, lang)),
     notifyShop(o, 'paga'),
   ]);
 }
 
+/* aviso à Mekie: sempre em português */
 async function notifyShop(o: any, kind: 'nova' | 'paga' = 'nova') {
   const to = process.env.ORDERS_EMAIL || site.inbox;
   const title = kind === 'paga' ? `Encomenda paga ${o.number}` : `Nova encomenda ${o.number}`;
+  const lang = asLang(o.lang);
   await sendMail(to, `${title}: ${euro(o.total)}`, layout(title,
-    `<p><strong>${escapeHtml(o.name)}</strong> · ${escapeHtml(o.email)} · ${escapeHtml(o.phone)}</p>${linesHtml(o)}
+    `<p><strong>${escapeHtml(o.name)}</strong> · ${escapeHtml(o.email)} · ${escapeHtml(o.phone)}${lang !== 'pt' ? ` · comprou em ${lang === 'en' ? 'inglês' : 'espanhol'}` : ''}</p>${linesHtml(o)}
      ${o.customer_notes ? `<p>Notas: ${escapeHtml(o.customer_notes)}</p>` : ''}
      <p><a href="${process.env.ADMIN_HOST ? `https://${process.env.ADMIN_HOST}` : site.url}/admin/encomendas/${o.number}/">Abrir no CRM</a></p>`), o.email);
 }
 
 export async function sendShipped(o: any) {
+  const lang = asLang(o.lang);
+  const t = serverT(lang);
   const url = o.tracking ? trackingUrl(o.tracking) : '';
-  return sendMail(o.email, `A tua encomenda ${o.number} já vai a caminho`, layout('Já vai a caminho!',
-    `<p>A tua encomenda <strong>${o.number}</strong> saiu hoje pelos CTT.</p>
-     ${o.tracking ? `<p>Número de seguimento: <strong>${escapeHtml(o.tracking)}</strong><br><a href="${escapeHtml(url)}">Seguir a encomenda nos CTT</a></p>` : ''}
-     ${linesHtml(o)}<p>Obrigado por escolheres a Mekie. Bro, o básico nunca falha.</p>`));
+  return sendMail(o.email, t('m.shippedSubject', { n: o.number }), layout(t('m.shippedTitle'),
+    `<p>${t('m.shipped', { n: o.number })}</p>
+     ${o.tracking ? `<p>${t('m.tracking', { code: escapeHtml(o.tracking) })}<br><a href="${escapeHtml(url)}">${t('m.track')}</a></p>` : ''}
+     ${linesHtml(o, lang)}<p>${t('m.bye')}</p>`, lang));
 }
 
 /** Reembolso feito: avisa o cliente */
 export async function sendRefunded(o: any, amount: number) {
+  const lang = asLang(o.lang);
+  const t = serverT(lang);
   const first = String(o.name).split(' ')[0];
-  return sendMail(o.email, `Reembolso da encomenda ${o.number}`, layout(`Olá, ${escapeHtml(first)}`,
-    `<p>Devolvemos <strong>${euro(amount)}</strong> referentes à encomenda <strong>${o.number}</strong>, pelo mesmo meio com que pagaste.</p>
-     <p>Dependendo do banco, o valor aparece na tua conta entre 5 e 10 dias úteis. Com MB WAY costuma ser mais rápido.</p>
-     <p>Qualquer dúvida, responde a este email.</p>`));
+  return sendMail(o.email, t('m.refundSubject', { n: o.number }), layout(t('m.hello', { name: escapeHtml(first) }),
+    `<p>${t('m.refund', { amount: money(amount, lang), n: o.number })}</p>
+     <p>${t('m.refundDays')}</p>
+     <p>${t('m.questions')}</p>`, lang));
 }
 
 /* ---------- Estados e stock ---------- */
@@ -367,8 +405,9 @@ export async function setStatus(number: string, status: string, by: string, extr
     if (n < wanted) {
       let made = n;
       for (const l of giftLines) {
-        const m = /Para ([^·(]+?)(?: \(([^)]+)\))? ·/.exec(l.custom + ' ·');
-        const from = /De ([^·]+?) ·/.exec(l.custom + ' ·')?.[1] ?? '';
+        /* o texto vem na língua da loja: "Para X · De Y" ou "To X · From Y" */
+        const m = /(?:Para|To) ([^·(]+?)(?: \(([^)]+)\))? ·/.exec(l.custom + ' ·');
+        const from = /(?:De|From) ([^·]+?) ·/.exec(l.custom + ' ·')?.[1] ?? '';
         const msg = /"(.*)"/.exec(l.custom)?.[1] ?? '';
         for (let i = 0; i < l.qty && made < wanted; i++, made++) {
           const code = await createGiftCard({ value: l.price, buyer: from || o.name, recipient_name: m?.[1]?.trim() ?? '', recipient_email: m?.[2] ?? '', message: msg, order_number: o.number });

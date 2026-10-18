@@ -28,11 +28,7 @@ export const site = {
   // Código de boas-vindas mostrado depois de subscrever. Tem de existir também no sistema de pagamento.
   welcomeCode: 'MEKIE10',
   welcomeDiscount: 10,
-  announcement: [
-    'Últimas unidades',
-    'Envio gratuito em Portugal acima de 65€',
-    'Entrega em 7 dias úteis via CTT',
-  ],
+  /* a barra de avisos do topo está em src/i18n/ui.ts (announce.*), nas três línguas */
 };
 
 export const formatPrice = (value: number) =>

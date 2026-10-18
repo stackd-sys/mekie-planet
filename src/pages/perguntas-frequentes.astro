@@ -1,8 +1,13 @@
 ---
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
-import { faqGroups } from '../data/faq';
 import { breadcrumbLd } from '../data/seo';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+import { faqFor } from '../i18n/data';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const faqGroups = faqFor(lang);
 
 const plain = (html: string) => html.replace(/<[^>]+>/g, '');
 const faqLd = {
@@ -13,15 +18,15 @@ const faqLd = {
   ),
 };
 ---
-<Base title="Perguntas Frequentes" description="Envios, portes, tamanhos, trocas, devoluções, pagamento e cartão presente. As respostas às perguntas que mais nos fazem.">
+<Base title={t('faq.title')} description={t('faq.desc')}>
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(faqLd)} />
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: 'Perguntas Frequentes', path: '/perguntas-frequentes/' }]))} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: t('home'), path: href(lang, '/') }, { name: t('faq.title'), path: href(lang, '/perguntas-frequentes/') }]))} />
 
   <section class="container faq">
-    <h1 class="display faq__title">Perguntas frequentes</h1>
-    <p class="faq__lead">Não encontras o que procuras? Escreve-nos para <a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a> ou no <a class="link-underline" href={site.instagram} target="_blank" rel="noopener">Instagram</a>.</p>
+    <h1 class="display faq__title">{t('faq')}</h1>
+    <p class="faq__lead" set:html={t('faq.lead', { email: `<a class="link-underline" href="mailto:${site.email}">${site.email}</a>`, ig: `<a class="link-underline" href="${site.instagram}" target="_blank" rel="noopener">Instagram</a>` })} />
 
-    <nav class="faq__nav" aria-label="Temas">
+    <nav class="faq__nav" aria-label={t('faq.topics')}>
       {faqGroups.map((g, i) => <a href={`#tema-${i + 1}`} class="faq__chip eyebrow">{g.title}</a>)}
     </nav>
 

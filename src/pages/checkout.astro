@@ -1,85 +1,90 @@
 ---
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
-import { destinations } from '../data/shipping';
 import { products } from '../data/products';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+import { destinationsFor } from '../i18n/data';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (p: string) => href(lang, p);
 /* com a Stripe ligada (na construção do site), o cliente paga logo na página seguinte */
 const stripe = Boolean(process.env.STRIPE_SECRET_KEY);
 const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
 ---
-<Base title="Finalizar compra" noindex popup={false}>
+<Base title={t('cart.checkout')} noindex popup={false}>
   <div class="container co">
-    <h1 class="display co__title">Finalizar compra</h1>
-    <p class="co__code-msg is-error co__cancel" role="alert" data-co-cancel hidden>O pagamento não foi concluído. A encomenda continua no carrinho: podes tentar outra vez.</p>
+    <h1 class="display co__title">{t('cart.checkout')}</h1>
+    <p class="co__code-msg is-error co__cancel" role="alert" data-co-cancel hidden>{t('co.cancel')}</p>
 
     <div class="co__empty" data-co-empty hidden>
-      <p>O teu carrinho está vazio.</p>
-      <a href="/loja/" class="pill">Ir para a loja</a>
+      <p>{t('cart.empty')}</p>
+      <a href={h('/loja/')} class="pill">{t('cart.toShop')}</a>
     </div>
 
     <div class="co__grid" data-co-grid>
       <form class="co__form" data-co-form>
         <fieldset>
-          <legend class="eyebrow">Contacto</legend>
+          <legend class="eyebrow">{t('co.contact')}</legend>
           <input class="field" name="email" type="email" placeholder="E-mail" required autocomplete="email" />
-          <input class="field" name="telefone" type="tel" placeholder="Telemóvel" required autocomplete="tel" />
+          <input class="field" name="telefone" type="tel" placeholder={t('co.phone')} required autocomplete="tel" />
         </fieldset>
         <fieldset>
-          <legend class="eyebrow" data-ship-legend>Entrega</legend>
+          <legend class="eyebrow" data-ship-legend>{t('co.delivery')}</legend>
           <div class="two">
-            <input class="field" name="nome" placeholder="Nome" required autocomplete="given-name" />
-            <input class="field" name="apelido" placeholder="Apelido" required autocomplete="family-name" />
+            <input class="field" name="nome" placeholder={t('co.first')} required autocomplete="given-name" />
+            <input class="field" name="apelido" placeholder={t('co.last')} required autocomplete="family-name" />
           </div>
           <div class="co__ship" data-ship-fields>
-          <input class="field" name="morada" placeholder="Morada" required autocomplete="street-address" />
+          <input class="field" name="morada" placeholder={t('co.address')} required autocomplete="street-address" />
           <div class="two">
-            <input class="field" name="codigo_postal" placeholder="Código postal" required autocomplete="postal-code" pattern="[0-9]{4}-?[0-9]{3}|.{3,}" />
-            <input class="field" name="localidade" placeholder="Localidade" required autocomplete="address-level2" />
+            <input class="field" name="codigo_postal" placeholder={t('co.postcode')} required autocomplete="postal-code" pattern="[0-9]{4}-?[0-9]{3}|.{3,}" />
+            <input class="field" name="localidade" placeholder={t('co.city')} required autocomplete="address-level2" />
           </div>
           <select class="field" name="pais" required autocomplete="country-name" data-country>
-            {destinations.map((d) => <option value={d.name} data-zone={d.zone}>{d.name}</option>)}
+            {destinationsFor(lang).map((d) => <option value={d.name} data-zone={d.zone}>{d.label}</option>)}
           </select>
-          <p class="co__hint">Enviamos para Portugal e para a União Europeia. Para outro país, <a class="link-underline" href="/contactos/">fala connosco</a>.</p>
+          <p class="co__hint" set:html={t('co.zones', { href: h('/contactos/') })} />
           </div>
-          <p class="co__hint" data-digital-note hidden>O cartão presente segue por email, por isso não precisamos de morada.</p>
-          <input class="field" name="nif" placeholder="NIF (opcional)" inputmode="numeric" />
-          <textarea class="field" name="notas" placeholder="Notas da encomenda (opcional)"></textarea>
+          <p class="co__hint" data-digital-note hidden>{t('co.digital')}</p>
+          <input class="field" name="nif" placeholder={t('co.nif')} inputmode="numeric" />
+          <textarea class="field" name="notas" placeholder={t('co.notes')}></textarea>
         </fieldset>
         <fieldset>
-          <legend class="eyebrow">Código de desconto</legend>
+          <legend class="eyebrow">{t('co.code')}</legend>
           <div class="co__code">
-            <input class="field" name="codigo" id="co-code" placeholder="Ex.: MEKIE10" autocomplete="off" autocapitalize="characters" data-code-input />
-            <button type="button" class="pill pill--outline" data-code-apply>Aplicar</button>
+            <input class="field" name="codigo" id="co-code" placeholder={t('co.codePh', { code: site.welcomeCode })} autocomplete="off" autocapitalize="characters" data-code-input />
+            <button type="button" class="pill pill--outline" data-code-apply>{t('co.apply')}</button>
           </div>
           <p class="co__code-msg" data-code-msg hidden></p>
         </fieldset>
         <fieldset>
-          <legend class="eyebrow">Cartão presente</legend>
+          <legend class="eyebrow">{t('gift')}</legend>
           <div class="co__code">
-            <input class="field" name="cartao" placeholder="Código do cartão" autocomplete="off" autocapitalize="characters" data-gift-input />
-            <button type="button" class="pill pill--outline" data-gift-apply>Usar</button>
+            <input class="field" name="cartao" placeholder={t('co.giftCode')} autocomplete="off" autocapitalize="characters" data-gift-input />
+            <button type="button" class="pill pill--outline" data-gift-apply>{t('co.use')}</button>
           </div>
           <p class="co__code-msg" data-gift-msg hidden></p>
         </fieldset>
-        <p class="co__code-msg" data-custom-note data-ids={JSON.stringify(madeToMeasure)} hidden>O scrunchie personalizado é feito à mão com as cores que escolheste, por isso não tem devolução. Se tiver algum defeito, está coberto pela garantia.</p>
+        <p class="co__code-msg" data-custom-note data-ids={JSON.stringify(madeToMeasure)} hidden>{t('co.custom')}</p>
         <label class="co__terms">
           <input type="checkbox" required />
-          <span>Li e aceito os <a class="link-underline" href="/termos-e-condicoes-de-servico/" target="_blank">Termos e Condições</a> e a <a class="link-underline" href="/politica-de-privacidade/" target="_blank">Política de Privacidade</a>.</span>
+          <span set:html={t('co.terms', { terms: h('/termos-e-condicoes-de-servico/'), privacy: h('/politica-de-privacidade/') })} />
         </label>
         <p class="co__code-msg is-error" role="alert" data-co-error hidden></p>
-        <button type="submit" class="pill pill--accent pill--block co__submit" data-label={stripe ? 'Continuar para o pagamento' : 'Enviar encomenda'}>{stripe ? 'Continuar para o pagamento' : 'Enviar encomenda'}</button>
+        <button type="submit" class="pill pill--accent pill--block co__submit" data-label={stripe ? t('co.pay') : t('co.send')}>{stripe ? t('co.pay') : t('co.send')}</button>
         {stripe
-          ? <p class="co__note">A seguir pagas numa página segura da Stripe, com MB WAY, Multibanco, cartão, Apple Pay ou Google Pay. A Mekie nunca vê os dados do teu cartão.</p>
-          : <p class="co__note">Ao enviar, recebes um email com o resumo da encomenda. Respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão).</p>}
+          ? <p class="co__note">{t('co.stripeNote')}</p>
+          : <p class="co__note">{t('co.mailNote')}</p>}
       </form>
 
       <aside class="co__summary">
-        <p class="eyebrow">Resumo</p>
+        <p class="eyebrow">{t('co.summary')}</p>
         <ul class="co__lines" data-co-lines></ul>
         <div class="co__row"><span>Subtotal</span><span data-cart-subtotal></span></div>
         <div class="co__row" data-co-discount-row hidden><span data-co-discount-label></span><span data-co-discount></span></div>
-        <div class="co__row" data-co-ship-row><span>Envio</span><span data-co-ship></span></div>
-        <div class="co__row" data-co-gift-row hidden><span>Cartão presente</span><span data-co-gift></span></div>
+        <div class="co__row" data-co-ship-row><span>{t('co.shipping')}</span><span data-co-ship></span></div>
+        <div class="co__row" data-co-gift-row hidden><span>{t('gift')}</span><span data-co-gift></span></div>
         <div class="co__row co__total"><span>Total</span><strong data-co-total></strong></div>
       </aside>
     </div>
@@ -91,6 +96,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   import * as newsletter from '../scripts/newsletter';
   import { shippingCost, type Zone } from '../data/shipping';
   import { track, consentSettled, visitSource, countEvent } from '../scripts/consent';
+  import { tc, lang, localPath, shortDate } from '../i18n/client';
   const CODE = newsletter.CODE;
   const RATE = 0.1;
   /* Código de desconto aplicado: validado no CRM; sem CRM, só o de boas-vindas */
@@ -121,11 +127,11 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     return { sub, disc, ship, giftUsed, total: before - giftUsed };
   };
   country.addEventListener('change', () => render(cart.lines));
-  const describe = (d: Discount) => (d.kind === 'percent' ? `${String(d.value).replace('.', ',')}% de desconto` : `${money(d.value)} de desconto`);
+  const describe = (d: Discount) => (d.kind === 'percent' ? tc('co.percent', { n: lang === 'en' ? String(d.value) : String(d.value).replace('.', ',') }) : tc('co.fixed', { n: money(d.value) }));
   const applyCode = async (value: string, quiet = false) => {
     codeMsg.hidden = quiet;
     let result: Discount | null = null;
-    let message = 'Este código não é válido.';
+    let message = tc('co.codeBad');
     if (value) {
       try {
         const email = document.querySelector<HTMLInputElement>('[name=email]')?.value || '';
@@ -141,7 +147,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     applied = result?.code ?? '';
     if (!quiet || !result) {
       codeMsg.hidden = !value;
-      codeMsg.textContent = result ? `Código aplicado: ${describe(result)}. Não acumulável com outras promoções.` : message;
+      codeMsg.textContent = result ? tc('co.codeOk', { d: describe(result) }) : message;
       codeMsg.classList.toggle('is-error', !result);
     }
     try { localStorage.setItem('mekie-code-applied', applied); } catch {}
@@ -160,32 +166,32 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     el.textContent = text;
     el.classList.toggle('is-error', isError);
   };
-  const dateOf = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-PT') : '');
+  const dateOf = (iso?: string) => (iso ? shortDate(new Date(iso)) : '');
   document.querySelector('[data-gift-apply]')?.addEventListener('click', async () => {
     const code = giftInput.value.trim().toUpperCase();
     gift = { code: '', balance: 0, verified: false };
     if (!code) { giftMsg.hidden = true; render(cart.lines); return; }
     if (!newsletter.hasWebhook()) {
       gift = { code, balance: 0, verified: false };
-      say(giftMsg, 'Recebemos o código. Confirmamos o saldo e descontamos no pagamento.');
+      say(giftMsg, tc('co.giftLater'));
       render(cart.lines);
       return;
     }
-    say(giftMsg, 'A verificar o cartão...');
+    say(giftMsg, tc('co.giftChecking'));
     try {
       const res = await newsletter.giftCheck(code);
       if (res.status === 'ok' && (res.balance ?? 0) > 0) {
         gift = { code, balance: res.balance!, verified: true };
-        say(giftMsg, `Cartão aplicado. Saldo disponível: ${money(res.balance!)}${res.expires ? `, válido até ${dateOf(res.expires)}` : ''}.`);
+        say(giftMsg, tc('co.giftOk', { n: money(res.balance!), until: res.expires ? tc('co.giftUntil', { d: dateOf(res.expires) }) : '' }));
       } else if (res.status === 'unknown') {
         gift = { code, balance: 0, verified: false };
-        say(giftMsg, 'Recebemos o código. Confirmamos o saldo e descontamos no pagamento.');
+        say(giftMsg, tc('co.giftLater'));
       } else {
-        say(giftMsg, res.status === 'empty' ? 'Este cartão já não tem saldo.' : res.status === 'expired' ? 'Este cartão já passou a validade.' : 'Não encontrámos este cartão. Confirma o código.', true);
+        say(giftMsg, res.status === 'empty' ? tc('co.giftEmpty') : res.status === 'expired' ? tc('co.giftExpired') : tc('co.giftNotFound'), true);
       }
     } catch {
       gift = { code, balance: 0, verified: false };
-      say(giftMsg, 'Não conseguimos verificar agora. Confirmamos o saldo e descontamos no pagamento.');
+      say(giftMsg, tc('co.giftOffline'));
     }
     render(cart.lines);
   });
@@ -198,21 +204,21 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     document.querySelector<HTMLElement>('[data-digital-note]')!.hidden = physical || lines.length === 0;
     const customNote = document.querySelector<HTMLElement>('[data-custom-note]')!;
     customNote.hidden = !lines.some((l) => (JSON.parse(customNote.dataset.ids || '[]') as number[]).includes(Number(l.id)));
-    document.querySelector<HTMLElement>('[data-ship-legend]')!.textContent = physical ? 'Entrega' : 'Os teus dados';
+    document.querySelector<HTMLElement>('[data-ship-legend]')!.textContent = physical ? tc('co.delivery') : tc('co.yourData');
     document.querySelector<HTMLElement>('[data-co-ship-row]')!.hidden = !physical;
     document.querySelector<HTMLElement>('[data-co-gift-row]')!.hidden = giftUsed === 0;
     document.querySelector<HTMLElement>('[data-co-gift]')!.textContent = `-${money(giftUsed)}`;
     const discRow = document.querySelector<HTMLElement>('[data-co-discount-row]')!;
     discRow.hidden = disc === 0;
-    document.querySelector<HTMLElement>('[data-co-discount-label]')!.textContent = `Desconto ${applied}`;
+    document.querySelector<HTMLElement>('[data-co-discount-label]')!.textContent = tc('co.discount', { code: applied });
     document.querySelector<HTMLElement>('[data-co-discount]')!.textContent = `-${money(disc)}`;
     document.querySelector<HTMLElement>('[data-co-empty]')!.hidden = lines.length > 0;
     document.querySelector<HTMLElement>('[data-co-grid]')!.hidden = lines.length === 0;
-    document.querySelector<HTMLElement>('[data-co-ship]')!.textContent = ship === 0 ? 'Grátis' : money(ship);
+    document.querySelector<HTMLElement>('[data-co-ship]')!.textContent = ship === 0 ? tc('co.free') : money(ship);
     document.querySelector<HTMLElement>('[data-co-total]')!.textContent = money(total);
     document.querySelector<HTMLElement>('[data-co-lines]')!.innerHTML = lines
       .map((l) => `<li><img src="${href(esc(l.image))}" alt="" width="64" height="80" /><span class="q">${l.qty}</span>
-        <div><p>${esc(l.name)}</p><small>${esc(l.custom || l.color)}${l.size ? ` · ${esc(l.size)}` : ''}${made(l) ? `<br>${made(l)} por encomenda, entrega em ${l.madeToOrderDays} dias úteis` : ''}</small></div>
+        <div><p>${esc(l.name)}</p><small>${esc(l.custom || l.color)}${l.size ? ` · ${esc(l.size)}` : ''}${made(l) ? `<br>${tc('line.made', { n: made(l), d: l.madeToOrderDays! })}` : ''}</small></div>
         <span>${money(l.qty * l.price)}</span></li>`)
       .join('');
   };
@@ -246,6 +252,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
       code: applied,
       gift: gift.code,
       utm: visitSource(),
+      lang,
       customer: Object.fromEntries(['email', 'telefone', 'nome', 'apelido', 'nif', 'notas', 'morada', 'codigo_postal', 'localidade', 'pais'].map((k) => [k === 'telefone' ? 'phone' : k, String(f.get(k) ?? '')])),
     };
     let res: Response;
@@ -258,19 +265,19 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.payUrl) {
       /* o carrinho só é esvaziado quando o pagamento for concluído */
-      if (submitBtn) submitBtn.textContent = 'A abrir o pagamento...';
+      if (submitBtn) submitBtn.textContent = tc('co.opening');
       location.href = data.payUrl;
       return true;
     }
     if (res.ok && data.number) {
       cart.clear();
       try { localStorage.setItem('mekie-code-applied', ''); } catch {}
-      location.href = `/encomenda-recebida/?n=${encodeURIComponent(data.number)}&t=${encodeURIComponent(money(data.total))}${data.paid ? '&pago=1' : ''}`;
+      location.href = `${localPath('/encomenda-recebida/')}?n=${encodeURIComponent(data.number)}&t=${encodeURIComponent(money(data.total))}${data.paid ? '&pago=1' : ''}`;
       return true;
     }
     if (data.field === 'code') codeError(data.error);
     else if (data.field === 'gift') { gift = { code: '', balance: 0, verified: false }; say(giftMsg, data.error, true); render(cart.lines); giftInput.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
-    else { coError.hidden = false; coError.textContent = data.error || 'Não conseguimos enviar a encomenda. Tenta outra vez.'; }
+    else { coError.hidden = false; coError.textContent = data.error || tc('co.error'); }
     return true;
   };
 
@@ -289,9 +296,9 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
       try {
         const res = await newsletter.check(email);
         if (res.status !== 'unknown' && !res.subscribed) {
-          return codeError(`O código ${CODE} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.`);
+          return codeError(tc('co.welcomeOnly', { code: CODE }));
         }
-        if (res.used) return codeError(`O código ${CODE} já foi usado numa encomenda com este email.`);
+        if (res.used) return codeError(tc('co.welcomeUsed', { code: CODE }));
       } catch {
         /* sem resposta do webhook: segue e confirmamos à mão */
       } finally {

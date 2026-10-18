@@ -1,6 +1,11 @@
 ---
 import Icon from './Icon.astro';
 import { site } from '../data/site';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const n = site.welcomeDiscount;
 ---
 <div class="popup" data-popup hidden>
   <div class="popup__backdrop" data-popup-close></div>
@@ -9,8 +14,8 @@ import { site } from '../data/site';
       <img src="/images/site/logo.png" alt="Mekie" width="160" height="53" class="popup__logo" />
 
       <div data-before>
-        <p id="popup-title" class="popup__title">{site.welcomeDiscount}% na primeira compra</p>
-        <p class="popup__sub">Subscreve a newsletter e recebe um código para a tua primeira encomenda. Ficas também a saber primeiro quando sai um drop novo.</p>
+        <p id="popup-title" class="popup__title">{t('popup.title', { n })}</p>
+        <p class="popup__sub">{t('popup.sub')}</p>
       </div>
 
       <form class="popup__form" data-newsletter="popup" novalidate>
@@ -18,31 +23,31 @@ import { site } from '../data/site';
         <input class="popup__input" id="popup-email" type="email" name="email" placeholder="EMAIL" required autocomplete="email" data-autofocus />
         <label class="popup__consent">
           <input type="checkbox" name="consent" value="yes" required />
-          <span>Aceito receber emails da Mekie. Posso cancelar a qualquer momento. <a href="/politica-de-privacidade/" class="link-underline">Política de privacidade</a></span>
+          <span>{t('popup.consent')} <a href={href(lang, '/politica-de-privacidade/')} class="link-underline">{t('popup.privacy')}</a></span>
         </label>
-        <button class="pill pill--accent pill--block" type="submit">Quero {site.welcomeDiscount}%</button>
+        <button class="pill pill--accent pill--block" type="submit">{t('popup.cta', { n })}</button>
         <p class="popup__msg" role="alert" data-msg hidden></p>
       </form>
 
       <div class="popup__done" data-success hidden>
-        <p class="popup__title" data-success-title>Já estás na lista.</p>
-        <p class="popup__sub" data-success-sub>Usa este código no checkout:</p>
-        <div class="code" data-code-wrap><code>{site.welcomeCode}</code><button type="button" class="code__copy eyebrow" data-copy-code>Copiar</button></div>
-        <button type="button" class="pill pill--block" data-popup-close>Continuar a comprar</button>
+        <p class="popup__title" data-success-title>{t('news.done')}</p>
+        <p class="popup__sub" data-success-sub>{t('popup.useCode')}</p>
+        <div class="code" data-code-wrap><code>{site.welcomeCode}</code><button type="button" class="code__copy eyebrow" data-copy-code>{t('popup.copy')}</button></div>
+        <button type="button" class="pill pill--block" data-popup-close>{t('popup.keep')}</button>
       </div>
 
-      <p class="popup__fine">Válido numa encomenda por cliente. Não acumulável com outras promoções.</p>
+      <p class="popup__fine">{t('popup.fine')}</p>
     </div>
     <div class="popup__media">
       <img src="/images/lookbook/mushrooms-duo-sm.webp" alt="" width="540" height="810" loading="lazy" />
     </div>
-    <button type="button" class="popup__close" aria-label="Fechar" data-popup-close><Icon name="close" size={18} /></button>
+    <button type="button" class="popup__close" aria-label={t('close')} data-popup-close><Icon name="close" size={18} /></button>
   </div>
 </div>
 
 <div class="ptab" data-popup-tab hidden>
-  <button type="button" class="ptab__open eyebrow" data-popup-open>Ganha {site.welcomeDiscount}%</button>
-  <button type="button" class="ptab__x" aria-label="Esconder" data-tab-dismiss><Icon name="close" size={12} /></button>
+  <button type="button" class="ptab__open eyebrow" data-popup-open>{t('popup.tab', { n })}</button>
+  <button type="button" class="ptab__x" aria-label={t('popup.hide')} data-tab-dismiss><Icon name="close" size={12} /></button>
 </div>
 
 <style>

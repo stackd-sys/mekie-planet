@@ -9,9 +9,11 @@ import CartDrawer from '../components/CartDrawer.astro';
 import Popup from '../components/Popup.astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
-import { giftCatalog } from '../data/giftcard';
-import { products, cartInfo } from '../data/products';
+import { cartInfo } from '../data/products';
 import { organizationLd, websiteLd } from '../data/seo';
+import { langOf, toPt, href, langs, htmlLang, ogLocale } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop, giftCatalogFor } from '../i18n/data';
 
 interface Props {
   title?: string;
@@ -22,24 +24,30 @@ interface Props {
   noindex?: boolean;
   ogType?: 'website' | 'product' | 'article';
 }
-/* Preço e stock atuais, para o carrinho guardado no browser se manter certo */
-const catalog = Object.fromEntries([...products.map((p) => [p.id, cartInfo(p)]), ...giftCatalog.map((g) => [g.id, g])]);
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+/* Preço, stock e nomes atuais (na língua da página), para o carrinho guardado no browser se manter certo */
+const catalog = Object.fromEntries([...shop(lang).products.map((p) => [p.id, { ...cartInfo(p), href: href(lang, `/produto/${p.slug}/`) }]), ...giftCatalogFor(lang).map((g) => [g.id, { ...g, href: href(lang, g.href) }])]);
 const {
   title,
-  description = 'Mekie Planet: hoodies e t-shirts bordados, caps, bucket hats, meias, scrunchies e tote bags. Roupa descontraída, sempre com estilo. Envio CTT para Portugal e União Europeia.',
+  description = t('meta.desc'),
   image = '/images/site/hero.webp',
   overlayHeader = false,
   popup = true,
   noindex = false,
   ogType = 'website',
 } = Astro.props;
-const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | Hoodies, t-shirts e acessórios bordados`;
+const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | ${t('meta.title')}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+/* a mesma página nas outras línguas (o blog só existe em português) */
+const ptPath = toPt(Astro.url.pathname);
+const translated = href('en', ptPath) !== ptPath;
+const alternates = translated ? langs.map((l) => ({ lang: l, url: new URL(href(l, ptPath), Astro.site) })) : [{ lang: 'pt' as const, url: canonical }];
 const ogImage = new URL(image, Astro.site);
 ---
 <!doctype html>
 <html
-  lang="pt-PT"
+  lang={htmlLang[lang]}
   data-free-shipping={site.freeShippingFrom}
   data-newsletter-endpoint={site.newsletterWebhook}
   data-welcome-code={site.welcomeCode}
@@ -63,14 +71,14 @@ const ogImage = new URL(image, Astro.site);
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
-    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:locale" content={ogLocale[lang]} />
     <meta property="og:image:alt" content={fullTitle} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <link rel="alternate" hreflang="pt-PT" href={canonical} />
-    <link rel="alternate" hreflang="x-default" href={canonical} />
+    {!noindex && alternates.map((a) => <link rel="alternate" hreflang={htmlLang[a.lang]} href={a.url} />)}
+    {!noindex && <link rel="alternate" hreflang="x-default" href={alternates[0].url} />}
     <link rel="manifest" href="/site.webmanifest" />
     {Astro.url.pathname === '/' && (
       <>
@@ -81,7 +89,7 @@ const ogImage = new URL(image, Astro.site);
     <slot name="head" />
   </head>
   <body>
-    <a href="#main" class="sr-only">Saltar para o conteúdo</a>
+    <a href="#main" class="sr-only">{t('skip')}</a>
     <Header overlay={overlayHeader} />
     <main id="main">
       <slot />

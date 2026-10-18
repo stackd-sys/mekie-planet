@@ -1,6 +1,7 @@
 /* Ligação ao webhook da newsletter (ver integrations/newsletter.gs).
    O webhook responde em JSON e é ele que sabe se um email já está inscrito
    e se já usou o código de boas-vindas. */
+import { lang } from '../i18n/client';
 const ENDPOINT = document.documentElement.dataset.newsletterEndpoint || '';
 export const CODE = (document.documentElement.dataset.welcomeCode || '').toUpperCase();
 export const hasWebhook = () => ENDPOINT !== '';
@@ -34,7 +35,8 @@ async function call<T extends { status: string } = Status>(params: Record<string
     console.warn('[Mekie] Sem webhook configurado em site.newsletterWebhook: o email não foi guardado.');
     return { status: 'unknown' };
   }
-  const body = new URLSearchParams(params);
+  /* a língua da página segue em todos os pedidos: mensagens e emails voltam nessa língua */
+  const body = new URLSearchParams({ ...params, lang });
   let res: Response;
   try {
     /* pedido simples (form-urlencoded, sem cabeçalhos extra), por isso não há preflight */

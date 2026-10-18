@@ -2,36 +2,31 @@
 import Base from '../../layouts/Base.astro';
 import Collection from '../../components/Collection.astro';
 import { site } from '../../data/site';
-import { categories, productsIn, lowStock, type Product } from '../../data/products';
+import { categories, productsIn, lowStock } from '../../data/products';
 import { breadcrumbLd, categoryTrail } from '../../data/seo';
+import { langOf, href, amount } from '../../i18n';
+import { useT } from '../../i18n/ui';
+import { trCategory } from '../../i18n/catalog';
 
 export function getStaticPaths() {
-  const special = [
-    {
-      slug: 'ultimas-unidades',
-      title: 'Últimas unidades',
-      seoTitle: 'Últimas unidades',
-      intro: 'Peças com poucas unidades em stock. Quando acabam, podem não voltar.',
-      items: lowStock(),
-    },
-  ];
-  return [
-    ...special.map((s) => ({ params: { categoria: s.slug }, props: { title: s.title, seoTitle: s.seoTitle, intro: s.intro, items: s.items } })),
-    ...categories.map((c) => ({
-      params: { categoria: c.slug },
-      props: { title: c.name, seoTitle: c.seoTitle, intro: c.intro, items: productsIn(c.slug) },
-    })),
-  ];
+  return ['ultimas-unidades', ...categories.map((c) => c.slug)].map((categoria) => ({ params: { categoria }, props: { categoria } }));
 }
 
-interface Props { title: string; seoTitle: string; intro: string; items: Product[] }
-const { title, seoTitle, intro, items } = Astro.props;
-const { categoria } = Astro.params;
-const trail = categoria === 'ultimas-unidades'
-  ? [{ name: 'Início', path: '/' }, { name: 'Loja', path: '/loja/' }, { name: title, path: '/loja/ultimas-unidades/' }]
-  : categoryTrail(categoria!);
+interface Props { categoria: string }
+const { categoria } = Astro.props;
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const cat = categories.find((c) => c.slug === categoria);
+const local = cat && trCategory(cat, lang);
+const title = local ? local.name : t('last');
+const seoTitle = local ? local.seoTitle : t('last');
+const intro = local ? local.intro : t('last.intro');
+const items = cat ? productsIn(cat.slug) : lowStock();
+const trail = cat
+  ? categoryTrail(categoria, lang)
+  : [{ name: t('home'), path: href(lang, '/') }, { name: t('shop'), path: href(lang, '/loja/') }, { name: title, path: href(lang, '/loja/ultimas-unidades/') }];
 ---
-<Base title={seoTitle} description={`${intro} Envio CTT para Portugal, grátis acima de ${site.freeShippingFrom}€.`}>
+<Base title={seoTitle} description={`${intro} ${t('meta.shipFree', { n: amount(site.freeShippingFrom, lang) })}`}>
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd(trail))} />
-  <Collection title={title} intro={intro} products={items} current={categoria!} />
+  <Collection title={title} intro={intro} products={items} current={categoria} />
 </Base>

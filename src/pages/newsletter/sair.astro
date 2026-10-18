@@ -3,6 +3,13 @@
 export const prerender = false;
 import Base from '../../layouts/Base.astro';
 import { hasDb } from '../../lib/server/sql';
+import { isLang, href } from '../../i18n';
+import { useT } from '../../i18n/ui';
+
+/* a língua vem no link do email (&l=en) */
+const l = Astro.url.searchParams.get('l');
+const lang = isLang(l) ? l : 'pt';
+const t = useT(lang);
 
 const token = (Astro.url.searchParams.get('t') || '').slice(0, 64);
 let done = false;
@@ -14,9 +21,9 @@ if (token && hasDb()) {
 ---
 <Base title="Newsletter" noindex popup={false}>
   <section class="container ns">
-    <h1 class="ns__title">{done ? 'Saíste da newsletter' : 'Link inválido'}</h1>
-    <p>{done ? 'Já não vais receber os nossos emails. Se mudares de ideias, podes subscrever outra vez no fundo de qualquer página.' : 'Este link já não é válido. Se continuares a receber emails nossos, responde a um deles e tratamos disso.'}</p>
-    <a href="/loja/" class="pill">Ver a loja</a>
+    <h1 class="ns__title">{done ? t('ns.done') : t('ns.bad')}</h1>
+    <p>{done ? t('ns.doneText') : t('ns.badText')}</p>
+    <a href={href(lang, '/loja/')} class="pill">{t('shop.go')}</a>
   </section>
 </Base>
 <style>

@@ -1,0 +1,57 @@
+---
+/* Versões em inglês (/en/) e espanhol (/es/) do site: as mesmas páginas, com o caminho traduzido.
+   Cada página lê a língua do endereço; aqui só se diz que página mostrar em cada caminho. */
+import Home from '../index.astro';
+import Shop from '../loja/index.astro';
+import Category from '../loja/[categoria].astro';
+import ProductPage from '../produto/[slug].astro';
+import CollectionPage from '../colecoes/[slug].astro';
+import Gift from '../cartao-presente.astro';
+import Contact from '../contactos.astro';
+import About from '../sobre.astro';
+import Faq from '../perguntas-frequentes.astro';
+import Checkout from '../checkout.astro';
+import Received from '../encomenda-recebida.astro';
+import Legal from '../[legal].astro';
+import { categories, products, collections } from '../../data/products';
+import { legalPages } from '../../data/legal';
+import { href } from '../../i18n';
+
+export function getStaticPaths() {
+  /* [caminho em português, página, props] */
+  const pages: [string, string, Record<string, unknown>][] = [
+    ['/', 'home', {}],
+    ['/loja/', 'shop', {}],
+    ...['ultimas-unidades', ...categories.map((c) => c.slug)].map((categoria): [string, string, Record<string, unknown>] => [`/loja/${categoria}/`, 'category', { categoria }]),
+    ...products.map((p): [string, string, Record<string, unknown>] => [`/produto/${p.slug}/`, 'product', { id: p.id }]),
+    ...collections.map((c): [string, string, Record<string, unknown>] => [`/colecoes/${c.slug}/`, 'collection', { slug: c.slug }]),
+    ['/cartao-presente/', 'gift', {}],
+    ['/contactos/', 'contact', {}],
+    ['/sobre/', 'about', {}],
+    ['/perguntas-frequentes/', 'faq', {}],
+    ['/checkout/', 'checkout', {}],
+    ['/encomenda-recebida/', 'received', {}],
+    ...legalPages.map((p, index): [string, string, Record<string, unknown>] => [`/${p.slug}/`, 'legal', { index }]),
+  ];
+  return (['en', 'es'] as const).flatMap((lang) =>
+    pages.map(([pt, page, props]) => {
+      const path = href(lang, pt).split('/').filter(Boolean).slice(1).join('/');
+      return { params: { lang, path: path || undefined }, props: { page, props } };
+    }),
+  );
+}
+
+const { page, props } = Astro.props as { page: string; props: any };
+---
+{page === 'home' && <Home />}
+{page === 'shop' && <Shop />}
+{page === 'category' && <Category {...props} />}
+{page === 'product' && <ProductPage {...props} />}
+{page === 'collection' && <CollectionPage {...props} />}
+{page === 'gift' && <Gift />}
+{page === 'contact' && <Contact />}
+{page === 'about' && <About />}
+{page === 'faq' && <Faq />}
+{page === 'checkout' && <Checkout />}
+{page === 'received' && <Received />}
+{page === 'legal' && <Legal {...props} />}

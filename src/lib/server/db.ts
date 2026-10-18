@@ -61,6 +61,8 @@ alter table orders add column if not exists stripe_session text not null default
 alter table orders add column if not exists payment_method text not null default '';
 alter table orders add column if not exists stripe_payment_intent text not null default '';
 alter table orders add column if not exists refunded numeric(10,2) not null default 0;
+/* língua em que o cliente comprou: os emails seguem nessa língua */
+alter table orders add column if not exists lang text not null default 'pt';
 create index if not exists orders_created on orders (created_at desc);
 create index if not exists orders_email on orders (email);
 
@@ -95,6 +97,7 @@ create table if not exists subscribers (
   unsubscribed_at timestamptz
 );
 alter table subscribers add column if not exists token text not null default md5(random()::text || clock_timestamp()::text);
+alter table subscribers add column if not exists lang text not null default 'pt';
 
 create table if not exists discount_codes (
   code text primary key,
@@ -153,6 +156,7 @@ create table if not exists notify_requests (
   created_at timestamptz not null default now(),
   notified_at timestamptz
 );
+alter table notify_requests add column if not exists lang text not null default 'pt';
 
 -- contagem anónima de visitas (sem cookies, sem IP, sem identificadores): só totais por dia
 create table if not exists stats (

@@ -1,5 +1,5 @@
 /* Opiniões de quem já usa as peças. Ficam ligadas ao nome do produto, por isso valem para todas as cores. */
-import type { Product } from './products';
+import { products, type Product } from './products';
 
 export type Review = { author: string; rating: number; text: string };
 
@@ -45,7 +45,8 @@ export const reviewsByName: Record<string, Review[]> = {
   ],
 };
 
-export const reviewsOf = (p: Product) => reviewsByName[p.name] ?? [];
+/* procura pelo id: noutras línguas o nome do produto vem traduzido */
+export const reviewsOf = (p: Product) => reviewsByName[products.find((o) => o.id === p.id)?.name ?? p.name] ?? [];
 
 export const ratingOf = (p: Product) => {
   const list = reviewsOf(p);

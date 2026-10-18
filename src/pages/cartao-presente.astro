@@ -1,19 +1,29 @@
 ---
 import Base from '../layouts/Base.astro';
 import Img from '../components/Img.astro';
-import { site, formatPrice } from '../data/site';
-import { giftCard, giftValidity, giftCatalog, giftImage } from '../data/giftcard';
+import { site } from '../data/site';
+import { giftCard, giftImage } from '../data/giftcard';
 import { breadcrumbLd } from '../data/seo';
+import { langOf, href, money, amount } from '../i18n';
+import { useT } from '../i18n/ui';
+import { giftCatalogFor, giftValidityFor, giftValues } from '../i18n/data';
+import { trName } from '../i18n/catalog';
 
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const giftCatalog = giftCatalogFor(lang);
+const giftValidity = giftValidityFor(lang);
+const name = trName(giftCard.name, lang);
+const path = href(lang, `/${giftCard.slug}/`);
 const first = giftCatalog[1];
-const url = new URL(`/${giftCard.slug}/`, site.url).href;
+const url = new URL(path, site.url).href;
 const productLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  name: `${giftCard.name} ${site.name}`,
+  name: `${name} ${site.name}`,
   url,
   image: giftCard.values.map((v) => new URL(giftImage(v), site.url).href),
-  description: `Cartão presente digital da Mekie Planet, de ${giftCard.values[0]}€ a ${giftCard.values.at(-1)}€. Enviado por email, válido durante ${giftValidity} em toda a loja online.`,
+  description: t('gc.ldDesc', { min: amount(giftCard.values[0], lang), max: amount(giftCard.values.at(-1)!, lang), validity: giftValidity }),
   brand: { '@type': 'Brand', name: site.name },
   offers: {
     '@type': 'AggregateOffer',
@@ -25,54 +35,54 @@ const productLd = {
   },
 };
 ---
-<Base title="Cartão Presente" description={`Oferece Mekie a quem quiseres. Cartão presente digital de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€, enviado por email e válido durante ${giftValidity}.`} image={giftImage(first.price)} ogType="product">
+<Base title={name} description={t('gc.desc', { values: giftValues(lang), validity: giftValidity })} image={giftImage(first.price)} ogType="product">
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd)} />
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: giftCard.name, path: `/${giftCard.slug}/` }]))} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: t('home'), path: href(lang, '/') }, { name, path }]))} />
 
   <div class="gc">
     <div class="gc__media">
       {giftCatalog.map((g) => (
-        <Img src={g.image} alt={`Cartão presente Mekie de ${g.value}€, ${g.title}`} width="1200" height="1200" sizes="(max-width: 900px) 100vw, 55vw" loading={g.id === first.id ? 'eager' : 'lazy'} data-gc-img={g.id} hidden={g.id !== first.id} />
+        <Img src={g.image} alt={t('gc.alt', { v: amount(g.value, lang), title: g.title })} width="1200" height="1200" sizes="(max-width: 900px) 100vw, 55vw" loading={g.id === first.id ? 'eager' : 'lazy'} data-gc-img={g.id} hidden={g.id !== first.id} />
       ))}
     </div>
 
     <div class="gc__info">
-      <h1 class="gc__title">{giftCard.name}</h1>
-      <p class="price gc__price" data-gc-price>{formatPrice(first.price)}</p>
-      <p class="gc__lead">Não sabes o tamanho ou a cor? Oferece um cartão e deixa a escolha a quem o recebe. Enviamos por email, sem portes.</p>
+      <h1 class="gc__title">{name}</h1>
+      <p class="price gc__price" data-gc-price>{money(first.price, lang)}</p>
+      <p class="gc__lead">{t('gc.lead')}</p>
 
       <form class="gc__form" data-gc-form novalidate>
         <fieldset class="gc__set">
-          <legend class="gc__label">Valor</legend>
+          <legend class="gc__label">{t('gc.value')}</legend>
           <div class="gc__values">
             {giftCatalog.map((g) => (
               <label class="gc__value">
                 <input type="radio" name="valor" value={g.id} checked={g.id === first.id} data-item={JSON.stringify(g)} />
-                <span><b>{g.value}€</b><small>{g.title}</small></span>
+                <span><b>{amount(g.value, lang)}</b><small>{g.title}</small></span>
               </label>
             ))}
           </div>
         </fieldset>
 
         <div class="gc__two">
-          <label><span class="gc__label">Para</span><input class="field" name="para" required maxlength="60" placeholder="Nome de quem recebe" autocomplete="off" /></label>
-          <label><span class="gc__label">De</span><input class="field" name="de" required maxlength="60" placeholder="O teu nome" autocomplete="given-name" /></label>
+          <label><span class="gc__label">{t('gc.to')}</span><input class="field" name="para" required maxlength="60" placeholder={t('gc.toPh')} autocomplete="off" /></label>
+          <label><span class="gc__label">{t('gc.from')}</span><input class="field" name="de" required maxlength="60" placeholder={t('gc.fromPh')} autocomplete="given-name" /></label>
         </div>
-        <label><span class="gc__label">Email de quem recebe <small>(opcional)</small></span><input class="field" name="email" type="email" maxlength="120" placeholder="Se ficar em branco, enviamos para ti" autocomplete="off" /></label>
-        <label><span class="gc__label">Mensagem <small>(opcional)</small></span><textarea class="field" name="mensagem" maxlength="250" rows="3" placeholder="Parabéns, bro!"></textarea></label>
+        <label><span class="gc__label">{t('gc.email')} <small>{t('gc.optional')}</small></span><input class="field" name="email" type="email" maxlength="120" placeholder={t('gc.emailPh')} autocomplete="off" /></label>
+        <label><span class="gc__label">{t('gc.message')} <small>{t('gc.optional')}</small></span><textarea class="field" name="mensagem" maxlength="250" rows="3" placeholder={t('gc.messagePh')}></textarea></label>
 
-        <p class="gc__error" role="alert" data-gc-error hidden>Preenche o nome de quem recebe e o teu.</p>
-        <button type="submit" class="pill pill--accent pill--block" data-gc-btn>Adicionar ao carrinho</button>
+        <p class="gc__error" role="alert" data-gc-error hidden>{t('gc.needNames')}</p>
+        <button type="submit" class="pill pill--accent pill--block" data-gc-btn>{t('add')}</button>
       </form>
 
       <div class="gc__how">
-        <h2 class="gc__label">Como funciona</h2>
+        <h2 class="gc__label">{t('gc.how')}</h2>
         <ol>
-          <li>Escolhes o valor e escreves uma mensagem.</li>
-          <li>Depois do pagamento, enviamos o cartão por email com um código único, no prazo de {giftCard.sendDays} dia útil. Vai para quem o recebe ou para ti, se preferires entregar em mão.</li>
-          <li>Quem o recebe usa o código no checkout. Se não gastar tudo de uma vez, o saldo fica para a próxima.</li>
+          <li>{t('gc.how1')}</li>
+          <li>{t('gc.how2', { n: giftCard.sendDays })}</li>
+          <li>{t('gc.how3')}</li>
         </ol>
-        <p>Válido durante {giftValidity} em toda a loja online. Não é trocável por dinheiro. Vê as condições nos <a href="/termos-e-condicoes-de-servico/" class="link-underline">Termos e Condições</a>.</p>
+        <p set:html={t('gc.terms', { validity: giftValidity, href: href(lang, '/termos-e-condicoes-de-servico/') })} />
       </div>
     </div>
   </div>
@@ -82,6 +92,7 @@ const productLd = {
   import { cart, money } from '../scripts/cart';
   import { openCart } from '../scripts/ui';
   import { track } from '../scripts/consent';
+  import { tc } from '../i18n/client';
 
   const form = document.querySelector<HTMLFormElement>('[data-gc-form]')!;
   const price = document.querySelector<HTMLElement>('[data-gc-price]')!;
@@ -106,17 +117,17 @@ const productLd = {
     const msg = String(data.get('mensagem') || '').trim().replace(/\s+/g, ' ');
     const emailField = form.querySelector<HTMLInputElement>('[name=email]')!;
     if (!to || !from || (email && !emailField.checkValidity())) {
-      error.textContent = !to || !from ? 'Preenche o nome de quem recebe e o teu.' : 'O email de quem recebe não parece válido.';
+      error.textContent = !to || !from ? tc('gc.needNames') : tc('gc.badEmail');
       error.hidden = false;
       return;
     }
     error.hidden = true;
     const item = chosen();
-    const custom = [item.title, `Para ${to}${email ? ` (${email})` : ''}`, `De ${from}`, msg && `"${msg}"`].filter(Boolean).join(' · ');
+    const custom = [item.title, tc('gc.to', { name: `${to}${email ? ` (${email})` : ''}` }), tc('gc.from', { name: from }), msg && `"${msg}"`].filter(Boolean).join(' · ');
     cart.add({ ...item, custom }, 1);
     track('add_to_cart', [{ id: item.id, name: `${item.name} ${item.color}`, price: item.price }]);
-    btn.textContent = 'Adicionado ✓';
-    setTimeout(() => (btn.textContent = 'Adicionar ao carrinho'), 1600);
+    btn.textContent = tc('added');
+    setTimeout(() => (btn.textContent = tc('add')), 1600);
     openCart();
   });
 </script>

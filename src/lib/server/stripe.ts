@@ -2,6 +2,8 @@
    Variáveis: STRIPE_SECRET_KEY (sk_test_... ou sk_live_...) e STRIPE_WEBHOOK_SECRET (whsec_...).
    Os métodos de pagamento (MB WAY, Multibanco, cartão, Apple Pay, Google Pay) ligam-se no painel da Stripe. */
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { href, type Lang } from '../../i18n';
+import { trName, trColor } from '../../i18n/catalog';
 
 export const hasStripe = () => Boolean(process.env.STRIPE_SECRET_KEY);
 const API = () => process.env.STRIPE_API_BASE || 'https://api.stripe.com';
@@ -35,26 +37,29 @@ async function call(method: 'GET' | 'POST', path: string, body?: Record<string, 
 
 const cents = (eur: number) => Math.round(eur * 100);
 
-/** Cria a página de pagamento para uma encomenda já gravada no CRM. */
-export async function createCheckout(o: { number: string; email: string; total: number; lines: { qty: number; name: string; color?: string; size?: string }[] }, origin: string) {
-  const summary = o.lines.map((l) => `${l.qty}× ${l.name}${l.color ? ` ${l.color.split(' · ')[0]}` : ''}${l.size ? ` ${l.size}` : ''}`).join(', ');
+/** Cria a página de pagamento para uma encomenda já gravada no CRM, na língua em que o cliente comprou. */
+export async function createCheckout(o: { number: string; email: string; total: number; lang?: Lang; lines: { qty: number; name: string; color?: string; size?: string }[] }, origin: string) {
+  const lang = o.lang ?? 'pt';
+  const summary = o.lines.map((l) => `${l.qty}× ${trName(l.name, lang)}${l.color ? ` ${trColor(l.color.split(' · ')[0], lang)}` : ''}${l.size ? ` ${l.size}` : ''}`).join(', ');
+  const word = { pt: 'Encomenda', en: 'Order', es: 'Pedido' }[lang];
   return call('POST', 'checkout/sessions', {
     mode: 'payment',
-    locale: 'pt',
+    locale: lang,
     customer_email: o.email,
     client_reference_id: o.number,
     metadata: { order: o.number },
+    /* a descrição fica sempre "Encomenda MK-..." em português: é por ela que o webhook encontra a encomenda */
     payment_intent_data: { metadata: { order: o.number }, description: `Encomenda ${o.number}` },
     line_items: [{
       quantity: 1,
       price_data: {
         currency: 'eur',
         unit_amount: cents(o.total),
-        product_data: { name: `Encomenda ${o.number} · Mekie Planet`, description: summary.slice(0, 500) },
+        product_data: { name: `${word} ${o.number} · Mekie Planet`, description: summary.slice(0, 500) },
       },
     }],
-    success_url: `${origin}/encomenda-recebida/?n=${encodeURIComponent(o.number)}&pago=1&t=${encodeURIComponent(o.total.toFixed(2))}`,
-    cancel_url: `${origin}/checkout/?cancelado=${encodeURIComponent(o.number)}`,
+    success_url: `${origin}${href(lang, '/encomenda-recebida/')}?n=${encodeURIComponent(o.number)}&pago=1&t=${encodeURIComponent(o.total.toFixed(2))}`,
+    cancel_url: `${origin}${href(lang, '/checkout/')}?cancelado=${encodeURIComponent(o.number)}`,
   }) as Promise<{ id: string; url: string }>;
 }
 

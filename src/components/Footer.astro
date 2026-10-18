@@ -1,70 +1,76 @@
 ---
 import Icon from './Icon.astro';
-import { topCategories, childCategories } from '../data/products';
-import { legalPages } from '../data/legal';
 import { site } from '../data/site';
+import { langOf, href, amount } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop, legalFor } from '../i18n/data';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (p: string) => href(lang, p);
+const { topCategories, childCategories } = shop(lang);
+const legalPages = legalFor(lang);
 const year = new Date().getFullYear();
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 ---
-<section class="perks" aria-label="Vantagens">
+<section class="perks" aria-label={t('perks')}>
   <div class="perks__inner container">
-    <div class="perk"><Icon name="send" size={22} /><div><p class="eyebrow">Envio em {site.deliveryDays} dias úteis</p><p class="perk__txt">Para Portugal, via CTT</p></div></div>
-    <div class="perk"><Icon name="truck" size={22} /><div><p class="eyebrow">Envio gratuito</p><p class="perk__txt">Em Portugal, acima de {site.freeShippingFrom}€</p></div></div>
-    <div class="perk"><Icon name="return" size={22} /><div><p class="eyebrow">Devoluções em 14 dias</p><p class="perk__txt">Sem necessidade de indicar o motivo</p></div></div>
+    <div class="perk"><Icon name="send" size={22} /><div><p class="eyebrow">{t('perk.days', { n: site.deliveryDays })}</p><p class="perk__txt">{t('perk.daysSub')}</p></div></div>
+    <div class="perk"><Icon name="truck" size={22} /><div><p class="eyebrow">{t('perk.free')}</p><p class="perk__txt">{t('perk.freeSub', { n: amount(site.freeShippingFrom, lang) })}</p></div></div>
+    <div class="perk"><Icon name="return" size={22} /><div><p class="eyebrow">{t('perk.returns')}</p><p class="perk__txt">{t('perk.returnsSub')}</p></div></div>
   </div>
 </section>
 
 <footer class="footer">
   <div class="footer__grid container">
     <div class="footer__col footer__news" data-newsletter-box>
-      <p class="footer__title eyebrow">Mekie Newsletter</p>
-      <p class="footer__text eyebrow" data-before>Recebe as novidades primeiro e ganha <strong>{site.welcomeDiscount}% de desconto</strong> na primeira compra.</p>
+      <p class="footer__title eyebrow">{t('news.title')}</p>
+      <p class="footer__text eyebrow" data-before set:html={t('news.text', { n: site.welcomeDiscount })} />
       <form class="newsletter-form" data-newsletter="footer" novalidate>
         <label class="sr-only" for="footer-email">Email</label>
         <input class="field" id="footer-email" type="email" name="email" placeholder="Email" required autocomplete="email" />
         <label class="newsletter-form__consent">
           <input type="checkbox" name="consent" value="yes" required />
-          <span>Aceito receber emails da Mekie.</span>
+          <span>{t('news.consent')}</span>
         </label>
-        <button class="pill" type="submit">Subscrever</button>
+        <button class="pill" type="submit">{t('news.submit')}</button>
         <p class="newsletter-form__msg" role="alert" data-msg hidden></p>
       </form>
       <div class="footer__done" data-success hidden>
-        <p class="footer__text eyebrow"><span data-success-title>Já estás na lista.</span> <span data-success-sub>O teu código de {site.welcomeDiscount}%:</span></p>
+        <p class="footer__text eyebrow"><span data-success-title>{t('news.done')}</span> <span data-success-sub>{t('news.code', { n: site.welcomeDiscount })}</span></p>
         <p class="footer__code" data-code-wrap><code>{site.welcomeCode}</code></p>
       </div>
     </div>
     <div class="footer__col">
-      <p class="footer__title eyebrow">Loja</p>
+      <p class="footer__title eyebrow">{t('shop')}</p>
       <ul>
-        <li><a href="/loja/">Ver tudo</a></li>
+        <li><a href={h('/loja/')}>{t('shop.all')}</a></li>
         {topCategories.map((c) => (
           <>
-            <li><a href={`/loja/${c.slug}/`}>{c.name}</a></li>
-            {childCategories(c.slug).map((s) => <li class="footer__sub"><a href={`/loja/${s.slug}/`}>{s.name}</a></li>)}
+            <li><a href={h(`/loja/${c.slug}/`)}>{c.name}</a></li>
+            {childCategories(c.slug).map((s) => <li class="footer__sub"><a href={h(`/loja/${s.slug}/`)}>{s.name}</a></li>)}
           </>
         ))}
-        <li><a href="/cartao-presente/">Cartão presente</a></li>
+        <li><a href={h('/cartao-presente/')}>{t('gift')}</a></li>
       </ul>
     </div>
     <div class="footer__col">
-      <p class="footer__title eyebrow">Clientes</p>
+      <p class="footer__title eyebrow">{t('foot.customers')}</p>
       <ul>
-        <li><a href="/contactos/">Contactos</a></li>
-        <li><a href="/perguntas-frequentes/">Perguntas frequentes</a></li>
-        <li><a href="/blog/">Blog</a></li>
-        <li><a href="/politica-de-devolucoes-e-reembolsos/">Devoluções</a></li>
-        <li><a href="/politica-de-envios-e-entregas/">Envios e entregas</a></li>
+        <li><a href={h('/contactos/')}>{t('contact')}</a></li>
+        <li><a href={h('/perguntas-frequentes/')}>{t('faq')}</a></li>
+        <li><a href="/blog/" hreflang={lang === 'pt' ? undefined : 'pt'}>Blog{t('pt.only')}</a></li>
+        <li><a href={h('/politica-de-devolucoes-e-reembolsos/')}>{t('foot.returns')}</a></li>
+        <li><a href={h('/politica-de-envios-e-entregas/')}>{t('foot.shipping')}</a></li>
         <li><a href={site.instagram} target="_blank" rel="noopener">Instagram</a></li>
-        <li class="footer__plain">Envios para Portugal e União Europeia</li>
+        <li class="footer__plain">{t('foot.zones')}</li>
       </ul>
     </div>
     <div class="footer__col">
-      <p class="footer__title eyebrow">Informação legal</p>
+      <p class="footer__title eyebrow">{t('foot.legal')}</p>
       <ul>
-        {legalPages.map((p) => <li><a href={`/${p.slug}/`}>{p.title}</a></li>)}
-        {(site.analytics.ga4 || site.analytics.metaPixel) && <li><a href="/politica-de-cookies/" data-consent-open>Definições de cookies</a></li>}
-        <li><a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener">Livro de reclamações</a></li>
+        {legalPages.map((p) => <li><a href={lang === 'pt' ? `/${p.slug}/` : `/${lang}/${p.slug}/`}>{p.title}</a></li>)}
+        {(site.analytics.ga4 || site.analytics.metaPixel) && <li><a href={h('/politica-de-cookies/')} data-consent-open>{t('foot.cookies')}</a></li>}
+        <li><a href="https://www.livroreclamacoes.pt/" target="_blank" rel="noopener">{t('foot.complaints')}</a></li>
       </ul>
     </div>
   </div>
@@ -74,7 +80,7 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
       <a href={site.instagram} target="_blank" rel="noopener" aria-label="Instagram"><Icon name="instagram" size={18} /></a>
       <p class="eyebrow">© {year} {site.name}</p>
     </div>
-    <ul class="footer__pay" aria-label="Métodos de pagamento">
+    <ul class="footer__pay" aria-label={t('payments')}>
       {payments.map((p) => <li>{p}</li>)}
     </ul>
   </div>

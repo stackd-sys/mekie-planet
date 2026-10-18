@@ -1,4 +1,5 @@
 /* Data de entrega estimada: soma dias úteis a hoje, sem fins de semana nem feriados nacionais. */
+import { lang } from '../i18n/client';
 
 /** Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher) */
 function easter(year: number) {
@@ -39,4 +40,4 @@ export function deliveryBy(workingDays: number, from = new Date()) {
 
 /** "quinta-feira, 23 de outubro" */
 export const formatDay = (d: Date) =>
-  d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  d.toLocaleDateString(lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });

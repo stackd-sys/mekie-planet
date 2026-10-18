@@ -1,5 +1,6 @@
 /* Envio de emails pela Resend (resend.com). Sem RESEND_API_KEY os emails não saem e ficam só no registo. */
 import { site } from '../../data/site';
+import { htmlLang, type Lang } from '../../i18n';
 
 const FROM = () => process.env.MAIL_FROM || `Mekie Planet <${site.email}>`;
 export const hasMail = () => Boolean(process.env.RESEND_API_KEY);
@@ -8,8 +9,8 @@ export const escapeHtml = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Moldura simples, com o logótipo, para todos os emails */
-export function layout(title: string, body: string) {
-  return `<!doctype html><html lang="pt-PT"><body style="margin:0;background:#f5f5f4;font-family:Helvetica,Arial,sans-serif;color:#1f1f1f">
+export function layout(title: string, body: string, lang: Lang = 'pt') {
+  return `<!doctype html><html lang="${htmlLang[lang]}"><body style="margin:0;background:#f5f5f4;font-family:Helvetica,Arial,sans-serif;color:#1f1f1f">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px">
 <img src="${site.url}/images/site/logo.png" alt="Mekie" width="120" style="display:block;margin:0 0 28px">
 <h1 style="font-size:20px;font-weight:600;margin:0 0 16px">${escapeHtml(title)}</h1>

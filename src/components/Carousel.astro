@@ -2,6 +2,9 @@
 import Icon from './Icon.astro';
 import ProductCard from './ProductCard.astro';
 import type { Product } from '../data/products';
+import { langOf } from '../i18n';
+import { useT } from '../i18n/ui';
+const t = useT(langOf(Astro.url.pathname));
 interface Props { products: Product[]; label: string }
 const { products, label } = Astro.props;
 ---
@@ -9,8 +12,8 @@ const { products, label } = Astro.props;
   <ul class="carousel__track" aria-label={label} data-track>
     {products.map((p, i) => <li class="carousel__slide"><ProductCard product={p} eager={i < 4} /></li>)}
   </ul>
-  <button type="button" class="carousel__btn carousel__btn--prev" aria-label="Anterior" data-dir="-1"><Icon name="arrow-left" size={18} /></button>
-  <button type="button" class="carousel__btn carousel__btn--next" aria-label="Seguinte" data-dir="1"><Icon name="arrow-right" size={18} /></button>
+  <button type="button" class="carousel__btn carousel__btn--prev" aria-label={t('carousel.prev')} data-dir="-1"><Icon name="arrow-left" size={18} /></button>
+  <button type="button" class="carousel__btn carousel__btn--next" aria-label={t('carousel.next')} data-dir="1"><Icon name="arrow-right" size={18} /></button>
 </div>
 
 <script>

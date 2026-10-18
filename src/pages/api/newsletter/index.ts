@@ -17,12 +17,14 @@ export const POST: APIRoute = async ({ request }) => {
   const sql = await db();
   const email = (p.get('email') || '').trim().toLowerCase();
   const cut = (k: string, n = 200) => (p.get(k) || '').slice(0, n);
+  const { asLang } = await import('../../../i18n/server');
+  const lang = asLang(p.get('lang'));
 
   try {
     if (action === 'gift') return json(await giftBalance(cut('code', 40)));
 
     if (action === 'code') {
-      const r = await checkCode(cut('code', 40), email, Number(p.get('goods')) || 0);
+      const r = await checkCode(cut('code', 40), email, Number(p.get('goods')) || 0, lang);
       return json(r.ok ? { status: 'ok', code: r.code, kind: r.kind, value: r.value, welcome: r.welcome } : { status: 'invalid', message: r.message });
     }
 
@@ -32,7 +34,7 @@ export const POST: APIRoute = async ({ request }) => {
       const product = cut('product', 120), size = cut('size', 20);
       const [dup] = await sql`select 1 from notify_requests where email = ${email} and product = ${product} and size = ${size} and notified_at is null`;
       if (dup) return json({ status: 'exists' });
-      await sql`insert into notify_requests (email, product, size, page) values (${email}, ${product}, ${size}, ${cut('page')})`;
+      await sql`insert into notify_requests (email, product, size, page, lang) values (${email}, ${product}, ${size}, ${cut('page')}, ${lang})`;
       return json({ status: 'new' });
     }
 
@@ -47,8 +49,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (subscribed) return json({ status: 'exists', subscribed: true, used });
     await sql`
-      insert into subscribers (email, source, page, consent) values (${email}, ${cut('source', 40)}, ${cut('page')}, ${cut('consent', 10)})
-      on conflict (email) do update set unsubscribed_at = null, consent = excluded.consent`;
+      insert into subscribers (email, source, page, consent, lang) values (${email}, ${cut('source', 40)}, ${cut('page')}, ${cut('consent', 10)}, ${lang})
+      on conflict (email) do update set unsubscribed_at = null, consent = excluded.consent, lang = excluded.lang`;
     /* o email de boas-vindas só segue a quem ainda não teve o desconto */
     if (!sub && !used) {
       const { sendWelcome } = await import('../../../lib/server/newsletter');

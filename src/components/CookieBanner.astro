@@ -1,34 +1,38 @@
 ---
 /* Aviso de cookies: só aparece quando há Google Analytics ou Meta Pixel configurados em site.ts */
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
 ---
 <section class="ck" data-consent hidden aria-labelledby="ck-title">
   <p id="ck-title" class="ck__title">Cookies</p>
   <p class="ck__text">
-    Usamos cookies para perceber como o site é usado e para mostrar a Mekie a quem possa gostar, no Instagram e no Facebook. Só os ativamos se aceitares.{' '}
-    <a href="/politica-de-cookies/" class="link-underline">Saber mais</a>
+    {t('ck.text')}{' '}
+    <a href={href(lang, '/politica-de-cookies/')} class="link-underline">{t('ck.more')}</a>
   </p>
 
   <div class="ck__prefs" data-consent-prefs hidden>
     <label class="ck__opt">
       <input type="checkbox" checked disabled />
-      <span><b>Necessários</b> Carrinho e escolhas no site. Sempre ativos.</span>
+      <span><b>{t('ck.needed')}</b> {t('ck.neededText')}</span>
     </label>
     <label class="ck__opt">
       <input type="checkbox" name="consent-analytics" />
-      <span><b>Estatísticas</b> Google Analytics, para sabermos que páginas e peças são mais vistas.</span>
+      <span><b>{t('ck.stats')}</b> {t('ck.statsText')}</span>
     </label>
     <label class="ck__opt">
       <input type="checkbox" name="consent-marketing" />
-      <span><b>Publicidade</b> Meta Pixel e Google, para medir e mostrar anúncios da Mekie.</span>
+      <span><b>{t('ck.ads')}</b> {t('ck.adsText')}</span>
     </label>
-    <button type="button" class="pill pill--block" data-consent-save>Guardar escolhas</button>
+    <button type="button" class="pill pill--block" data-consent-save>{t('ck.save')}</button>
   </div>
 
   <div class="ck__actions">
-    <button type="button" class="pill" data-consent-none>Recusar</button>
-    <button type="button" class="pill" data-consent-all>Aceitar</button>
+    <button type="button" class="pill" data-consent-none>{t('ck.reject')}</button>
+    <button type="button" class="pill" data-consent-all>{t('ck.accept')}</button>
   </div>
-  <button type="button" class="ck__custom link-underline" data-consent-custom>Escolher</button>
+  <button type="button" class="ck__custom link-underline" data-consent-custom>{t('ck.choose')}</button>
 </section>
 
 <style>

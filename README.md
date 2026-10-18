@@ -16,12 +16,24 @@ npm run build    # gera o site estático em dist/
 | --- | --- |
 | Produtos, preços, tamanhos, imagens | `src/data/products.ts` |
 | Categorias do menu | `src/data/products.ts` (`categories`) |
-| Email, Instagram, envio grátis, prazo de entrega, avisos do topo | `src/data/site.ts` |
-| Textos legais | `src/data/legal.ts` |
+| Email, Instagram, envio grátis, prazo de entrega | `src/data/site.ts` |
+| Textos do site (botões, avisos do topo, páginas) nas três línguas | `src/i18n/ui.ts` |
+| Nomes, cores e detalhes dos produtos em inglês e espanhol | `src/i18n/catalog.ts` |
+| Textos legais | `src/data/legal.ts` (inglês e espanhol em `src/data/i18n/`) |
 | Cores e tipografia | `src/styles/global.css` |
 | Imagens | `public/images/products` e `public/images/site` |
 
-Para adicionar um produto: coloca as imagens em `public/images/products/` (de preferência `.webp`, 1200px) e acrescenta uma entrada a `products` em `src/data/products.ts`. A página do produto é criada automaticamente.
+Para adicionar um produto: coloca as imagens em `public/images/products/` (de preferência `.webp`, 1200px) e acrescenta uma entrada a `products` em `src/data/products.ts`. A página do produto é criada automaticamente, nas três línguas. Se o nome, a cor ou um detalhe forem novos, junta a tradução em `src/i18n/catalog.ts`: o que lá não estiver aparece em português no site em inglês e em espanhol.
+
+## Línguas
+
+O site está em português (`/`), inglês (`/en/`) e espanhol (`/es/`), com o caminho traduzido (`/en/shop/`, `/es/tienda/`). O seletor de língua fica no topo, à direita (no telemóvel, no fundo do menu). O blog só existe em português.
+
+- Os textos do site estão em `src/i18n/ui.ts`, cada um com as três versões lado a lado. Os do carrinho e do checkout estão em `src/i18n/client.ts`, e os dos emails e das mensagens de erro em `src/i18n/server.ts`.
+- As perguntas frequentes e as páginas legais em inglês e espanhol estão em `src/data/i18n/`. Quando se muda o texto em português, convém mudar também estas.
+- Cada encomenda guarda a língua em que foi feita. A página de pagamento da Stripe e todos os emails ao cliente (confirmação, pagamento, envio, reembolso, cartão presente) seguem nessa língua. No CRM, a encomenda mostra "Língua: Inglês" ou "Espanhol" quando não é português. Os avisos de encomenda para a Mekie continuam em português.
+- A newsletter (email de boas-vindas) e o "Avisa-me quando voltar" também guardam a língua de quem subscreveu.
+- As opiniões dos clientes ficam no original, em português, com essa indicação.
 
 ## Carrinho e encomendas
 
@@ -155,7 +167,7 @@ No código não há nada a mudar: o site já usa `https://mekie-planet.com` nos 
 
 ## Por fazer
 
-Feito (17 e 18 de outubro): domínio mekie-planet.com na Vercel (o www reencaminha), CRM em app.mekie-planet.com (`ADMIN_HOST`), base de dados Neon em Frankfurt, Resend com o domínio verificado, Stripe em produção com webhook (6 eventos) e reembolsos pelo CRM, Deploy Hook, Search Console com o sitemap, reencaminhamento de geral@mekie-planet.com para mekieplanet@gmail.com (ImprovMX), contagem anónima de visitas no CRM.
+Feito (17 e 18 de outubro): traduções em inglês e espanhol, domínio mekie-planet.com na Vercel (o www reencaminha), CRM em app.mekie-planet.com (`ADMIN_HOST`), base de dados Neon em Frankfurt, Resend com o domínio verificado, Stripe em produção com webhook (6 eventos) e reembolsos pelo CRM, Deploy Hook, Search Console com o sitemap, reencaminhamento de geral@mekie-planet.com para mekieplanet@gmail.com (ImprovMX), contagem anónima de visitas no CRM.
 
 Pendente da Mekie:
 
@@ -166,5 +178,5 @@ Pendente da Mekie:
 
 Próximas fases do site:
 
-1. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
-2. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.
+1. Conta de cliente com login por email.
+2. Campanha de Natal quando fizer sentido.

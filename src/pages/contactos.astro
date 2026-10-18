@@ -2,12 +2,15 @@
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import { site } from '../data/site';
+import { langOf } from '../i18n';
+import { useT } from '../i18n/ui';
+const t = useT(langOf(Astro.url.pathname));
 ---
-<Base title="Contactos" description={`Fala com a Mekie: ${site.email} ou Instagram @mekie_planet.`}>
+<Base title={t('contact')} description={t('ct.desc', { email: site.email })}>
   <section class="container ct">
     <div>
-      <h1 class="display ct__title">Contactos</h1>
-      <p class="ct__lead">Tens dúvidas sobre tamanhos, encomendas ou devoluções? Manda-nos uma mensagem.</p>
+      <h1 class="display ct__title">{t('contact')}</h1>
+      <p class="ct__lead">{t('ct.lead')}</p>
       <dl class="ct__list">
         <div><dt class="eyebrow">Email</dt><dd><a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a></dd></div>
         <div><dt class="eyebrow">Instagram</dt><dd><a class="link-underline" href={site.instagram} target="_blank" rel="noopener"><Icon name="instagram" size={16} /> @mekie_planet</a></dd></div>
@@ -16,20 +19,20 @@ import { site } from '../data/site';
 
     <form class="ct__form" data-contact>
       <div class="two">
-        <label><span class="eyebrow">Nome</span><input class="field" name="nome" required autocomplete="name" /></label>
+        <label><span class="eyebrow">{t('ct.name')}</span><input class="field" name="nome" required autocomplete="name" /></label>
         <label><span class="eyebrow">Email</span><input class="field" name="email" type="email" required autocomplete="email" /></label>
       </div>
-      <label><span class="eyebrow">Assunto</span>
+      <label><span class="eyebrow">{t('ct.subject')}</span>
         <select class="field" name="assunto">
-          <option>Encomenda</option>
-          <option>Tamanhos</option>
-          <option>Devoluções e trocas</option>
-          <option>Parcerias</option>
-          <option>Outro</option>
+          <option>{t('ct.s1')}</option>
+          <option>{t('ct.s2')}</option>
+          <option>{t('ct.s3')}</option>
+          <option>{t('ct.s4')}</option>
+          <option>{t('ct.s5')}</option>
         </select>
       </label>
-      <label><span class="eyebrow">Mensagem</span><textarea class="field" name="mensagem" required rows="6"></textarea></label>
-      <button type="submit" class="pill">Enviar mensagem</button>
+      <label><span class="eyebrow">{t('ct.message')}</span><textarea class="field" name="mensagem" required rows="6"></textarea></label>
+      <button type="submit" class="pill">{t('ct.send')}</button>
     </form>
   </section>
 </Base>

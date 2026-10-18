@@ -1,16 +1,22 @@
 ---
 import Base from '../layouts/Base.astro';
-import { legalPages, type LegalPage } from '../data/legal';
+import { legalPages } from '../data/legal';
+import { langOf } from '../i18n';
+import { useT } from '../i18n/ui';
+import { legalFor } from '../i18n/data';
 
 export function getStaticPaths() {
-  return legalPages.map((page) => ({ params: { legal: page.slug }, props: { page } }));
+  return legalPages.map((page, index) => ({ params: { legal: page.slug }, props: { index } }));
 }
-interface Props { page: LegalPage }
-const { page } = Astro.props;
+/* posição da página na lista: é a mesma nas três línguas */
+interface Props { index: number }
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const page = legalFor(lang)[Astro.props.index];
 ---
 <Base title={page.title} description={page.summary}>
   <article class="container legal">
-    <p class="eyebrow legal__kicker">Informação legal</p>
+    <p class="eyebrow legal__kicker">{t('legal.kicker')}</p>
     <h1 class="display legal__title">{page.title}</h1>
     {page.sections.map((s) => (
       <section>

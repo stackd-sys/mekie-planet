@@ -1,15 +1,20 @@
 ---
 import Icon from './Icon.astro';
-import { site, formatPrice } from '../data/site';
-import { products, cartInfo } from '../data/products';
-const addOns = products.filter((p) => p.category === 'meias');
+import { site } from '../data/site';
+import { cartInfo } from '../data/products';
+import { langOf, href, money, amount } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop } from '../i18n/data';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const addOns = shop(lang).products.filter((p) => p.category === 'meias');
 ---
 <div class="drawer" data-cart hidden>
   <div class="drawer__backdrop" data-cart-close></div>
   <aside class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
     <header class="drawer__head">
-      <h2 id="cart-title" class="eyebrow">Carrinho <span data-cart-count-label></span></h2>
-      <button type="button" class="drawer__close" aria-label="Fechar carrinho" data-cart-close><Icon name="close" size={22} /></button>
+      <h2 id="cart-title" class="eyebrow">{t('cart')} <span data-cart-count-label></span></h2>
+      <button type="button" class="drawer__close" aria-label={t('cart.close')} data-cart-close><Icon name="close" size={22} /></button>
     </header>
 
     <div class="drawer__ship" data-ship>
@@ -20,31 +25,31 @@ const addOns = products.filter((p) => p.category === 'meias');
     <ul class="drawer__items" data-cart-items></ul>
 
     <section class="upsell" data-upsell hidden>
-      <p class="upsell__title eyebrow">Completa o teu pedido</p>
+      <p class="upsell__title eyebrow">{t('cart.upsell')}</p>
       <ul class="upsell__list">
         {addOns.map((p) => (
-          <li class="upsell__item" data-upsell-item={p.id} data-product={JSON.stringify(cartInfo(p))}>
+          <li class="upsell__item" data-upsell-item={p.id} data-product={JSON.stringify({ ...cartInfo(p), href: href(lang, `/produto/${p.slug}/`) })}>
             <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="56" height="70" loading="lazy" />
             <div>
               <p class="upsell__name">{p.name}</p>
-              <p class="upsell__price">{formatPrice(p.price)}</p>
+              <p class="upsell__price">{money(p.price, lang)}</p>
             </div>
-            <button type="button" class="upsell__add" data-quick="" aria-label={`Adicionar ${p.name}`}>+ Adicionar</button>
+            <button type="button" class="upsell__add" data-quick="" aria-label={t('cart.addItem', { name: p.name })}>+ {t('add.short')}</button>
           </li>
         ))}
       </ul>
     </section>
 
     <div class="drawer__empty" data-cart-empty>
-      <p>O teu carrinho está vazio.</p>
-      <a href="/loja/" class="pill">Ir para a loja</a>
+      <p>{t('cart.empty')}</p>
+      <a href={href(lang, '/loja/')} class="pill">{t('cart.toShop')}</a>
     </div>
 
     <footer class="drawer__foot" data-cart-foot>
-      <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>0,00€</strong></div>
-      <p class="drawer__note">IVA incluído. Portes calculados no checkout, grátis em Portugal acima de {site.freeShippingFrom}€.</p>
-      <a href="/checkout/" class="pill pill--accent pill--block">Finalizar compra</a>
-      <ul class="drawer__pay" aria-label="Métodos de pagamento">
+      <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>{money(0, lang)}</strong></div>
+      <p class="drawer__note">{t('cart.note', { n: amount(site.freeShippingFrom, lang) })}</p>
+      <a href={href(lang, '/checkout/')} class="pill pill--accent pill--block">{t('cart.checkout')}</a>
+      <ul class="drawer__pay" aria-label={t('payments')}>
         {['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'].map((m) => <li>{m}</li>)}
       </ul>
     </footer>

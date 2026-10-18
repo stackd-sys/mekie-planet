@@ -132,7 +132,8 @@ window.addEventListener('storage', (e) => {
   }
 });
 
-export const money = (v: number) => `${v.toFixed(2).replace('.', ',')}€`;
+/** Preço na língua da página */
+export { money } from '../i18n/client';
 
 /* Caminhos do site; `data-base` só existe em pré-visualizações servidas numa subpasta. */
 export const href = (path: string) => {

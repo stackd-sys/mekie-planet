@@ -2,7 +2,10 @@
 import Base from '../../layouts/Base.astro';
 import Collection from '../../components/Collection.astro';
 import { products } from '../../data/products';
+import { langOf } from '../../i18n';
+import { useT } from '../../i18n/ui';
+const t = useT(langOf(Astro.url.pathname));
 ---
-<Base title="Loja online: hoodies, t-shirts e acessórios" description="Toda a loja Mekie Planet: hoodies e t-shirts bordados, caps de bombazina, bucket hat, meias, scrunchies de crochet e tote bags. Envio CTT para Portugal e União Europeia.">
-  <Collection title="Loja" products={products} current="" />
+<Base title={t('shop.title')} description={t('shop.desc')}>
+  <Collection title={t('shop')} products={products} current="" />
 </Base>

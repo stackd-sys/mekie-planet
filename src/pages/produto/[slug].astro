@@ -2,19 +2,29 @@
 import Base from '../../layouts/Base.astro';
 import Carousel from '../../components/Carousel.astro';
 import Img from '../../components/Img.astro';
-import { products, discount, fullName, variantsOf, cartInfo, totalStock, isSoldOut, yarnColors, weightOf, type Product } from '../../data/products';
-import { site, formatPrice } from '../../data/site';
+import { products as ptProducts, discount, fullName, cartInfo, totalStock, isSoldOut, yarnColors, weightOf } from '../../data/products';
+import { site } from '../../data/site';
 import { shipping, shippingCost } from '../../data/shipping';
+import { langOf, href, money, amount } from '../../i18n';
+import { useT } from '../../i18n/ui';
+import { shop, shipDays } from '../../i18n/data';
+import { trYarn } from '../../i18n/catalog';
 import { reviewsOf, ratingOf } from '../../data/reviews';
 import Stars from '../../components/Stars.astro';
 import Icon from '../../components/Icon.astro';
 import { productLd, breadcrumbLd, categoryTrail, productSummary } from '../../data/seo';
 
 export function getStaticPaths() {
-  return products.map((p) => ({ params: { slug: p.slug }, props: { product: p } }));
+  return ptProducts.map((p) => ({ params: { slug: p.slug }, props: { id: p.id } }));
 }
-interface Props { product: Product }
-const { product: p } = Astro.props;
+interface Props { id: number }
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (path: string) => href(lang, path);
+const S = shop(lang);
+const { products, variantsOf } = S;
+const p = products.find((o) => o.id === Astro.props.id)!;
+const ptName = fullName(ptProducts.find((o) => o.id === p.id)!);
 const reviews = reviewsOf(p);
 const rating = ratingOf(p);
 const off = discount(p);
@@ -24,7 +34,7 @@ const related = [
   ...products.filter((o) => o.category === p.category && o.slug !== p.slug && o.collection !== p.collection),
   ...products.filter((o) => o.category !== p.category && o.collection !== p.collection),
 ].slice(0, 8);
-const cartData = { ...cartInfo(p), sizeNotes: p.sizeNotes };
+const cartData = { ...cartInfo(p), href: h(`/produto/${p.slug}/`), sizeNotes: p.sizeNotes };
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
 /* Tamanhos esgotados (ou o produto todo) para o "Avisa-me quando voltar" */
@@ -33,13 +43,14 @@ const outSizes = p.sizes ? p.sizes.filter((s) => (soldOut ? true : !!p.sizeStock
 const etaDays = p.customizable || (p.madeToOrderDays && !(p.stock && p.stock > 0)) ? p.madeToOrderDays! : site.deliveryDays;
 const canNotify = !p.customizable && !p.madeToOrderDays && (soldOut || outSizes.length > 0);
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
-const trail = [...categoryTrail(p.category), { name: fullName(p), path: `/produto/${p.slug}/` }];
-const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${c.name}` : c.name);
+const trail = [...categoryTrail(p.category, lang), { name: fullName(p), path: h(`/produto/${p.slug}/`) }];
+const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${trYarn(c.name, lang)}` : trYarn(c.name, lang));
+const reviewCount = (n: number) => (n === 1 ? t('p.review1') : t('p.reviews', { n }));
 /* Pré-visualização do scrunchie: folhos à volta de um aro */
 const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test(src);
 ---
-<Base title={fullName(p)} description={`${productSummary(p)} ${formatPrice(p.price)}. Envio CTT para Portugal e União Europeia.`} image={p.images[1] ?? p.images[0]} ogType="product">
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd(p))} />
+<Base title={fullName(p)} description={`${productSummary(p)} ${money(p.price, lang)}. ${t('meta.ship')}`} image={p.images[1] ?? p.images[0]} ogType="product">
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd(p, lang))} />
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd(trail))} />
   <meta slot="head" property="product:price:amount" content={p.price.toFixed(2)} />
   <meta slot="head" property="product:price:currency" content="EUR" />
@@ -49,7 +60,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       <div class="gallery__track" data-track>
         {p.images.map((src, i) => (
           <figure class:list={['gallery__item', { 'gallery__item--lead': i === 0, 'gallery__item--cover': !isCutout(src) }]} data-slide={i}>
-            <Img src={src} sizes={i === 0 ? '(max-width: 900px) 100vw, 58vw' : '(max-width: 900px) 100vw, 29vw'} alt={`${p.name} ${p.color}, imagem ${i + 1} de ${p.images.length}`} width="1000" height="1250" loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
+            <Img src={src} sizes={i === 0 ? '(max-width: 900px) 100vw, 58vw' : '(max-width: 900px) 100vw, 29vw'} alt={t('p.image', { name: `${p.name} ${p.color}`, i: i + 1, n: p.images.length })} width="1000" height="1250" loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
           </figure>
         ))}
       </div>
@@ -58,7 +69,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           {p.images.map((_, i) => <span class:list={{ 'is-active': i === 0 }} data-dot={i}></span>)}
         </div>
       )}
-      <p class="gallery__ref eyebrow">Ref. {p.id}</p>
+      <p class="gallery__ref eyebrow">{t('p.ref')} {p.id}</p>
     </div>
 
     <div class="info">
@@ -66,35 +77,35 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       {rating && (
         <a href="#opinioes" class="info__rating">
           <Stars rating={rating.value} size={13} />
-          <span>{rating.count === 1 ? '1 opinião' : `${rating.count} opiniões`}</span>
+          <span>{reviewCount(rating.count)}</span>
         </a>
       )}
       <p class="price info__price">
-        {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
-        {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
+        {off > 0 && <del><span class="sr-only">{t('price.was')}</span>{money(p.regularPrice, lang)}</del>}
+        {off > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}
         {off > 0 && <span class="info__off">-{off}%</span>}
       </p>
-      <p class="info__tax">IVA incluído. Portes calculados no checkout.</p>
+      <p class="info__tax">{t('p.tax')}</p>
       {p.customizable ? (
         <div class="info__order">
-          <p><strong>Feito à mão por encomenda,</strong> com as cores que escolheres. Entrega em {p.madeToOrderDays} dias úteis.</p>
+          <p set:html={t('p.customOrder', { n: p.madeToOrderDays! })} />
         </div>
       ) : p.madeToOrderDays ? (
         <div class="info__order">
-          <p><strong>{p.stock === 1 ? '1 unidade pronta a enviar.' : `${p.stock ?? 0} unidades prontas a enviar.`}</strong> Depois disso fazemos por encomenda, com entrega em {p.madeToOrderDays} dias úteis.</p>
-          <a href="/produto/scrunchie-personalizado/" class="link-underline">Queres outras cores? Personaliza o teu</a>
+          <p><strong>{p.stock === 1 ? t('p.ready1') : t('p.readyN', { n: p.stock ?? 0 })}</strong> {t('p.thenOrder', { n: p.madeToOrderDays })}</p>
+          <a href={h('/produto/scrunchie-personalizado/')} class="link-underline">{t('p.otherColors')}</a>
         </div>
       ) : soldOut ? (
-        <p class="info__stock info__stock--out">Esgotado</p>
+        <p class="info__stock info__stock--out">{t('soldout')}</p>
       ) : !p.sizeStock && total !== undefined && total <= 3 && (
-        <p class="info__stock"><span class="info__dot"></span>{total === 1 ? 'Só resta 1 unidade' : `Só restam ${total} unidades`}</p>
+        <p class="info__stock"><span class="info__dot"></span>{total === 1 ? t('p.left1') : t('p.leftN', { n: total })}</p>
       )}
 
       {!p.customizable && <div class="opt">
-        <p class="opt__label">Cor: <span>{p.color}</span></p>
+        <p class="opt__label">{t('p.color')}: <span>{p.color}</span></p>
         <div class="swatches">
           {variants.map((v) => (
-            <a href={`/produto/${v.slug}/`} class:list={['swatch', { 'is-active': v.slug === p.slug }]} aria-label={`Cor ${v.color}`} aria-current={v.slug === p.slug ? 'page' : undefined} title={v.color}>
+            <a href={h(`/produto/${v.slug}/`)} class:list={['swatch', { 'is-active': v.slug === p.slug }]} aria-label={t('p.colorOf', { c: v.color })} aria-current={v.slug === p.slug ? 'page' : undefined} title={v.color}>
               <img src={v.images[0].replace('.webp', '-sm.webp')} alt="" width="64" height="64" loading="lazy" />
             </a>
           ))}
@@ -105,12 +116,12 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         {p.customizable && (
           <div class="custom">
             <figure class="custom__preview">
-              <canvas width="640" height="640" data-preview data-map="/images/products/scrunchie-personalizado-mapa.webp" role="img" aria-label="Pré-visualização do scrunchie com as cores escolhidas"></canvas>
-              <figcaption>Pré-visualização com as tuas cores</figcaption>
+              <canvas width="640" height="640" data-preview data-map="/images/products/scrunchie-personalizado-mapa.webp" role="img" aria-label={t('p.preview')}></canvas>
+              <figcaption>{t('p.previewCap')}</figcaption>
             </figure>
-            {[['main', 'Cor do corpo'], ['edge', 'Cor do rebordo']].map(([name, label]) => (
+            {[['main', t('p.main')], ['edge', t('p.edge')]].map(([name, label]) => (
               <fieldset class="opt">
-                <legend class="opt__label">{label}: <span data-pick-label={name}>escolhe uma cor</span></legend>
+                <legend class="opt__label">{label}: <span data-pick-label={name}>{t('p.pickColor')}</span></legend>
                 <div class="yarns">
                   {yarnColors.map((c) => (
                     <label class="yarn" title={yarnLabel(c)}>
@@ -121,105 +132,105 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
                 </div>
               </fieldset>
             ))}
-            <p class="custom__note">Fio Rosários 4 Bio Love, 100% algodão orgânico. As cores no ecrã podem variar ligeiramente.</p>
+            <p class="custom__note">{t('p.yarnNote')}</p>
           </div>
         )}
         {p.sizes ? (
           <fieldset class="opt">
-            <legend class="opt__label">Tamanho: <span data-size-label>escolhe o teu tamanho</span></legend>
+            <legend class="opt__label">{t('p.size')}: <span data-size-label>{t('p.pickSize')}</span></legend>
             <div class="sizes">
               {p.sizes.map((s) => {
                 const out = !!p.sizeStock && !p.sizeStock[s];
                 return (
-                  <label class:list={['size', { 'is-out': out }]} title={out ? 'Esgotado. Toca para seres avisado quando voltar' : undefined}>
+                  <label class:list={['size', { 'is-out': out }]} title={out ? t('p.sizeOutTip') : undefined}>
                     <input type="radio" name="size" value={s} disabled={out} />
-                    <span>{s}{out && <span class="sr-only"> (esgotado)</span>}</span>
+                    <span>{s}{out && <span class="sr-only">{t('p.soldoutSr')}</span>}</span>
                   </label>
                 );
               })}
             </div>
             <p class="info__stock size-stock" data-size-stock hidden><span class="info__dot"></span><span data-size-stock-text></span></p>
             <p class="size-note" data-size-note hidden></p>
-            <a href="/contactos/" class="opt__help link-underline">Dúvidas com o tamanho? Fala connosco</a>
+            <a href={h('/contactos/')} class="opt__help link-underline">{t('p.sizeHelp')}</a>
           </fieldset>
         ) : (
-          <p class="opt__label">Tamanho: <span>Único</span></p>
+          <p class="opt__label">{t('p.size')}: <span>{t('p.oneSize')}</span></p>
         )}
 
-        <p class="buy__error" role="alert" hidden>{p.customizable ? 'Escolhe as duas cores para continuar.' : 'Escolhe um tamanho para continuar.'}</p>
+        <p class="buy__error" role="alert" hidden>{p.customizable ? t('p.needColors') : t('p.needSize')}</p>
         <button type="submit" class="pill pill--accent pill--block buy__btn" data-buy-btn disabled={soldOut}>
-          {soldOut ? 'Esgotado' : 'Adicionar ao carrinho'}
+          {soldOut ? t('soldout') : t('add')}
         </button>
       </form>
 
       {!soldOut && (
         <p class="eta" data-eta={etaDays} hidden>
           <Icon name="truck" size={18} />
-          <span>Encomenda hoje e recebe até <strong data-eta-date></strong> em Portugal.</span>
+          <span set:html={t('p.eta')} />
         </p>
       )}
 
       {canNotify && (
-        <div class="notify" data-notify data-name={fullName(p)}>
+        <div class="notify" data-notify data-name={ptName}>
           <button type="button" class="notify__toggle link-underline" data-notify-toggle aria-expanded={soldOut ? 'true' : 'false'} hidden={soldOut}>
-            Esgotado no teu tamanho? Avisa-me quando voltar
+            {t('p.notifyToggle')}
           </button>
           <form class="notify__form" data-notify-form novalidate hidden={!soldOut}>
-            <p class="notify__title">Avisa-me quando voltar</p>
+            <p class="notify__title">{t('p.notifyTitle')}</p>
             <div class="notify__row">
               {outSizes.length > 0 && (
-                <select class="field notify__size" name="size" aria-label="Tamanho">
+                <select class="field notify__size" name="size" aria-label={t('p.size')}>
                   {outSizes.map((s) => <option value={s}>{s}</option>)}
                 </select>
               )}
-              <input class="field" type="email" name="email" placeholder="O teu email" required autocomplete="email" aria-label="O teu email" />
+              <input class="field" type="email" name="email" placeholder={t('p.yourEmail')} required autocomplete="email" aria-label={t('p.yourEmail')} />
             </div>
-            <button type="submit" class="pill pill--block">Avisar-me</button>
-            <p class="notify__fine">Só usamos o teu email para te avisar desta peça, uma vez.</p>
+            <button type="submit" class="pill pill--block">{t('p.notifyBtn')}</button>
+            <p class="notify__fine">{t('p.notifyFine')}</p>
             <p class="notify__msg" role="status" data-notify-msg hidden></p>
           </form>
         </div>
       )}
 
-      <ul class="pay" aria-label="Métodos de pagamento">
+      <ul class="pay" aria-label={t('payments')}>
         {payments.map((m) => <li>{m}</li>)}
       </ul>
-      <p class="pay__note">Pagamento seguro · MB WAY, Multibanco, cartão, Apple Pay e Google Pay</p>
+      <p class="pay__note">{t('p.secure')}</p>
 
       <ul class="perks eyebrow">
-        <li>Envio grátis em Portugal acima de {site.freeShippingFrom}€</li>
-        <li>{p.customizable ? 'Feito por encomenda, sem devolução' : 'Devoluções em 14 dias'}</li>
-        <li>Envio em {site.deliveryDays} dias úteis via CTT</li>
-        <li>Portugal, ilhas e União Europeia</li>
+        <li>{t('p.perkFree', { n: amount(site.freeShippingFrom, lang) })}</li>
+        <li>{p.customizable ? t('p.perkNoReturn') : t('p.perkReturn')}</li>
+        <li>{t('p.perkDays', { n: site.deliveryDays })}</li>
+        <li>{t('p.perkZones')}</li>
       </ul>
 
       <div class="acc">
         <details open>
-          <summary class="eyebrow">Descrição</summary>
+          <summary class="eyebrow">{t('p.description')}</summary>
           <div class="acc__body">
             {p.description && <p>{p.description}</p>}
             {p.details && (
               <ul>{p.details.features.map((f) => <li>{f}</li>)}</ul>
             )}
             <ul>
-              <li>Cor: {p.color}</li>
-              <li>Tamanhos: {p.sizes ? p.sizes.join(', ') : 'tamanho único'}</li>
+              <li>{t('p.color')}: {p.color}</li>
+              <li>{t('p.sizes')}: {p.sizes ? p.sizes.join(', ') : t('p.oneSizeLower')}</li>
             </ul>
           </div>
         </details>
         {p.details && (p.details.composition.length > 0 || p.details.care) && (
           <details>
-            <summary class="eyebrow">Composição e cuidados</summary>
+            <summary class="eyebrow">{t('p.compCare')}</summary>
             <div class="acc__body">
               {p.details.composition.length > 0 && (
                 <>
-                  <p class="acc__label">Composição</p>
+                  <p class="acc__label">{t('p.composition')}</p>
                   <ul>{p.details.composition.map((c) => <li>{c}</li>)}</ul>
                 </>
               )}
               {p.details.care && (
                 <>
-                  <p class="acc__label">Cuidados</p>
+                  <p class="acc__label">{t('p.care')}</p>
                   <ul>{p.details.care.map((c) => <li>{c}</li>)}</ul>
                 </>
               )}
@@ -227,14 +238,14 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           </details>
         )}
         <details>
-          <summary class="eyebrow">Envios e devoluções</summary>
+          <summary class="eyebrow">{t('p.shipReturns')}</summary>
           <div class="acc__body">
-            <p>Enviamos pelos CTT para Portugal Continental, Açores, Madeira e União Europeia.</p>
-            <p>Portugal, Açores e Madeira: {formatPrice(shippingCost('pt', 0, weightOf(p)))} para esta peça, grátis acima de {shipping.pt.freeFrom}€. Entrega em {shipping.pt.days}.</p>
-            <p>União Europeia: {formatPrice(shippingCost('eu', 0, weightOf(p)))} para esta peça. Entrega em {shipping.eu.days}.</p>
-            <p>Com mais peças o valor muda conforme o peso. Vê a <a href="/politica-de-envios-e-entregas/" class="link-underline">tabela de portes</a>.</p>
-            <p>Tens 14 dias após a receção para devolver, sem indicar o motivo. O artigo deve estar nas condições originais, sem sinais de uso e com as etiquetas intactas.</p>
-            <p><a class="link-underline" href="/politica-de-envios-e-entregas/">Política de envios</a> · <a class="link-underline" href="/politica-de-devolucoes-e-reembolsos/">Política de devoluções</a></p>
+            <p>{t('p.ship1')}</p>
+            <p>{t('p.shipPt', { price: money(shippingCost('pt', 0, weightOf(p)), lang), free: amount(shipping.pt.freeFrom!, lang), days: shipDays('pt', lang) })}</p>
+            <p>{t('p.shipEu', { price: money(shippingCost('eu', 0, weightOf(p)), lang), days: shipDays('eu', lang) })}</p>
+            <p set:html={t('p.shipMore', { href: h('/politica-de-envios-e-entregas/') })} />
+            <p>{t('p.returnText')}</p>
+            <p><a class="link-underline" href={h('/politica-de-envios-e-entregas/')}>{t('p.shipPolicy')}</a> · <a class="link-underline" href={h('/politica-de-devolucoes-e-reembolsos/')}>{t('p.returnPolicy')}</a></p>
           </div>
         </details>
       </div>
@@ -245,17 +256,17 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="44" height="55" />
     <div class="sticky-buy__txt">
       <p>{p.name}</p>
-      <p class="price">{off > 0 && <del>{formatPrice(p.regularPrice)}</del>}{off > 0 ? <ins>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}</p>
+      <p class="price">{off > 0 && <del>{money(p.regularPrice, lang)}</del>}{off > 0 ? <ins>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}</p>
     </div>
-    <button type="button" class="pill pill--accent" data-sticky-btn disabled={soldOut}>{soldOut ? 'Esgotado' : 'Adicionar'}</button>
+    <button type="button" class="pill pill--accent" data-sticky-btn disabled={soldOut}>{soldOut ? t('soldout') : t('add.short')}</button>
   </div>
 
   {reviews.length > 0 && rating && (
     <section class="section reviews" id="opinioes" aria-labelledby="reviews-title">
       <div class="container">
         <div class="reviews__head">
-          <h2 id="reviews-title" class="section-title related__title">Opiniões</h2>
-          <p class="reviews__score"><Stars rating={rating.value} size={15} /> <span>{String(rating.value).replace('.', ',')} em 5 · {rating.count === 1 ? '1 opinião' : `${rating.count} opiniões`}</span></p>
+          <h2 id="reviews-title" class="section-title related__title">{t('p.reviewsTitle')}</h2>
+          <p class="reviews__score"><Stars rating={rating.value} size={15} /> <span>{t('p.outOf', { v: lang === 'en' ? String(rating.value) : String(rating.value).replace('.', ',') })} · {reviewCount(rating.count)}</span></p>
         </div>
         <ul class="reviews__list">
           {reviews.map((rv) => (
@@ -266,15 +277,15 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
             </li>
           ))}
         </ul>
-        <p class="reviews__note">Opiniões de quem já usa as nossas peças.</p>
+        <p class="reviews__note">{t('p.reviewsNote')}</p>
       </div>
     </section>
   )}
 
   <section class="section related">
     <div class="container">
-      <h2 class="section-title related__title">Continua a explorar</h2>
-      <Carousel products={related} label="Produtos relacionados" />
+      <h2 class="section-title related__title">{t('p.explore')}</h2>
+      <Carousel products={related} label={t('p.related')} />
     </div>
   </section>
 </Base>
@@ -285,6 +296,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   import { track as trackEvent, consentSettled, countEvent } from '../../scripts/consent';
   import * as newsletter from '../../scripts/newsletter';
   import { deliveryBy, formatDay } from '../../scripts/eta';
+  import { tc } from '../../i18n/client';
 
   /* Data de entrega estimada, calculada no dia em que a página é aberta */
   const eta = document.querySelector<HTMLElement>('[data-eta]');
@@ -317,18 +329,18 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       const emailEl = nForm.querySelector<HTMLInputElement>('[name=email]')!;
       const email = emailEl.value.trim();
       const show = (text: string, error = false) => { nMsg.hidden = false; nMsg.textContent = text; nMsg.classList.toggle('is-error', error); };
-      if (!email || !emailEl.checkValidity()) return show('Escreve um email válido.', true);
+      if (!email || !emailEl.checkValidity()) return show(tc('news.badEmail'), true);
       const size = sizeSel?.value ?? '';
       const btn = nForm.querySelector<HTMLButtonElement>('[type=submit]')!;
       btn.disabled = true;
       try {
         const res = await newsletter.notify(email, notify.dataset.name || '', size);
         show(res.status === 'exists'
-          ? `Já tínhamos o teu pedido${size ? ` para o ${size}` : ''}. Avisamos-te em ${email}.`
-          : `Combinado. Avisamos-te em ${email} quando ${size ? `o ${size} voltar` : 'voltar'}.`);
+          ? tc('notify.exists', { size: size ? tc('notify.existsSize', { s: size }) : '', email })
+          : tc('notify.ok', { email, what: size ? tc('notify.okSize', { s: size }) : tc('notify.okAny') }));
         emailEl.value = '';
       } catch {
-        show('Não conseguimos guardar o pedido. Tenta outra vez daqui a pouco.', true);
+        show(tc('notify.error'), true);
       } finally {
         btn.disabled = false;
       }
@@ -411,7 +423,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         if (stockBox) {
           stockBox.hidden = !(left > 0 && left <= 3);
           stockBox.querySelector('[data-size-stock-text]')!.textContent =
-            left === 1 ? `Só resta 1 unidade em ${t.value}` : `Só restam ${left} unidades em ${t.value}`;
+            left === 1 ? tc('size.left1', { s: t.value }) : tc('size.leftN', { n: left, s: t.value });
         }
         const note = form.querySelector<HTMLElement>('[data-size-note]');
         if (note) {
@@ -438,10 +450,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         return;
       }
       const { sizeNotes, ...info } = product;
-      cart.add({ ...info, size, ...(isCustom ? { custom: `Corpo ${main}, rebordo ${edge}` } : {}) }, 1);
+      cart.add({ ...info, size, ...(isCustom ? { custom: tc('custom', { main: main!, edge: edge! }) } : {}) }, 1);
       trackEvent('add_to_cart', [item(size)]);
-      btn.textContent = 'Adicionado ✓';
-      setTimeout(() => (btn.textContent = 'Adicionar ao carrinho'), 1600);
+      btn.textContent = tc('added');
+      setTimeout(() => (btn.textContent = tc('add')), 1600);
       openCart();
     };
     form.addEventListener('submit', (e) => { e.preventDefault(); add(); });

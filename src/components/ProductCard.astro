@@ -1,15 +1,22 @@
 ---
 import Img from './Img.astro';
 import { type Product, discount, variantsOf, cartInfo, totalStock, isSoldOut } from '../data/products';
-import { formatPrice } from '../data/site';
+import { langOf, href, money } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop } from '../i18n/data';
 import { ratingOf } from '../data/reviews';
 import Stars from './Stars.astro';
 interface Props { product: Product; eager?: boolean }
-const { product: p, eager = false } = Astro.props;
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+/* aceita o produto em português ou já traduzido: os textos vêm sempre na língua da página */
+const p = shop(lang).tr(Astro.props.product);
+const { eager = false } = Astro.props;
+const url = href(lang, `/produto/${p.slug}/`);
 const off = discount(p);
 const colors = variantsOf(p).length;
-const label = p.badge ?? (isSoldOut(p) ? 'Esgotado' : off > 0 ? `-${off}%` : undefined);
-const cartData = JSON.stringify(cartInfo(p));
+const label = p.badge ?? (isSoldOut(p) ? t('soldout') : off > 0 ? `-${off}%` : undefined);
+const cartData = JSON.stringify({ ...cartInfo(p), href: url });
 const rating = ratingOf(p);
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
@@ -22,7 +29,7 @@ const altCutout = alt ? /\/products\/.+\.webp$/.test(alt) && !/lookbook/.test(al
 ---
 <article class="card" data-card data-product={cartData}>
   <div class="card__media">
-    <a href={`/produto/${p.slug}/`} class="card__link" aria-label={`${p.name}, ${p.color}`}>
+    <a href={url} class="card__link" aria-label={`${p.name}, ${p.color}`}>
       {label && <span class="card__tag eyebrow">{label}</span>}
       <span class:list={['card__track', { 'card__track--two': alt }]} data-card-track>
         <Img src={p.images[0]} sizes={sizes} alt={`${p.name} ${p.color}`} width="600" height="750" loading={eager ? 'eager' : 'lazy'} class:list={['card__img', { 'card__img--photo': !cutout }]} />
@@ -30,35 +37,35 @@ const altCutout = alt ? /\/products\/.+\.webp$/.test(alt) && !/lookbook/.test(al
       </span>
     </a>
     {alt && <span class="card__dots" aria-hidden="true"><i class="is-on"></i><i></i></span>}
-    <div class="quick" aria-label={`Adicionar ${p.name} ao carrinho`}>
+    <div class="quick" aria-label={t('card.addTo', { name: p.name })}>
       {soldOut ? (
-        <p class="quick__label eyebrow">Esgotado</p>
+        <p class="quick__label eyebrow">{t('soldout')}</p>
       ) : p.customizable ? (
-        <a href={`/produto/${p.slug}/`} class="quick__one eyebrow">Escolher cores</a>
+        <a href={url} class="quick__one eyebrow">{t('card.pickColors')}</a>
       ) : p.sizes ? (
         <>
-          <p class="quick__label eyebrow">Adicionar rápido</p>
+          <p class="quick__label eyebrow">{t('card.quick')}</p>
           <div class="quick__sizes">
             {p.sizes.map((s) => {
               const out = !!p.sizeStock && !p.sizeStock[s];
-              return <button type="button" class:list={['quick__size', { 'is-out': out }]} data-quick={s} disabled={out} aria-label={out ? `Tamanho ${s} esgotado` : `Adicionar tamanho ${s}`} title={out ? 'Esgotado' : undefined}>{s}</button>;
+              return <button type="button" class:list={['quick__size', { 'is-out': out }]} data-quick={s} disabled={out} aria-label={out ? t('card.sizeOut', { s }) : t('card.addSize', { s })} title={out ? t('soldout') : undefined}>{s}</button>;
             })}
           </div>
         </>
       ) : (
-        <button type="button" class="quick__one eyebrow" data-quick="">Adicionar ao carrinho</button>
+        <button type="button" class="quick__one eyebrow" data-quick="">{t('add')}</button>
       )}
     </div>
   </div>
   <div class="card__body">
-    <h3 class="card__title"><a href={`/produto/${p.slug}/`}>{p.name}</a></h3>
+    <h3 class="card__title"><a href={url}>{p.name}</a></h3>
     <p class="price">
-      {off > 0 && <del><span class="sr-only">Preço original </span>{formatPrice(p.regularPrice)}</del>}
-      {off > 0 ? <ins><span class="sr-only">Preço atual </span>{formatPrice(p.price)}</ins> : <span>{formatPrice(p.price)}</span>}
+      {off > 0 && <del><span class="sr-only">{t('price.was')}</span>{money(p.regularPrice, lang)}</del>}
+      {off > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}
     </p>
     {rating && <p class="card__rating"><Stars rating={rating.value} size={11} /><span>({rating.count})</span></p>}
-    <p class="card__meta eyebrow">{colors > 1 ? `${colors} cores disponíveis` : p.color}</p>
-    {!p.madeToOrderDays && total !== undefined && total > 0 && total <= 3 && <p class="card__stock eyebrow">{total === 1 ? 'Última unidade' : `Últimas ${total} unidades`}</p>}
+    <p class="card__meta eyebrow">{colors > 1 ? t('card.colors', { n: colors }) : p.color}</p>
+    {!p.madeToOrderDays && total !== undefined && total > 0 && total <= 3 && <p class="card__stock eyebrow">{total === 1 ? t('card.last1') : t('card.lastN', { n: total })}</p>}
   </div>
 </article>
 

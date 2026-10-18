@@ -1,33 +1,38 @@
 ---
 import Base from '../layouts/Base.astro';
 import { site } from '../data/site';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
 ---
-<Base title="Encomenda recebida" noindex popup={false}>
+<Base title={t('ok.title')} noindex popup={false}>
   <section class="container ok">
-    <p class="eyebrow ok__kicker">Obrigado</p>
-    <h1 class="display ok__title" data-title>Recebemos a tua encomenda</h1>
-    <p class="ok__num" data-ok-num hidden>Número da encomenda: <strong data-n></strong> · Total: <strong data-t></strong></p>
+    <p class="eyebrow ok__kicker">{t('ok.thanks')}</p>
+    <h1 class="display ok__title" data-title>{t('ok.heading')}</h1>
+    <p class="ok__num" data-ok-num hidden set:html={t('ok.number')} />
     <div data-paid hidden>
-      <p>Assim que o pagamento ficar confirmado, recebes um email com o resumo. Depois preparamos tudo e avisamos-te quando a encomenda seguir pelos CTT.</p>
-      <p>Se escolheste Multibanco, usa a referência que te mostrámos. A encomenda fica confirmada quando o pagamento entrar.</p>
+      <p>{t('ok.paid1')}</p>
+      <p>{t('ok.paid2')}</p>
     </div>
     <div data-unpaid>
-      <p>Enviámos-te um email com o resumo. Em breve respondemos com os dados de pagamento (MB WAY, Multibanco ou cartão). Assim que o pagamento estiver confirmado, preparamos tudo e avisamos-te quando seguir pelos CTT.</p>
+      <p>{t('ok.unpaid')}</p>
     </div>
-    <p>Alguma dúvida? Escreve para <a class="link-underline" href={`mailto:${site.email}`}>{site.email}</a>.</p>
-    <a href="/loja/" class="pill">Continuar a ver a loja</a>
+    <p set:html={t('ok.questions', { email: `<a class="link-underline" href="mailto:${site.email}">${site.email}</a>` })} />
+    <a href={href(lang, '/loja/')} class="pill">{t('shop.continue')}</a>
   </section>
 </Base>
 
 <script>
   import { cart } from '../scripts/cart';
   import { track, consentSettled, countEvent } from '../scripts/consent';
+  import { tc, money } from '../i18n/client';
   const q = new URLSearchParams(location.search);
   const n = q.get('n'), t = q.get('t') || '';
   const paid = q.get('pago') === '1';
   if (n) {
     document.querySelector('[data-n]')!.textContent = n;
-    document.querySelector('[data-t]')!.textContent = /€/.test(t) ? t : `${Number(t).toFixed(2).replace('.', ',')}€`;
+    document.querySelector('[data-t]')!.textContent = /€/.test(t) ? t : money(Number(t));
     document.querySelector<HTMLElement>('[data-ok-num]')!.hidden = false;
   }
   if (paid) {
@@ -36,7 +41,7 @@ import { site } from '../data/site';
     try { localStorage.setItem('mekie-code-applied', ''); } catch {}
     document.querySelector<HTMLElement>('[data-paid]')!.hidden = false;
     document.querySelector<HTMLElement>('[data-unpaid]')!.hidden = true;
-    document.querySelector('[data-title]')!.textContent = 'Encomenda feita!';
+    document.querySelector('[data-title]')!.textContent = tc('ok.paid');
     const value = Number(t.replace(/[^\d,.]/g, '').replace(',', '.')) || 0;
     const send = () => track('purchase', [], { transaction_id: n, value, currency: 'EUR' });
     let sent = false;

@@ -1,15 +1,34 @@
 ---
 import Base from '../layouts/Base.astro';
+import { langs, href } from '../i18n';
+import { useT } from '../i18n/ui';
+/* uma só página 404 para o site todo: mostra o texto na língua do endereço pedido */
 ---
-<Base title="Página não encontrada" noindex>
+<Base title="404" noindex>
   <section class="container nf">
     <p class="display nf__code">404</p>
-    <p>Esta página perdeu-se no planeta Mekie.</p>
-    <a href="/loja/" class="pill">Voltar à loja</a>
+    {langs.map((l) => {
+      const t = useT(l);
+      return (
+        <div class="nf__msg" data-nf={l} hidden={l !== 'pt'}>
+          <p>{t('notfound.text')}</p>
+          <a href={href(l, '/loja/')} class="pill">{t('shop.back')}</a>
+        </div>
+      );
+    })}
   </section>
 </Base>
+<script is:inline>
+  (function () {
+    var l = location.pathname.split('/')[1];
+    if (l !== 'en' && l !== 'es') return;
+    document.querySelectorAll('[data-nf]').forEach(function (el) { el.hidden = el.getAttribute('data-nf') !== l; });
+  })();
+</script>
 <style>
   .nf { min-height: 60vh; display: grid; place-content: center; justify-items: center; gap: 16px; text-align: center; }
   .nf__code { font-size: clamp(90px, 18vw, 200px); margin: 0; }
+  .nf__msg { display: grid; justify-items: center; }
+  .nf__msg[hidden] { display: none; }
   .nf p:not(.nf__code) { margin: 0 0 12px; color: var(--ink-soft); }
 </style>

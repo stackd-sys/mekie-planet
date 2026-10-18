@@ -1,13 +1,20 @@
 ---
 import ProductCard from './ProductCard.astro';
 import Img from './Img.astro';
-import { categories, productsIn, lowStock, type Product } from '../data/products';
+import type { Product } from '../data/products';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop } from '../i18n/data';
 interface Props { title: string; intro?: string; products: Product[]; current: string; image?: string }
-const { title, intro, products, current, image } = Astro.props;
+const { title, intro, current, image } = Astro.props;
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const s = shop(lang);
+const products = Astro.props.products.map(s.tr);
 const chips = [
-  { href: '/loja/', label: 'Tudo', key: '' },
-  ...(lowStock().length ? [{ href: '/loja/ultimas-unidades/', label: 'Últimas unidades', key: 'ultimas-unidades' }] : []),
-  ...categories.filter((c) => c.slug !== 'acessorios').map((c) => ({ href: `/loja/${c.slug}/`, label: c.name, key: c.slug, soon: productsIn(c.slug).length === 0 })),
+  { href: href(lang, '/loja/'), label: t('grid.everything'), key: '' },
+  ...(s.lowStock().length ? [{ href: href(lang, '/loja/ultimas-unidades/'), label: t('last'), key: 'ultimas-unidades' }] : []),
+  ...s.categories.filter((c) => c.slug !== 'acessorios').map((c) => ({ href: href(lang, `/loja/${c.slug}/`), label: c.name, key: c.slug, soon: s.productsIn(c.slug).length === 0 })),
 ];
 ---
 {image ? (
@@ -28,29 +35,29 @@ const chips = [
 
 <div class="toolbar-wrap">
   <div class="toolbar container">
-    <div class="view" role="group" aria-label="Vista da grelha">
-      <button type="button" class="view__btn" data-cols="2" aria-label="Vista grande" aria-pressed="false">
+    <div class="view" role="group" aria-label={t('grid.view')}>
+      <button type="button" class="view__btn" data-cols="2" aria-label={t('grid.big')} aria-pressed="false">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="0" y="0" width="7" height="7" /><rect x="9" y="0" width="7" height="7" /><rect x="0" y="9" width="7" height="7" /><rect x="9" y="9" width="7" height="7" /></svg>
       </button>
-      <button type="button" class="view__btn is-active" data-cols="4" aria-label="Vista compacta" aria-pressed="true">
+      <button type="button" class="view__btn is-active" data-cols="4" aria-label={t('grid.compact')} aria-pressed="true">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">{[0, 6, 12].flatMap((y) => [0, 6, 12].map((x) => <rect x={x} y={y} width="4" height="4" />))}</svg>
       </button>
     </div>
-    <p class="toolbar__count eyebrow">{products.length} {products.length === 1 ? 'produto' : 'produtos'}</p>
+    <p class="toolbar__count eyebrow">{products.length} {products.length === 1 ? t('grid.one') : t('grid.many')}</p>
     <label class="sort eyebrow">
-      <span>Ordenar</span>
-      <select data-sort aria-label="Ordenar produtos" disabled={products.length < 2}>
-        <option value="featured">Destaques</option>
-        <option value="price-asc">Preço: menor</option>
-        <option value="price-desc">Preço: maior</option>
-        <option value="name">Nome de A a Z</option>
+      <span>{t('grid.sort')}</span>
+      <select data-sort aria-label={t('grid.sortLabel')} disabled={products.length < 2}>
+        <option value="featured">{t('grid.featured')}</option>
+        <option value="price-asc">{t('grid.priceAsc')}</option>
+        <option value="price-desc">{t('grid.priceDesc')}</option>
+        <option value="name">{t('grid.name')}</option>
       </select>
     </label>
   </div>
-  <nav class="chips container" aria-label="Filtrar por categoria">
+  <nav class="chips container" aria-label={t('grid.filter')}>
     {chips.map((c) => (
       <a href={c.href} class:list={['chip eyebrow', { 'is-active': c.key === current }]} aria-current={c.key === current ? 'page' : undefined}>
-        {c.label}{c.soon && <small> · em breve</small>}
+        {c.label}{c.soon && <small> · {t('grid.soonSmall')}</small>}
       </a>
     ))}
   </nav>
@@ -65,11 +72,11 @@ const chips = [
     </ul>
   ) : (
     <div class="soon">
-      <p class="display soon__title">Em breve.</p>
-      <p>Esta categoria está a ser preparada para o próximo drop.</p>
+      <p class="display soon__title">{t('grid.soonTitle')}</p>
+      <p>{t('grid.soonText')}</p>
       <div class="soon__actions">
-        <a href="/loja/" class="pill">Ver a loja</a>
-        <button type="button" class="pill pill--outline" data-popup-open>Sê o primeiro a saber</button>
+        <a href={href(lang, '/loja/')} class="pill">{t('shop.go')}</a>
+        <button type="button" class="pill pill--outline" data-popup-open>{t('grid.notifyMe')}</button>
       </div>
     </div>
   )}
@@ -85,7 +92,7 @@ const chips = [
       featured: (a, b) => +a.dataset.index! - +b.dataset.index!,
       'price-asc': (a, b) => +a.dataset.price! - +b.dataset.price! || +a.dataset.index! - +b.dataset.index!,
       'price-desc': (a, b) => +b.dataset.price! - +a.dataset.price! || +a.dataset.index! - +b.dataset.index!,
-      name: (a, b) => a.dataset.name!.localeCompare(b.dataset.name!, 'pt'),
+      name: (a, b) => a.dataset.name!.localeCompare(b.dataset.name!, document.documentElement.lang),
     };
     items.sort(by[select.value]).forEach((el) => grid.appendChild(el));
   });

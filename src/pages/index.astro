@@ -2,27 +2,36 @@
 import Base from '../layouts/Base.astro';
 import Carousel from '../components/Carousel.astro';
 import Img from '../components/Img.astro';
-import { products } from '../data/products';
+import { langOf, href } from '../i18n';
+import { useT } from '../i18n/ui';
+import { shop } from '../i18n/data';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (p: string) => href(lang, p);
+const { products, collections } = shop(lang);
+const colName = (slug: string) => collections.find((c) => c.slug === slug)!.name;
+/* textos alternativos das fotos: [português, inglês, espanhol] */
+const alt = (a: [string, string, string]) => a[lang === 'en' ? 1 : lang === 'es' ? 2 : 0];
 
 const tiles = [
-  { image: '/images/lookbook/mushrooms-sleeve.webp', alt: 'Logótipo Mekie bordado na manga de uma t-shirt bege' },
-  { image: '/images/lookbook/stack-leaves.webp', alt: 'Hoodies e t-shirts Mekie com cogumelos bordados e um bucket hat, entre folhas' },
-  { image: '/images/lookbook/tee-sky.webp', alt: 'Rapariga com a t-shirt Cogumelos bege, fotografada de baixo contra o céu' },
+  { image: '/images/lookbook/mushrooms-sleeve.webp', alt: alt(['Logótipo Mekie bordado na manga de uma t-shirt bege', 'Mekie logo embroidered on the sleeve of a beige T-shirt', 'Logo Mekie bordado en la manga de una camiseta beige']) },
+  { image: '/images/lookbook/stack-leaves.webp', alt: alt(['Hoodies e t-shirts Mekie com cogumelos bordados e um bucket hat, entre folhas', 'Mekie hoodies and T-shirts with embroidered mushrooms and a bucket hat, among leaves', 'Hoodies y camisetas Mekie con setas bordadas y un bucket hat, entre hojas']) },
+  { image: '/images/lookbook/tee-sky.webp', alt: alt(['Rapariga com a t-shirt Cogumelos bege, fotografada de baixo contra o céu', 'Girl wearing the beige Mushroom T-shirt, shot from below against the sky', 'Chica con la camiseta Setas beige, fotografiada desde abajo contra el cielo']) },
 ];
 const bands = [
   {
-    href: '/colecoes/cogumelos/',
-    kicker: 'Coleção',
-    title: 'Cogumelos',
+    href: h('/colecoes/cogumelos/'),
+    kicker: t('collection'),
+    title: colName('cogumelos'),
     images: ['/images/lookbook/mushrooms-duo.webp', '/images/lookbook/mushrooms-black.webp'],
-    alts: ['Duas raparigas com as t-shirts Cogumelos preta e khaki', 'Rapariga com a t-shirt Cogumelos preta junto a um lago'],
+    alts: [alt(['Duas raparigas com as t-shirts Cogumelos preta e khaki', 'Two girls wearing the black and khaki Mushroom T-shirts', 'Dos chicas con las camisetas Setas negra y caqui']), alt(['Rapariga com a t-shirt Cogumelos preta junto a um lago', 'Girl wearing the black Mushroom T-shirt by a lake', 'Chica con la camiseta Setas negra junto a un lago'])],
   },
   {
-    href: '/colecoes/esqueleto/',
-    kicker: 'Coleção',
-    title: 'Esqueleto',
+    href: h('/colecoes/esqueleto/'),
+    kicker: t('collection'),
+    title: colName('esqueleto'),
     images: ['/images/lookbook/esqueleto-black-hood.webp', '/images/lookbook/esqueleto-duo.webp'],
-    alts: ['Rapariga de capuz com o hoodie Esqueleto preto, junto ao lago', 'Rapaz com o hoodie Esqueleto amarelo pastel e rapariga com crewneck preta Mekie'],
+    alts: [alt(['Rapariga de capuz com o hoodie Esqueleto preto, junto ao lago', 'Girl with her hood up in the black Skeleton Hoodie, by the lake', 'Chica con la capucha puesta y la hoodie Esqueleto negra, junto al lago']), alt(['Rapaz com o hoodie Esqueleto amarelo pastel e rapariga com crewneck preta Mekie', 'Guy in the pastel yellow Skeleton Hoodie and girl in a black Mekie crewneck', 'Chico con la hoodie Esqueleto amarillo pastel y chica con crewneck negra Mekie'])],
   },
 ];
 /* Um produto de cada modelo: um cap, umas meias, um scrunchie, uma t-shirt e um hoodie de cada bordado */
@@ -32,19 +41,19 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
 ---
 <Base overlayHeader popup>
   <section class="hero">
-    <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt="Amigos da Mekie junto a um lago, com hoodie amarelo, crewneck preta e t-shirts com cogumelos" width="1536" height="1024" fetchpriority="high" />
+    <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt={t('hero.alt')} width="1536" height="1024" fetchpriority="high" />
     <div class="hero__shade"></div>
     <div class="hero__content">
-      <h1 class="hero__title">Bro, o básico nunca falha</h1>
-      <a href="/loja/" class="pill pill--light hero__cta">Comprar agora</a>
+      <h1 class="hero__title">{t('hero.title')}</h1>
+      <a href={h('/loja/')} class="pill pill--light hero__cta">{t('hero.cta')}</a>
     </div>
   </section>
 
   <section class="section browse">
     <div class="container">
-      <h2 class="sr-only">Produtos</h2>
-      <Carousel products={featured} label="Produtos" />
-      <div class="center"><a href="/loja/" class="pill">Ver tudo</a></div>
+      <h2 class="sr-only">{t('products')}</h2>
+      <Carousel products={featured} label={t('products')} />
+      <div class="center"><a href={h('/loja/')} class="pill">{t('shop.all')}</a></div>
     </div>
   </section>
 
@@ -57,17 +66,17 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
         <div class="band__overlay">
           <p class="eyebrow">{b.kicker}</p>
           <p class="band__title display">{b.title}</p>
-          <span class="pill pill--light">Ver coleção</span>
+          <span class="pill pill--light">{t('collection.see')}</span>
         </div>
       </a>
       {i === bands.length - 1 && (
         <section class="tiles section">
-          <a href="/loja/" class="tiles__grid" aria-label="Ver loja">
+          <a href={h('/loja/')} class="tiles__grid" aria-label={t('shop.see')}>
             {tiles.map((t) => (
               <div class="tile__media"><Img src={t.image} sizes="(max-width: 800px) 78vw, 33vw" alt={t.alt} width="1024" height="1536" loading="lazy" /></div>
             ))}
           </a>
-          <div class="center"><a href="/loja/" class="pill">Ver loja</a></div>
+          <div class="center"><a href={h('/loja/')} class="pill">{t('shop.see')}</a></div>
         </section>
       )}
     </>
