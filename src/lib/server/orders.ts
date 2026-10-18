@@ -292,6 +292,15 @@ export async function sendShipped(o: any) {
      ${linesHtml(o)}<p>Obrigado por escolheres a Mekie. Bro, o básico nunca falha.</p>`));
 }
 
+/** Reembolso feito: avisa o cliente */
+export async function sendRefunded(o: any, amount: number) {
+  const first = String(o.name).split(' ')[0];
+  return sendMail(o.email, `Reembolso da encomenda ${o.number}`, layout(`Olá, ${escapeHtml(first)}`,
+    `<p>Devolvemos <strong>${euro(amount)}</strong> referentes à encomenda <strong>${o.number}</strong>, pelo mesmo meio com que pagaste.</p>
+     <p>Dependendo do banco, o valor aparece na tua conta entre 5 e 10 dias úteis. Com MB WAY costuma ser mais rápido.</p>
+     <p>Qualquer dúvida, responde a este email.</p>`));
+}
+
 /* ---------- Estados e stock ---------- */
 
 /** Tira (sign = -1) ou devolve (sign = 1) ao stock as peças físicas. Devolve true se mudou algum stock. */

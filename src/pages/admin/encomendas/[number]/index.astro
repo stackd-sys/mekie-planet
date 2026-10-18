@@ -6,7 +6,8 @@ import Status from '../../../../components/admin/Status.astro';
 import { db } from '../../../../lib/server/db';
 import { euro, date, STATUS, trackingUrl } from '../../../../lib/server/format';
 import { postForm, done, str, num } from '../../../../lib/server/admin';
-import { setStatus, sendShipped, sendGiftCard, moveStock } from '../../../../lib/server/orders';
+import { setStatus, sendShipped, sendGiftCard, moveStock, sendRefunded } from '../../../../lib/server/orders';
+import { hasStripe, paymentIntentOf, createRefund } from '../../../../lib/server/stripe';
 import { hasMail } from '../../../../lib/server/mail';
 import { rebuildSite } from '../../../../lib/server/deploy';
 
@@ -47,6 +48,26 @@ if (f) {
       await sql`insert into order_events (order_id, text, by) values (${cur.id}, ${kind === 'troca' ? 'Troca registada' : 'Devolução registada'}, ${by})`;
       return done(Astro, `${kind === 'troca' ? 'Troca' : 'Devolução'} registada. Acompanha em Trocas e devoluções.`);
     }
+    if (action === 'refund') {
+      const amount = Math.round((num(f, 'amount') ?? 0) * 100) / 100;
+      const left = Math.round((Number(cur.total) - Number(cur.refunded)) * 100) / 100;
+      if (!hasStripe() || !cur.stripe_session) return done(Astro, 'Esta encomenda não foi paga pela Stripe. Devolve o dinheiro pelo meio usado.', undefined, true);
+      if (!(amount > 0) || amount > left) return done(Astro, `O valor tem de estar entre 0,01€ e ${euro(left)}.`, undefined, true);
+      const pi = await paymentIntentOf(cur);
+      if (!pi) return done(Astro, 'Não encontrámos o pagamento desta encomenda na Stripe.', undefined, true);
+      try {
+        await createRefund(pi, amount, cur.number, Number(cur.refunded));
+      } catch (e) {
+        const m = (e as Error).message;
+        return done(Astro, /permission|restricted|does not have/i.test(m)
+          ? 'A chave da Stripe não tem permissão para reembolsos. Na Stripe, edita a chave e põe "Refunds" em Escrever (vê o README).'
+          : `A Stripe recusou o reembolso: ${m.replace(/^Stripe: /, '')}`, undefined, true);
+      }
+      await sql`update orders set refunded = greatest(refunded, ${Number(cur.refunded) + amount}), stripe_payment_intent = ${pi} where id = ${cur.id}`;
+      await sql`insert into order_events (order_id, text, by) values (${cur.id}, ${`Reembolso de ${euro(amount)} feito pela Stripe`}, ${by})`;
+      if (f.get('notify') === 'on') await sendRefunded(cur, amount);
+      return done(Astro, `Reembolso de ${euro(amount)} feito. O cliente recebe o dinheiro pelo meio com que pagou.`);
+    }
     if (action === 'delete' && cur.status === 'cancelada') {
       if (cur.stock_applied && (await sql.begin((tx: any) => moveStock(tx, cur.lines, 1)))) await rebuildSite('Encomenda apagada');
       await sql`delete from orders where id = ${cur.id}`;
@@ -67,6 +88,8 @@ const mail = hasMail();
 const METHODS: Record<string, string> = { card: 'Cartão', mb_way: 'MB WAY', multibanco: 'Multibanco', cartao_presente: 'Cartão presente', link: 'Link' };
 const paidWith = (o.payment_method as string).split(',').filter(Boolean).map((m) => METHODS[m] ?? m).join(', ');
 const stripeTest = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test');
+const refundLeft = Math.round((Number(o.total) - Number(o.refunded)) * 100) / 100;
+const canRefund = hasStripe() && o.stripe_session && ['paga', 'enviada', 'entregue', 'devolvida'].includes(o.status) && refundLeft > 0;
 const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest ? 'test/' : ''}search?query=${encodeURIComponent(o.number)}` : '';
 ---
 <Admin title={`Encomenda ${o.number}`}>
@@ -143,7 +166,22 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
     </section>
 
     <section class="card">
-      <h2 style="margin-top:0">Notas internas</h2>
+      {(canRefund || Number(o.refunded) > 0) && (
+        <>
+          <h2 style="margin-top:0">Reembolso</h2>
+          {Number(o.refunded) > 0 && <p style="margin-top:0">Já reembolsado: <strong>{euro(o.refunded)}</strong> de {euro(o.total)}</p>}
+          {canRefund && (
+            <form method="post" class="stack" style="margin-bottom:22px" onsubmit={`return confirm('Devolver ' + this.amount.value + '€ ao cliente pela Stripe? Não dá para desfazer.')`}>
+              <input type="hidden" name="action" value="refund" />
+              <label>Valor a devolver (€)<input name="amount" value={refundLeft.toFixed(2)} inputmode="decimal" /></label>
+              <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="notify" checked /> Avisar o cliente por email</label>
+              <div><button class="btn danger">Reembolsar pela Stripe</button></div>
+              <p class="note" style="margin:0">O dinheiro volta pelo mesmo meio (cartão, MB WAY, Multibanco). Para parte do valor, por exemplo sem os portes, muda o valor. O estado e o stock não mudam sozinhos: usa o Estado ou regista a devolução.</p>
+            </form>
+          )}
+        </>
+      )}
+      <h2 style={canRefund || Number(o.refunded) > 0 ? '' : 'margin-top:0'}>Notas internas</h2>
       <form method="post" class="stack">
         <input type="hidden" name="action" value="note" />
         <textarea name="notes" rows="4" placeholder="Só a equipa vê">{o.notes}</textarea>

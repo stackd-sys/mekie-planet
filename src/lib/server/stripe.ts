@@ -18,10 +18,14 @@ function encode(obj: Record<string, unknown>, prefix = '', out = new URLSearchPa
   return out;
 }
 
-async function call(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>) {
+async function call(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>, idempotencyKey?: string) {
   const res = await fetch(`${API()}/v1/${path}`, {
     method,
-    headers: { Authorization: `Bearer ${(process.env.STRIPE_SECRET_KEY || '').trim()}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      Authorization: `Bearer ${(process.env.STRIPE_SECRET_KEY || '').trim()}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    },
     body: body ? encode(body) : undefined,
   });
   const data = await res.json();
@@ -54,7 +58,25 @@ export async function createCheckout(o: { number: string; email: string; total: 
   }) as Promise<{ id: string; url: string }>;
 }
 
-export const getSession = (id: string) => call('GET', `checkout/sessions/${encodeURIComponent(id)}?expand[]=payment_intent`);
+export const getSession = (id: string) => call('GET', `checkout/sessions/${encodeURIComponent(id)}`);
+
+/** Pagamento (payment intent) de uma encomenda: o guardado pelo webhook ou, nas antigas, o da página de pagamento. */
+export async function paymentIntentOf(o: { stripe_payment_intent?: string; stripe_session?: string }) {
+  if (o.stripe_payment_intent) return o.stripe_payment_intent;
+  if (!o.stripe_session) return '';
+  const s = await getSession(o.stripe_session);
+  return typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id ?? '';
+}
+
+/** Devolve dinheiro ao cliente pelo mesmo meio com que pagou. A chave precisa da permissão "Refunds: escrever". */
+export function createRefund(paymentIntent: string, eur: number, order: string, refundedBefore: number) {
+  return call('POST', 'refunds', {
+    payment_intent: paymentIntent,
+    amount: cents(eur),
+    reason: 'requested_by_customer',
+    metadata: { order },
+  }, `refund-${order}-${cents(refundedBefore)}-${cents(eur)}`) as Promise<{ id: string; status: string; amount: number }>;
+}
 
 /** Confirma a assinatura do webhook (cabeçalho Stripe-Signature) e devolve o evento. */
 export function verifyWebhook(payload: string, header: string | null, toleranceSec = 300) {

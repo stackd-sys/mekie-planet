@@ -83,11 +83,11 @@ O checkout grava a encomenda no CRM e manda o cliente para a página de pagament
 
 1. No painel da Stripe, escolher "Checkout pré-construído".
 2. Definições > Pagamentos > Métodos de pagamento: ligar Cartões, MB WAY, Multibanco, Apple Pay e Google Pay.
-3. Programadores > Chaves da API: copiar a chave secreta para `STRIPE_SECRET_KEY` na Vercel.
-4. Programadores > Webhooks > Adicionar destino: URL `https://<o-site>/api/stripe/webhook/`, eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` e `checkout.session.expired`. Copiar o segredo de assinatura (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
+3. Programadores > Chaves da API > Criar chave secreta > Permissões personalizadas: **Checkout Sessions** e **Refunds** em Escrever, o resto em Nenhum. Copiar a chave (`rk_live_...` ou `sk_live_...`) para `STRIPE_SECRET_KEY` na Vercel.
+4. Programadores > Webhooks > Adicionar destino: URL `https://<o-site>/api/stripe/webhook/`, eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` e `charge.refunded`. Copiar o segredo de assinatura (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
 5. Redeploy na Vercel.
 
-Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 4242 4242`). Para vender a sério, ativar a conta (dados da empresa e IBAN), trocar para as chaves `sk_live_...`, criar o webhook também em modo real e fazer Redeploy. Os reembolsos fazem-se no painel da Stripe.
+Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 4242 4242`). Para vender a sério, ativar a conta (dados da empresa e IBAN), trocar para as chaves `sk_live_...`, criar o webhook também em modo real e fazer Redeploy. Reembolsos: na encomenda, no CRM, em "Reembolsar pela Stripe" (total ou parte, com email ao cliente). Os reembolsos feitos diretamente no painel da Stripe também aparecem na encomenda, pelo evento `charge.refunded`. O estado e o stock não mudam sozinhos.
 
 ### Correr o CRM localmente
 
