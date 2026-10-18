@@ -87,7 +87,7 @@ O checkout grava a encomenda no CRM e manda o cliente para a página de pagament
 4. Programadores > Webhooks > Adicionar destino: URL `https://<o-site>/api/stripe/webhook/`, eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` e `charge.refunded`. Copiar o segredo de assinatura (`whsec_...`) para `STRIPE_WEBHOOK_SECRET`.
 5. Redeploy na Vercel.
 
-Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 4242 4242`). Para vender a sério, ativar a conta (dados da empresa e IBAN), trocar para as chaves `sk_live_...`, criar o webhook também em modo real e fazer Redeploy. Reembolsos: na encomenda, no CRM, em "Reembolsar pela Stripe" (total ou parte, com email ao cliente). Os reembolsos feitos diretamente no painel da Stripe também aparecem na encomenda, pelo evento `charge.refunded`. O estado e o stock não mudam sozinhos.
+Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 4242 4242`). Para vender a sério, ativar a conta (dados da empresa e IBAN), trocar para as chaves `sk_live_...`, criar o webhook também em modo real e fazer Redeploy. Reembolsos: na encomenda, no CRM, em "Reembolsar pela Stripe" (total ou parte, com email ao cliente). Os reembolsos feitos diretamente no painel da Stripe também aparecem na encomenda, pelo evento `charge.refunded`. Quando o valor todo é devolvido, a encomenda muda sozinha: por enviar passa a cancelada (as peças voltam ao stock), já enviada passa a devolvida, e os cartões presente comprados nela ficam sem saldo. Num reembolso parcial o estado não muda.
 
 ### Correr o CRM localmente
 

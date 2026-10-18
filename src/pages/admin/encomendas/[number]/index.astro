@@ -6,7 +6,7 @@ import Status from '../../../../components/admin/Status.astro';
 import { db } from '../../../../lib/server/db';
 import { euro, date, STATUS, trackingUrl } from '../../../../lib/server/format';
 import { postForm, done, str, num } from '../../../../lib/server/admin';
-import { setStatus, sendShipped, sendGiftCard, moveStock, sendRefunded } from '../../../../lib/server/orders';
+import { setStatus, sendShipped, sendGiftCard, moveStock, sendRefunded, afterRefund } from '../../../../lib/server/orders';
 import { hasStripe, paymentIntentOf, createRefund } from '../../../../lib/server/stripe';
 import { hasMail } from '../../../../lib/server/mail';
 import { rebuildSite } from '../../../../lib/server/deploy';
@@ -66,7 +66,8 @@ if (f) {
       await sql`update orders set refunded = greatest(refunded, ${Number(cur.refunded) + amount}), stripe_payment_intent = ${pi} where id = ${cur.id}`;
       await sql`insert into order_events (order_id, text, by) values (${cur.id}, ${`Reembolso de ${euro(amount)} feito pela Stripe`}, ${by})`;
       if (f.get('notify') === 'on') await sendRefunded(cur, amount);
-      return done(Astro, `Reembolso de ${euro(amount)} feito. O cliente recebe o dinheiro pelo meio com que pagou.`);
+      const next = await afterRefund(cur.number, by);
+      return done(Astro, `Reembolso de ${euro(amount)} feito. O cliente recebe o dinheiro pelo meio com que pagou.${next === 'cancelada' ? ` A encomenda foi cancelada${(cur.lines as any[]).some((l) => !l.digital) ? ' e as peças voltaram ao stock' : ''}.` : next === 'devolvida' ? ' A encomenda passou a devolvida. Regista a devolução para as peças voltarem ao stock quando chegarem.' : ''}`);
     }
     if (action === 'delete' && cur.status === 'cancelada') {
       if (cur.stock_applied && (await sql.begin((tx: any) => moveStock(tx, cur.lines, 1)))) await rebuildSite('Encomenda apagada');
@@ -176,7 +177,7 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
               <label>Valor a devolver (€)<input name="amount" value={refundLeft.toFixed(2)} inputmode="decimal" /></label>
               <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="notify" checked /> Avisar o cliente por email</label>
               <div><button class="btn danger">Reembolsar pela Stripe</button></div>
-              <p class="note" style="margin:0">O dinheiro volta pelo mesmo meio (cartão, MB WAY, Multibanco). Para parte do valor, por exemplo sem os portes, muda o valor. O estado e o stock não mudam sozinhos: usa o Estado ou regista a devolução.</p>
+              <p class="note" style="margin:0">O dinheiro volta pelo mesmo meio (cartão, MB WAY, Multibanco). Para parte do valor, por exemplo sem os portes, muda o valor. Se devolveres tudo, a encomenda muda sozinha: por enviar fica cancelada e as peças voltam ao stock; já enviada fica devolvida. Num reembolso parcial o estado não muda.</p>
             </form>
           )}
         </>

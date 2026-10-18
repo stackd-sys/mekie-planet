@@ -24,8 +24,12 @@ export const POST: APIRoute = async ({ request }) => {
     const { db } = await import('../../../../lib/server/db');
     const sql = await db();
     const total = Number(s.amount_refunded || 0) / 100;
-    const [o] = await sql<any[]>`update orders set refunded = ${total} where stripe_payment_intent = ${pi} and refunded < ${total} returning id, refunded`;
-    if (o) await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`Reembolsado pela Stripe: ${euro(s.amount_refunded)} no total`}, 'stripe')`;
+    const [o] = await sql<any[]>`update orders set refunded = ${total} where stripe_payment_intent = ${pi} and refunded < ${total} returning id, number`;
+    if (o) {
+      await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`Reembolsado pela Stripe: ${euro(s.amount_refunded)} no total`}, 'stripe')`;
+      const { afterRefund } = await import('../../../../lib/server/orders');
+      await afterRefund(o.number, 'stripe');
+    }
     return new Response('ok');
   }
 

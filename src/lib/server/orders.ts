@@ -384,3 +384,17 @@ export async function setStatus(number: string, status: string, by: string, extr
   if (stockChanged) await rebuildSite('Stock mudou com a encomenda ' + number);
   return o;
 }
+
+/** Depois de um reembolso: se já foi devolvido tudo, a encomenda muda de estado sozinha.
+    Por enviar passa a cancelada (as peças voltam ao stock); já enviada passa a devolvida
+    (o stock volta quando as peças chegarem, pela devolução). Os cartões presente comprados nela deixam de ter saldo. */
+export async function afterRefund(number: string, by: string) {
+  const sql = await db();
+  const [o] = await sql<any[]>`select * from orders where number = ${number}`;
+  if (!o || Number(o.refunded) < Number(o.total)) return null;
+  const next = o.status === 'paga' ? 'cancelada' : ['enviada', 'entregue'].includes(o.status) ? 'devolvida' : '';
+  if (next) await setStatus(number, next, by);
+  const emptied = await sql`update gift_cards set balance = 0, notes = trim(notes || ' Anulado: encomenda reembolsada.') where order_number = ${number} and balance > 0 returning code`;
+  if (emptied.length) await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`Cartões presente anulados: ${emptied.map((g: any) => g.code).join(', ')}`}, ${by})`;
+  return next;
+}
