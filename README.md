@@ -155,21 +155,18 @@ No código não há nada a mudar: o site já usa `https://mekie-planet.com` nos 
 
 ## Por fazer
 
-Feito (17 de outubro): domínio mekie-planet.com na Vercel (o www reencaminha), base de dados Neon em Frankfurt, `ADMIN_EMAILS`, Resend com o domínio verificado, Stripe em modo de teste com webhook (compra de teste paga por MB WAY e confirmada no CRM).
+Feito (17 e 18 de outubro): domínio mekie-planet.com na Vercel (o www reencaminha), CRM em app.mekie-planet.com (`ADMIN_HOST`), base de dados Neon em Frankfurt, Resend com o domínio verificado, Stripe em produção com webhook (6 eventos) e reembolsos pelo CRM, Deploy Hook, Search Console com o sitemap, reencaminhamento de geral@mekie-planet.com para mekieplanet@gmail.com (ImprovMX), contagem anónima de visitas no CRM.
 
 Pendente da Mekie:
 
-- [ ] Stripe em produção: ativar a conta (dados da empresa e IBAN), ligar as formas de pagamento na conta de produção (cartões, MB WAY, Multibanco, Apple Pay, Google Pay), criar o webhook de produção e trocar `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` na Vercel pelos de produção.
-- [ ] Criar a caixa de email geral@mekie-planet.com (o domínio não tem registos MX, por isso as respostas dos clientes não chegam).
-- [ ] Opcional no CRM: Deploy Hook, Google Analytics e Meta (ver "Configurar na Vercel").
-- [ ] Google Search Console (enviar o sitemap) e Google Merchant Center.
+- [ ] Google Ads: se houver anúncios, enviar o ID e a etiqueta de conversão (estavam no Tag Manager antigo) para o site contar as compras.
+- [ ] Opcional: ligar o Google Analytics e a Meta ao CRM (ver "Configurar na Vercel"), para ver as campanhas no CRM.
+- [ ] Opcional: juntar mekie-planet.pt na Vercel a reencaminhar para mekie-planet.com.
+- [ ] Google Merchant Center (produtos no separador Shopping do Google).
 - [ ] Enviar as fotos das peças vestidas e a foto e o preço do crewneck.
 - [ ] Se já tinham emails na Google Sheet da newsletter, importá-los em CRM > Newsletter e avisos > Importar.
 
-Fechado: preço das totes (25€), textos das opiniões confirmados por cada pessoa, preço e cores do scrunchie personalizado. A Google Sheet e o Apps Script já não são precisos (substituídos pelo CRM).
-
 Próximas fases do site:
 
-1. CRM em app.mekie-planet.com: o código está feito e só liga com a variável `ADMIN_HOST`. Passos: em Vercel > Domains, adicionar `app.mekie-planet.com` (ligado a Production); na Hostinger, criar o CNAME `app` com o valor que a Vercel indicar; quando o domínio ficar verde, juntar `ADMIN_HOST=app.mekie-planet.com` e fazer Redeploy. O `mekie-planet.com/admin/` passa a reencaminhar para lá e o resto do subdomínio volta para a loja (`vercel.json`). É preciso entrar outra vez no CRM, porque a sessão fica presa ao endereço.
-2. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
-3. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.
+1. Traduções em espanhol e inglês (`/es/` e `/en/`), com os textos em português fechados.
+2. Mais tarde: conta de cliente com login por email. Campanha de Natal quando fizer sentido.
