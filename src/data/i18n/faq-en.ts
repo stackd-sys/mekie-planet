@@ -107,7 +107,7 @@ export const faqGroupsEn: FaqGroup[] = [
     items: [
       {
         q: 'How does the gift card work?',
-        a: `You choose the amount (${giftValues}), write a message and, once payment goes through, we email the card with a unique code. Whoever gets it uses the code at checkout. <a href="/en/gift-card/">Give a gift card</a>.`,
+        a: `You choose the amount (${giftValues}, or any amount you like from €${giftCard.custom.min}), write a message and, once payment goes through, we email the card with a unique code. Whoever gets it uses the code at checkout. <a href="/en/gift-card/">Give a gift card</a>.`,
       },
       {
         q: 'Does the gift card expire?',

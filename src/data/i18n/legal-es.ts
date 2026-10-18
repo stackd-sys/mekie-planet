@@ -94,7 +94,7 @@ export const legalPagesEs: LegalPage[] = [
         body: [
           {
             list: [
-              `La tarjeta regalo es digital, existe en importes de ${giftValues} y se envía por email, con un código único, en un plazo de ${workingDays(String(giftCard.sendDays))} tras el pago. No tiene gastos de envío.`,
+              `La tarjeta regalo es digital, existe en importes de ${giftValues} o en otro importe a elegir, de ${giftCard.custom.min} € a ${giftCard.custom.max} €, y se envía por email, con un código único, en un plazo de ${workingDays(String(giftCard.sendDays))} tras el pago. No tiene gastos de envío.`,
               `Es válida durante ${giftValidity} a partir de la fecha de compra, que figura en el email.`,
               'Se puede usar en varios pedidos de la tienda online hasta agotar el saldo, y también junto con un código de descuento. Si el pedido cuesta más que el saldo, pagas la diferencia.',
               'No se puede canjear por dinero ni usar para comprar otras tarjetas regalo. El saldo que quede al final de la validez no se reembolsa.',

@@ -94,7 +94,7 @@ export const legalPagesEn: LegalPage[] = [
         body: [
           {
             list: [
-              `The gift card is digital, comes in values of ${giftValues} and is sent by email, with a unique code, within ${giftCard.sendDays} working day${giftCard.sendDays === 1 ? '' : 's'} of payment. There are no shipping costs.`,
+              `The gift card is digital, comes in values of ${giftValues} or any other amount from €${giftCard.custom.min} to €${giftCard.custom.max}, and is sent by email, with a unique code, within ${giftCard.sendDays} working day${giftCard.sendDays === 1 ? '' : 's'} of payment. There are no shipping costs.`,
               `It is valid for ${giftValidity} from the date of purchase, shown in the email.`,
               'It can be used across several orders in the online store until the balance runs out, and also together with a discount code. If the order costs more than the balance, you pay the difference.',
               'It cannot be exchanged for cash or used to buy other gift cards. Any balance left when it expires is not refunded.',

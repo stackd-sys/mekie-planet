@@ -93,7 +93,7 @@ export const faqGroups: FaqGroup[] = [
     items: [
       {
         q: 'Como funciona o cartão presente?',
-        a: `Escolhes o valor (${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€), escreves uma mensagem e, depois do pagamento, enviamos o cartão por email com um código único. Quem o recebe usa o código no checkout. <a href="/cartao-presente/">Oferecer um cartão</a>.`,
+        a: `Escolhes o valor (${giftCard.values.join(', ').replace(/, (\d+)$/, ' ou $1')}€, ou outro à tua medida a partir de ${giftCard.custom.min}€), escreves uma mensagem e, depois do pagamento, enviamos o cartão por email com um código único. Quem o recebe usa o código no checkout. <a href="/cartao-presente/">Oferecer um cartão</a>.`,
       },
       {
         q: 'O cartão presente tem validade?',

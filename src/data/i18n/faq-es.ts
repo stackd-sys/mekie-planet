@@ -108,7 +108,7 @@ export const faqGroupsEs: FaqGroup[] = [
     items: [
       {
         q: '¿Cómo funciona la tarjeta regalo?',
-        a: `Eliges el importe (${giftValues}), escribes un mensaje y, después del pago, te enviamos la tarjeta por email con un código único. Quien la recibe usa el código en el checkout. <a href="/es/tarjeta-regalo/">Regalar una tarjeta</a>.`,
+        a: `Eliges el importe (${giftValues}, u otro a tu medida desde ${giftCard.custom.min} €), escribes un mensaje y, después del pago, te enviamos la tarjeta por email con un código único. Quien la recibe usa el código en el checkout. <a href="/es/tarjeta-regalo/">Regalar una tarjeta</a>.`,
       },
       {
         q: '¿La tarjeta regalo caduca?',

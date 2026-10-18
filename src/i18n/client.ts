@@ -40,6 +40,7 @@ const dict = {
   'notify.okAny': ['voltar', 'it is back', 'vuelva'],
   'gc.needNames': ['Preenche o nome de quem recebe e o teu.', 'Fill in their name and yours.', 'Rellena el nombre de quien la recibe y el tuyo.'],
   'gc.badEmail': ['O email de quem recebe não parece válido.', "Their email doesn't look right.", 'El email de quien la recibe no parece válido.'],
+  'gc.badAmount': ['Escolhe um valor inteiro entre {min} e {max}.', 'Choose a whole amount between {min} and {max}.', 'Elige un importe entero entre {min} y {max}.'],
   'gc.to': ['Para {name}', 'To {name}', 'Para {name}'],
   'gc.from': ['De {name}', 'From {name}', 'De {name}'],
   'co.percent': ['{n}% de desconto', '{n}% off', '{n}% de descuento'],

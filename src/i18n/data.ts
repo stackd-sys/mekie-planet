@@ -1,5 +1,5 @@
 /* Dados da loja na língua da página: produtos, categorias, coleções, páginas legais, FAQ, portes. */
-import { type Lang, money } from './index';
+import { type Lang, money, amount } from './index';
 import { trProduct, trCategory, trCollection, trName, trColor } from './catalog';
 import * as data from '../data/products';
 import { legalPages, legalUpdated } from '../data/legal';
@@ -61,12 +61,13 @@ export function giftValues(lang: Lang) {
   const v = giftCard.values.map((n) => (lang === 'pt' ? String(n) : money(n, lang).replace(/[.,]00/, '')));
   const last = v.pop();
   const or = lang === 'en' ? 'or' : lang === 'es' ? 'o' : 'ou';
-  return `${v.join(', ')} ${or} ${last}${lang === 'pt' ? '€' : ''}`;
+  const other = { pt: `, ou outro valor a partir de ${giftCard.custom.min}€`, en: `, or any amount from ${amount(giftCard.custom.min, lang)}`, es: `, u otro importe desde ${amount(giftCard.custom.min, lang)}` }[lang];
+  return `${v.join(', ')} ${or} ${last}${lang === 'pt' ? '€' : ''}${other}`;
 }
 
 /** Cartões presente com nome e descrição na língua (os títulos dos cartões ficam em português: estão impressos na imagem) */
 export const giftCatalogFor = (lang: Lang) =>
-  giftCatalog.map((g) => ({ ...g, name: trName(g.name, lang), color: `${money(g.value, lang).replace(/[.,]00/, '')} · ${g.title}` }));
+  giftCatalog.map((g) => ({ ...g, name: trName(g.name, lang), color: g.variable ? g.title : `${money(g.value, lang).replace(/[.,]00/, '')} · ${g.title}` }));
 
 /* Países de entrega: o valor do formulário fica em português (é o que o CRM guarda), o texto na língua da página */
 const iso: Record<string, string> = {

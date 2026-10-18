@@ -24,6 +24,7 @@ const dict = {
   'code.out': ['Este código já esgotou.', 'This code has run out.', 'Este código ya se ha agotado.'],
   'code.welcome': ['O código {code} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.', 'The {code} code is for newsletter subscribers. Use the email you subscribed with, or subscribe at the bottom of the page.', 'El código {code} es para quien se suscribe a la newsletter. Usa el email con el que te suscribiste o suscríbete al final de la página.'],
   'code.used': ['O código {code} já foi usado numa encomenda com este email.', 'The {code} code has already been used on an order with this email.', 'El código {code} ya se usó en un pedido con este email.'],
+  'err.giftAmount': ['O valor do cartão presente tem de ser um número inteiro entre {min} e {max}.', 'The gift card amount must be a whole number between {min} and {max}.', 'El importe de la tarjeta regalo tiene que ser un número entero entre {min} y {max}.'],
   'gift.empty': ['Este cartão já não tem saldo.', 'This card has no balance left.', 'Esta tarjeta ya no tiene saldo.'],
   'gift.expired': ['Este cartão já passou a validade.', 'This card has expired.', 'Esta tarjeta ha caducado.'],
   'gift.notFound': ['Não encontrámos este cartão presente.', "We couldn't find this gift card.", 'No encontramos esta tarjeta regalo.'],

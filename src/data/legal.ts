@@ -85,7 +85,7 @@ export const legalPages: LegalPage[] = [
         body: [
           {
             list: [
-              `O cartão presente é digital, existe nos valores de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' e $1')}€ e é enviado por email, com um código único, no prazo de ${giftCard.sendDays} dia útil após o pagamento. Não tem portes.`,
+              `O cartão presente é digital, existe nos valores de ${giftCard.values.join(', ').replace(/, (\d+)$/, ' e $1')}€ ou noutro valor à escolha, de ${giftCard.custom.min}€ a ${giftCard.custom.max}€, e é enviado por email, com um código único, no prazo de ${giftCard.sendDays} dia útil após o pagamento. Não tem portes.`,
               `É válido durante ${giftValidity} a contar da data de compra, indicada no email.`,
               'Pode ser usado em várias encomendas na loja online até acabar o saldo, e também em conjunto com um código de desconto. Se a encomenda custar mais do que o saldo, pagas a diferença.',
               'Não pode ser trocado por dinheiro nem usado para comprar outros cartões presente. O saldo que sobrar no fim da validade não é reembolsado.',

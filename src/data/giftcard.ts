@@ -10,6 +10,8 @@ export const giftCard = {
   values: [25, 50, 75, 100],
   /** nome de cada cartão, também impresso na imagem */
   names: { 25: 'Não sejas fuinha', 50: 'Tá-se bem', 75: 'Mekie bro', 100: 'Estás um mãos largas' } as Record<number, string>,
+  /** cartão com o valor escolhido pelo cliente (euros inteiros, entre o mínimo e o máximo) */
+  custom: { id: 9105, title: 'À tua medida', min: 25, max: 500 },
 };
 
 const slugify = (t: string) => t.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -36,5 +38,26 @@ export const giftCatalog = giftCard.values.map((value, i) => ({
   image: giftImage(value),
   grams: 0,
   digital: true,
-}));
+  variable: false,
+})).concat({
+  /* valor à escolha: o preço vem da linha do carrinho e é validado no servidor */
+  id: giftCard.custom.id,
+  slug: giftCard.slug,
+  href: `/${giftCard.slug}/`,
+  name: giftCard.name,
+  color: giftCard.custom.title,
+  value: giftCard.custom.min,
+  title: giftCard.custom.title,
+  price: giftCard.custom.min,
+  image: '/images/products/cartao-presente-a-tua-medida.webp',
+  grams: 0,
+  digital: true,
+  variable: true,
+});
+
+/** Valor do cartão à medida: euros inteiros dentro dos limites, ou null */
+export const customGiftValue = (v: unknown) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= giftCard.custom.min && n <= giftCard.custom.max ? n : null;
+};
 

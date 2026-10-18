@@ -17,6 +17,8 @@ export type CartLine = {
   href?: string;
   /** artigo digital: sem portes, sem desconto de boas-vindas */
   digital?: boolean;
+  /** cartão presente com o valor escolhido pelo cliente */
+  variable?: boolean;
   qty: number;
 };
 
@@ -45,7 +47,7 @@ function write(lines: CartLine[]) {
 
 /* Catálogo atual (preço, stock, imagem) publicado pelo layout. Um carrinho guardado
    antes de uma mudança de preço ou de stock é corrigido ao abrir o site. */
-type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams' | 'href' | 'digital'> & {
+type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams' | 'href' | 'digital' | 'variable'> & {
   sizeStock?: Record<string, number>;
 };
 /** Stock da linha: o do tamanho escolhido quando o produto tem stock por tamanho. */
@@ -68,6 +70,8 @@ function sync(lines: CartLine[]): CartLine[] {
     .filter((l) => cat[l.id])
     .map((l) => {
       const { sizeStock, ...c } = cat[l.id];
+      /* cartão presente à medida: o valor e a descrição são os da linha */
+      if (c.variable) Object.assign(c, { price: l.price, color: l.color });
       const next = { ...l, ...c, stock: stockOf({ stock: c.stock, sizeStock }, l.size), madeToOrderDays: c.madeToOrderDays };
       return { ...next, qty: Math.min(l.qty, maxQty(next)) };
     })
@@ -100,7 +104,7 @@ export const cart = {
   add(item: Omit<CartLine, 'key' | 'qty'> & { sizeStock?: Record<string, number> }, qty = 1) {
     const { sizeStock, ...rest } = item;
     const line = { ...rest, stock: stockOf(item, item.size) };
-    const key = `${line.id}:${line.size ?? ''}${line.custom ? `:${line.custom}` : ''}`;
+    const key = `${line.id}:${line.size ?? ''}${line.custom ? `:${line.custom}` : ''}${line.variable ? `:${line.price}` : ''}`;
     const max = maxQty(line);
     if (max <= 0) return;
     const existing = memory.find((l) => l.key === key);

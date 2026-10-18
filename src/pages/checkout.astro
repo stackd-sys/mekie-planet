@@ -248,7 +248,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   /* Grava a encomenda no CRM. Devolve false quando o CRM não está disponível (segue por email). */
   const sendToCrm = async (f: FormData) => {
     const payload = {
-      lines: cart.lines.map((l) => ({ id: l.id, qty: l.qty, size: l.size ?? '', custom: l.custom ?? '' })),
+      lines: cart.lines.map((l) => ({ id: l.id, qty: l.qty, size: l.size ?? '', custom: l.custom ?? '', ...(l.variable ? { amount: l.price } : {}) })),
       code: applied,
       gift: gift.code,
       utm: visitSource(),
