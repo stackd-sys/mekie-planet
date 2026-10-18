@@ -1,7 +1,7 @@
 /* Avisos da Stripe: pagamento confirmado, Multibanco pago ou por pagar, página de pagamento expirada.
    No painel da Stripe: Programadores > Webhooks > endpoint .../api/stripe/webhook/ com os eventos
    checkout.session.completed, checkout.session.async_payment_succeeded,
-   checkout.session.async_payment_failed, checkout.session.expired e charge.refunded (reembolsos). */
+   checkout.session.async_payment_failed, checkout.session.expired, charge.succeeded (meio usado) e charge.refunded (reembolsos). */
 export const prerender = false;
 import type { APIRoute } from 'astro';
 
@@ -17,14 +17,26 @@ export const POST: APIRoute = async ({ request }) => {
   }
   const s = event.data?.object ?? {};
 
-  /* reembolso feito na Stripe (ou pelo CRM): guarda o total já devolvido */
-  if (event.type === 'charge.refunded') {
-    const pi = typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id;
-    if (!pi) return new Response('ok');
+  /* cobranças: o pagamento é encontrado pelo payment intent ou pela descrição "Encomenda MK-…" */
+  if (event.type === 'charge.succeeded' || event.type === 'charge.refunded') {
+    const pi = (typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id) || '';
+    const byDesc = /Encomenda (MK-\d+)/.exec(s.description || '')?.[1] || '';
+    if (!pi && !byDesc) return new Response('ok');
     const { db } = await import('../../../../lib/server/db');
     const sql = await db();
+    const where = sql`(${pi} <> '' and stripe_payment_intent = ${pi}) or number = ${byDesc}`;
+    if (pi && byDesc) await sql`update orders set stripe_payment_intent = ${pi} where number = ${byDesc} and stripe_payment_intent = ''`;
+
+    /* meio de pagamento usado de facto (cartão, MB WAY, Multibanco…) */
+    if (event.type === 'charge.succeeded') {
+      const type = s.payment_method_details?.type || '';
+      if (type) await sql`update orders set payment_method = ${type} where ${where}`;
+      return new Response('ok');
+    }
+
+    /* reembolso feito na Stripe (ou pelo CRM): guarda o total já devolvido */
     const total = Number(s.amount_refunded || 0) / 100;
-    const [o] = await sql<any[]>`update orders set refunded = ${total} where stripe_payment_intent = ${pi} and refunded < ${total} returning id, number`;
+    const [o] = await sql<any[]>`update orders set refunded = ${total} where (${where}) and refunded < ${total} returning id, number`;
     if (o) {
       await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`Reembolsado pela Stripe: ${euro(s.amount_refunded)} no total`}, 'stripe')`;
       const { afterRefund } = await import('../../../../lib/server/orders');
@@ -47,7 +59,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     if ((event.type === 'checkout.session.completed' && s.payment_status === 'paid') || event.type === 'checkout.session.async_payment_succeeded') {
       if (o.status === 'pendente' || o.status === 'cancelada') {
-        await sql`update orders set payment_method = ${s.payment_method_types?.join(',') ?? ''}, stripe_payment_intent = ${typeof s.payment_intent === 'string' ? s.payment_intent : ''} where id = ${o.id}`;
+        /* o meio usado chega pelo charge.succeeded; aqui só se a página só oferecia um */
+        const only = s.payment_method_types?.length === 1 ? s.payment_method_types[0] : '';
+        await sql`update orders set payment_method = coalesce(nullif(${only}, ''), payment_method), stripe_payment_intent = coalesce(nullif(${typeof s.payment_intent === 'string' ? s.payment_intent : ''}, ''), stripe_payment_intent) where id = ${o.id}`;
         const paid = await setStatus(number, 'paga', 'stripe');
         await note(`Pagamento confirmado pela Stripe (${euro(s.amount_total)})`);
         await sendOrderPaid(paid);

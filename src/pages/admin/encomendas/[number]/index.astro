@@ -13,6 +13,9 @@ import { rebuildSite } from '../../../../lib/server/deploy';
 
 const sql = await db();
 const number = Astro.params.number!;
+/* pagamento feito com as chaves de teste, mas o site já usa as reais: não há dinheiro a devolver */
+const liveKey = /^(sk|rk)_live_/.test((process.env.STRIPE_SECRET_KEY || '').trim());
+const testPayment = (o: any) => liveKey && String(o.stripe_session).startsWith('cs_test_');
 const by = Astro.locals.admin ?? '';
 
 const f = await postForm(Astro);
@@ -52,6 +55,7 @@ if (f) {
       const amount = Math.round((num(f, 'amount') ?? 0) * 100) / 100;
       const left = Math.round((Number(cur.total) - Number(cur.refunded)) * 100) / 100;
       if (!hasStripe() || !cur.stripe_session) return done(Astro, 'Esta encomenda não foi paga pela Stripe. Devolve o dinheiro pelo meio usado.', undefined, true);
+      if (testPayment(cur)) return done(Astro, 'Este pagamento foi feito em modo de teste: não houve dinheiro real, por isso não há nada a reembolsar.', undefined, true);
       if (!(amount > 0) || amount > left) return done(Astro, `O valor tem de estar entre 0,01€ e ${euro(left)}.`, undefined, true);
       const pi = await paymentIntentOf(cur);
       if (!pi) return done(Astro, 'Não encontrámos o pagamento desta encomenda na Stripe.', undefined, true);
@@ -88,9 +92,9 @@ const [cust] = await sql<any[]>`select id, (select count(*)::int from orders whe
 const mail = hasMail();
 const METHODS: Record<string, string> = { card: 'Cartão', mb_way: 'MB WAY', multibanco: 'Multibanco', cartao_presente: 'Cartão presente', link: 'Link' };
 const paidWith = (o.payment_method as string).split(',').filter(Boolean).map((m) => METHODS[m] ?? m).join(', ');
-const stripeTest = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test');
+const stripeTest = String(o.stripe_session).startsWith('cs_test_');
 const refundLeft = Math.round((Number(o.total) - Number(o.refunded)) * 100) / 100;
-const canRefund = hasStripe() && o.stripe_session && ['paga', 'enviada', 'entregue', 'devolvida'].includes(o.status) && refundLeft > 0;
+const canRefund = hasStripe() && o.stripe_session && !testPayment(o) && ['paga', 'enviada', 'entregue', 'devolvida'].includes(o.status) && refundLeft > 0;
 const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest ? 'test/' : ''}search?query=${encodeURIComponent(o.number)}` : '';
 ---
 <Admin title={`Encomenda ${o.number}`}>
@@ -167,6 +171,7 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
     </section>
 
     <section class="card">
+      {testPayment(o) && <p class="note" style="margin-top:0">Pagamento feito em modo de teste: não houve dinheiro real, por isso não há reembolso. Podes mudar o Estado para Cancelada.</p>}
       {(canRefund || Number(o.refunded) > 0) && (
         <>
           <h2 style="margin-top:0">Reembolso</h2>
