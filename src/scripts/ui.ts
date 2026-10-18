@@ -269,6 +269,16 @@ const io = 'IntersectionObserver' in window
   : null;
 document.querySelectorAll('.reveal').forEach((el) => (io ? io.observe(el) : el.classList.add('is-in')));
 
+/* ---------- Cartões de produto: pontos da segunda foto no telemóvel ---------- */
+document.querySelectorAll<HTMLElement>('[data-card-track]').forEach((t) => {
+  const dots = t.closest('.card__media')?.querySelectorAll('.card__dots i');
+  if (!dots?.length) return;
+  t.addEventListener('scroll', () => {
+    const i = Math.round(t.scrollLeft / (t.clientWidth || 1));
+    dots.forEach((d, n) => d.classList.toggle('is-on', n === i));
+  }, { passive: true });
+});
+
 /* ---------- Adicionar rápido (cartões de produto) ---------- */
 document.addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-quick]');

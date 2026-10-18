@@ -16,13 +16,20 @@ const soldOut = isSoldOut(p);
 const sizes = '(max-width: 700px) 50vw, 25vw';
 /* recortes de produto (fundo transparente) ficam inteiros; fotos ocupam o cartão */
 const cutout = /\/products\/.+-1\.webp$/.test(p.images[0]);
+/* segunda foto: aparece ao passar o rato; no telemóvel desliza-se para o lado */
+const alt = p.images[1];
+const altCutout = alt ? /\/products\/.+\.webp$/.test(alt) && !/lookbook/.test(alt) : false;
 ---
 <article class="card" data-card data-product={cartData}>
   <div class="card__media">
     <a href={`/produto/${p.slug}/`} class="card__link" aria-label={`${p.name}, ${p.color}`}>
       {label && <span class="card__tag eyebrow">{label}</span>}
-      <Img src={p.images[0]} sizes={sizes} alt={`${p.name} ${p.color}`} width="600" height="750" loading={eager ? 'eager' : 'lazy'} class:list={['card__img', { 'card__img--photo': !cutout }]} />
+      <span class:list={['card__track', { 'card__track--two': alt }]} data-card-track>
+        <Img src={p.images[0]} sizes={sizes} alt={`${p.name} ${p.color}`} width="600" height="750" loading={eager ? 'eager' : 'lazy'} class:list={['card__img', { 'card__img--photo': !cutout }]} />
+        {alt && <Img src={alt} sizes={sizes} alt="" width="600" height="750" loading="lazy" class:list={['card__img', 'card__img--alt', { 'card__img--photo': !altCutout }]} />}
+      </span>
     </a>
+    {alt && <span class="card__dots" aria-hidden="true"><i class="is-on"></i><i></i></span>}
     <div class="quick" aria-label={`Adicionar ${p.name} ao carrinho`}>
       {soldOut ? (
         <p class="quick__label eyebrow">Esgotado</p>
@@ -68,7 +75,24 @@ const cutout = /\/products\/.+-1\.webp$/.test(p.images[0]);
     transition: opacity .5s var(--ease), transform .8s var(--ease);
   }
   .card__img--photo { object-fit: cover; padding: 0; }
-  .card__media:hover .card__img { transform: scale(1.03); }
+  .card__track { position: absolute; inset: 0; display: block; }
+  .card__dots { display: none; }
+  /* computador: a segunda foto aparece ao passar o rato */
+  @media (hover: hover) {
+    .card__img--alt { opacity: 0; }
+    .card__media:hover .card__img { transform: scale(1.03); }
+    .card__media:hover .card__track--two .card__img:not(.card__img--alt) { opacity: 0; }
+    .card__media:hover .card__img--alt { opacity: 1; }
+  }
+  /* telemóvel: desliza para o lado, com dois pontos a indicar a foto */
+  @media (hover: none) {
+    .card__track--two { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+    .card__track--two::-webkit-scrollbar { display: none; }
+    .card__track--two .card__img { position: relative; inset: auto; flex: 0 0 100%; scroll-snap-align: start; }
+    .card__dots { display: flex; gap: 5px; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2; pointer-events: none; }
+    .card__dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.22); }
+    .card__dots i.is-on { background: var(--ink); }
+  }
   .card__tag {
     position: absolute; top: 12px; left: 12px; z-index: 2;
     font-size: 10.5px; color: var(--ink);
