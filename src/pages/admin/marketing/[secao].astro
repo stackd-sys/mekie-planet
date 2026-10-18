@@ -4,7 +4,7 @@ import Admin from '../../../layouts/Admin.astro';
 import { db } from '../../../lib/server/db';
 import { euro } from '../../../lib/server/format';
 import { hasGa, gaReport, rows, range } from '../../../lib/server/google';
-import { hasMeta, metaCampaigns } from '../../../lib/server/meta';
+import MetaReport from '../../../components/admin/MetaReport.astro';
 import WorldMap from '../../../components/admin/WorldMap.astro';
 import worldmap from '../../../data/worldmap.json';
 const countryName = Object.fromEntries((worldmap.countries as [string, string, string][]).map(([c, name]) => [c, name]));
@@ -12,7 +12,7 @@ const countryName = Object.fromEntries((worldmap.countries as [string, string, s
 const SECTIONS: Record<string, [string, string]> = {
   visitas: ['Visitas', 'Toda a gente que entra no site, com ou sem cookies, e o caminho até à compra.'],
   'google-analytics': ['Google Analytics', 'Visitas, pessoas e peças vistas, de quem aceitou as estatísticas.'],
-  meta: ['Meta', 'Campanhas no Instagram e no Facebook: gasto, cliques e compras.'],
+  meta: ['Meta', 'Anúncios, perfil do Instagram e Página do Facebook.'],
   'google-ads': ['Google Ads', 'Campanhas no Google: gasto, impressões e cliques.'],
 };
 const secao = Astro.params.secao ?? '';
@@ -49,11 +49,6 @@ if (hasGa()) {
   } catch (e) { gaError = (e as Error).message; }
 }
 
-/* ---- Meta ---- */
-let meta: any[] | null = null, metaError = '';
-if (hasMeta()) {
-  try { meta = await metaCampaigns(days); } catch (e) { metaError = (e as Error).message; }
-}
 
 /* ---- Vendas reais no CRM ---- */
 const sql = await db();
@@ -78,7 +73,6 @@ const funnelSteps = ga ? [
   ['Foram ao checkout', ga.ev.begin_checkout?.totalUsers ?? 0],
   ['Encomendas pagas (CRM)', sales.orders],
 ] as [string, number][] : [];
-const metaTotal = meta ? meta.reduce((a, c) => ({ spend: a.spend + c.spend, clicks: a.clicks + c.clicks, value: a.value + c.value, purchases: a.purchases + c.purchases }), { spend: 0, clicks: 0, value: 0, purchases: 0 }) : null;
 const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any) => a + r.advertiserAdCost, 0) : 0;
 ---
 <Admin title={title}>
@@ -191,32 +185,7 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
 
   </>)}
 
-  {secao === 'meta' && (<>
-  <h2>Campanhas</h2>
-  {!hasMeta() ? (
-    <div class="card setup">
-      <p style="margin-top:0"><strong>Por ligar.</strong> No Meta Business, cria um utilizador de sistema com acesso à conta de anúncios e um token com a permissão <code>ads_read</code>. Na Vercel, junta <code>META_ACCESS_TOKEN</code> e <code>META_AD_ACCOUNT_ID</code> e faz Redeploy. Os passos estão no README.</p>
-    </div>
-  ) : metaError ? <p class="msg err">Meta: {metaError}</p> : (
-    <>
-      <div class="grid kpis">
-        <div class="card kpi"><p>Gasto</p><strong>{euro(metaTotal!.spend)}</strong></div>
-        <div class="card kpi"><p>Cliques</p><strong>{n(metaTotal!.clicks)}</strong><small>{metaTotal!.clicks ? `${euro(metaTotal!.spend / metaTotal!.clicks)} por clique` : ''}</small></div>
-        <div class="card kpi"><p>Compras (Pixel)</p><strong>{n(metaTotal!.purchases)}</strong></div>
-        <div class="card kpi"><p>Retorno</p><strong>{metaTotal!.spend ? `${(metaTotal!.value / metaTotal!.spend).toFixed(1).replace('.', ',')}×` : '—'}</strong><small>vendas por cada euro gasto</small></div>
-      </div>
-      <div class="table" style="margin-top:14px">
-        {meta!.length ? (
-          <table>
-            <thead><tr><th>Campanha</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">Carrinhos</th><th class="num">Compras</th><th class="num">Retorno</th></tr></thead>
-            <tbody>{meta!.map((c) => <tr><td>{c.name}</td><td class="num">{euro(c.spend)}</td><td class="num">{n(c.reach)}</td><td class="num">{n(c.clicks)}</td><td class="num">{c.ctr.toFixed(2).replace('.', ',')}%</td><td class="num">{n(c.carts)}</td><td class="num">{n(c.purchases)}</td><td class="num">{c.spend ? `${c.roas.toFixed(1).replace('.', ',')}×` : '—'}</td></tr>)}</tbody>
-          </table>
-        ) : <p class="empty">Sem campanhas com gasto neste período.</p>}
-      </div>
-    </>
-  )}
-
-  </>)}
+  {secao === 'meta' && <MetaReport days={days} sales={sales} />}
 
   {secao === 'google-ads' && (<>
   <h2>Campanhas</h2>
@@ -236,5 +205,5 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
 
   </>)}
 
-  <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.</p>
+  <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.{secao === 'meta' && ' As compras atribuídas pela Meta vêm do Pixel e não contam quem recusou os cookies.'}</p>
 </Admin>

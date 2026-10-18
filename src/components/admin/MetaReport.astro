@@ -1,0 +1,256 @@
+---
+/* Página Meta do CRM: anúncios em detalhe, Página do Facebook e perfil do Instagram.
+   Cada parte carrega à parte: se faltar uma permissão no token, só essa parte mostra o aviso. */
+import { hasMeta, metaAds, metaPage, metaInstagram } from '../../lib/server/meta';
+import { euro } from '../../lib/server/format';
+interface Props { days: number; sales: { orders: number; revenue: number } }
+const { days, sales } = Astro.props;
+
+const settle = async <T,>(p: Promise<T>) => { try { return { data: await p, error: '' }; } catch (e) { return { data: null as T | null, error: (e as Error).message }; } };
+const [ads, page, ig] = hasMeta()
+  ? await Promise.all([settle(metaAds(days)), settle(metaPage(days)), settle(metaInstagram(days))])
+  : [null, null, null];
+
+const n = (v: number | null | undefined) => (v === null || v === undefined ? '—' : Math.round(v).toLocaleString('pt-PT'));
+const dec = (v: number, d = 2) => v.toFixed(d).replace('.', ',');
+const pct = (a: number, b: number) => (b ? `${dec(a / b * 100, 1)}%` : '—');
+const date = (s: string) => new Date(s).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+const cut = (s: string, k = 90) => (s.length > k ? `${s.slice(0, k).trim()}…` : s);
+
+const STATUS: Record<string, [string, string]> = {
+  ACTIVE: ['Ativa', 'ok'], PAUSED: ['Em pausa', 'done'], CAMPAIGN_PAUSED: ['Em pausa', 'done'], ARCHIVED: ['Arquivada', 'done'],
+  DELETED: ['Apagada', 'off'], IN_PROCESS: ['Em revisão', 'warn'], WITH_ISSUES: ['Com problemas', 'off'], PENDING_REVIEW: ['Em revisão', 'warn'],
+};
+const OBJECTIVE: Record<string, string> = {
+  OUTCOME_SALES: 'Vendas', OUTCOME_TRAFFIC: 'Tráfego', OUTCOME_AWARENESS: 'Reconhecimento', OUTCOME_ENGAGEMENT: 'Interação',
+  OUTCOME_LEADS: 'Leads', OUTCOME_APP_PROMOTION: 'App', CONVERSIONS: 'Conversões', LINK_CLICKS: 'Tráfego', REACH: 'Alcance',
+  POST_ENGAGEMENT: 'Interação', BRAND_AWARENESS: 'Reconhecimento', MESSAGES: 'Mensagens', VIDEO_VIEWS: 'Visualizações',
+};
+const PLATFORM: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', audience_network: 'Audience Network', messenger: 'Messenger', threads: 'Threads' };
+const POSITION: Record<string, string> = {
+  feed: 'Feed', story: 'Stories', instagram_stories: 'Stories', facebook_stories: 'Stories', reels: 'Reels', instagram_reels: 'Reels', facebook_reels: 'Reels',
+  instagram_explore: 'Explorar', instagram_explore_grid_home: 'Explorar', marketplace: 'Marketplace', video_feeds: 'Vídeos', right_hand_column: 'Coluna direita',
+  search: 'Pesquisa', instream_video: 'Vídeo in-stream', an_classic: 'Apps e sites', messenger_inbox: 'Caixa de entrada', profile_feed: 'Feed do perfil',
+  facebook_reels_overlay: 'Reels (sobreposição)', instagram_profile_feed: 'Feed do perfil',
+};
+const DEVICE: Record<string, string> = { iphone: 'iPhone', android_smartphone: 'Android', desktop: 'Computador', ipad: 'iPad', android_tablet: 'Tablet Android', ipod: 'iPod', other: 'Outro' };
+const GENDER: Record<string, string> = { female: 'Mulheres', male: 'Homens', unknown: 'Sem informação' };
+const countryName = new Intl.DisplayNames(['pt-PT'], { type: 'region' });
+
+const a = ads?.data;
+const t = a?.total;
+const maxDay = a ? Math.max(0, ...a.daily.map((d: any) => d.spend)) : 0;
+const funnel = t ? [
+  ['Impressões', t.impressions], ['Cliques no link', t.linkClicks], ['Visitas ao site', t.landing],
+  ['Viram uma peça', t.views], ['Carrinho', t.carts], ['Checkout', t.checkouts], ['Compras', t.purchases],
+].filter(([, v], i) => i < 2 || (v as number) > 0) as [string, number][] : [];
+const ageGroups = a ? Object.entries(a.age.reduce((m: Record<string, any>, r: any) => {
+  const g = (m[r.age] ??= { age: r.age, spend: 0, impressions: 0, linkClicks: 0, purchases: 0, female: 0, male: 0 });
+  g.spend += r.spend; g.impressions += r.impressions; g.linkClicks += r.linkClicks; g.purchases += r.purchases;
+  if (r.gender === 'female') g.female += r.impressions; if (r.gender === 'male') g.male += r.impressions;
+  return m;
+}, {})).map(([, v]) => v as any).sort((x, y) => x.age.localeCompare(y.age)) : [];
+const genders = a ? Object.entries(a.age.reduce((m: Record<string, number>, r: any) => ((m[r.gender] = (m[r.gender] ?? 0) + r.impressions), m), {})) as [string, number][] : [];
+const genderTotal = genders.reduce((s, [, v]) => s + v, 0);
+const platforms = a ? [...a.platform].sort((x: any, y: any) => y.spend - x.spend) : [];
+const countries = a ? [...a.country].sort((x: any, y: any) => y.impressions - x.impressions).slice(0, 10) : [];
+const devices = a ? [...a.device].sort((x: any, y: any) => y.impressions - x.impressions) : [];
+const missing = (e: string) => /permission|permiss|scope|not authorized|\(#10\)|\(#200\)|\(#100\)/i.test(e);
+---
+{!hasMeta() ? (
+  <div class="card setup">
+    <p style="margin-top:0"><strong>Por ligar.</strong> No Meta Business, cria um utilizador de sistema com acesso à conta de anúncios e um token com a permissão <code>ads_read</code>. Na Vercel, junta <code>META_ACCESS_TOKEN</code> e <code>META_AD_ACCOUNT_ID</code> e faz Redeploy. Os passos estão no README.</p>
+  </div>
+) : (
+  <>
+    <!-- ================= Anúncios ================= -->
+    <h2>Anúncios</h2>
+    {ads!.error ? <p class="msg err">Anúncios: {ads!.error}</p> : !t!.impressions ? (
+      <div class="card empty">Sem anúncios a correr neste período{a!.active ? ` (${a!.active === 1 ? 'há 1 campanha ativa' : `há ${a!.active} campanhas ativas`}, ainda sem resultados)` : ''}. Experimenta os 90 dias.</div>
+    ) : (
+      <>
+        <div class="grid kpis">
+          <div class="card kpi"><p>Gasto</p><strong>{euro(t!.spend)}</strong><small>{a!.active === 1 ? '1 campanha ativa' : `${a!.active} campanhas ativas`}</small></div>
+          <div class="card kpi"><p>Alcance</p><strong>{n(t!.reach)}</strong><small>pessoas · {dec(t!.frequency, 1)} vezes cada</small></div>
+          <div class="card kpi"><p>Impressões</p><strong>{n(t!.impressions)}</strong><small>{euro(t!.cpm)} por 1000</small></div>
+          <div class="card kpi"><p>Cliques no link</p><strong>{n(t!.linkClicks)}</strong><small>CTR {dec(t!.ctr)}% · {t!.linkClicks ? euro(t!.cpc) : '—'} por clique</small></div>
+          <div class="card kpi"><p>Compras (Pixel)</p><strong>{n(t!.purchases)}</strong><small>{t!.purchases ? `${euro(t!.cpa)} por compra` : 'sem compras atribuídas'}</small></div>
+          <div class="card kpi"><p>Retorno</p><strong>{t!.spend && t!.value ? `${dec(t!.roas, 1)}×` : '—'}</strong><small>{euro(t!.value)} em vendas atribuídas</small></div>
+        </div>
+
+        <div class="grid two" style="margin-top:14px">
+          <section class="card">
+            <h2 style="margin-top:0">Gasto por dia</h2>
+            <svg viewBox={`0 0 ${Math.max(a!.daily.length, 1) * 12} 100`} preserveAspectRatio="none" class="mchart" role="img" aria-label="Gasto por dia">
+              {a!.daily.map((d: any, i: number) => {
+                const h = maxDay ? Math.max(1, d.spend / maxDay * 96) : 1;
+                return <rect x={i * 12 + 1} y={100 - h} width="10" height={h} rx="1.5"><title>{`${date(d.date)}: ${euro(d.spend)} · ${n(d.linkClicks)} cliques · ${n(d.purchases)} compras`}</title></rect>;
+              })}
+            </svg>
+            <div class="bar" style="justify-content:space-between;margin:6px 0 0"><span class="note">{a!.daily[0] ? date(a!.daily[0].date) : ''}</span><span class="note">máximo {euro(maxDay)} num dia</span><span class="note">{a!.daily.at(-1) ? date(a!.daily.at(-1).date) : ''}</span></div>
+          </section>
+          <section class="card">
+            <h2 style="margin-top:0">Do anúncio à compra</h2>
+            {funnel.map(([label, v], i) => (
+              <div style="margin:0 0 9px">
+                <div class="bar" style="justify-content:space-between;margin:0 0 4px"><span>{label}</span><strong>{n(v)}{i > 0 && <span class="muted" style="font-weight:400"> · {pct(v, funnel[i - 1][1])}</span>}</strong></div>
+                <div class="mbar"><i style={`width:${funnel[0][1] ? Math.max(1, (i === 0 ? 100 : Math.sqrt(v / funnel[0][1]) * 100)) : 1}%`}></i></div>
+              </div>
+            ))}
+            <p class="note">Barras em escala de raiz quadrada, para os passos pequenos se verem. Compras e visitas vêm do Pixel, só de quem aceitou os cookies de publicidade.</p>
+          </section>
+        </div>
+
+        <h2>Campanhas</h2>
+        <div class="table">
+          <table>
+            <thead><tr><th>Campanha</th><th>Estado</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Carrinhos</th><th class="num">Compras</th><th class="num">Custo/compra</th><th class="num">Retorno</th></tr></thead>
+            <tbody>{a!.campaigns.map((c: any) => (
+              <tr>
+                <td><strong>{c.name}</strong>{c.objective && <><br /><span class="muted">{OBJECTIVE[c.objective] ?? c.objective}</span></>}</td>
+                <td>{c.status && <span class={`badge ${(STATUS[c.status] ?? ['', 'done'])[1]}`}>{(STATUS[c.status] ?? [c.status])[0]}</span>}</td>
+                <td class="num">{euro(c.spend)}</td><td class="num">{n(c.reach)}</td><td class="num">{n(c.linkClicks)}</td>
+                <td class="num">{dec(c.ctr)}%</td><td class="num">{c.linkClicks ? euro(c.cpc) : '—'}</td>
+                <td class="num">{n(c.carts)}</td><td class="num">{n(c.purchases)}</td>
+                <td class="num">{c.purchases ? euro(c.cpa) : '—'}</td><td class="num">{c.value ? `${dec(c.roas, 1)}×` : '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+
+        {a!.ads.length > 0 && (
+          <>
+            <h2>Anúncios com mais gasto</h2>
+            <div class="madgrid">
+              {a!.ads.map((ad: any) => (
+                <article class="card madcard">
+                  {ad.thumb ? <img src={ad.thumb} alt="" loading="lazy" /> : <div class="madcard__ph"></div>}
+                  <div>
+                    <strong>{cut(ad.name, 50)}</strong>
+                    <p class="note" style="margin:2px 0 8px">{cut(ad.campaign, 50)}</p>
+                    <dl class="kv"><dt>Gasto</dt><dd>{euro(ad.spend)}</dd><dt>Cliques</dt><dd>{n(ad.linkClicks)} · CTR {dec(ad.ctr)}%</dd><dt>Compras</dt><dd>{n(ad.purchases)}{ad.value ? ` · ${dec(ad.roas, 1)}×` : ''}</dd></dl>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+
+        <h2>Quem vê os anúncios</h2>
+        <div class="grid two">
+          <section class="card">
+            <h2 style="margin-top:0">Idade</h2>
+            <table><thead><tr><th>Idade</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Gasto</th><th class="num">Compras</th></tr></thead>
+              <tbody>{ageGroups.map((g) => <tr><td>{g.age}</td><td class="num">{n(g.impressions)}</td><td class="num">{n(g.linkClicks)}</td><td class="num">{euro(g.spend)}</td><td class="num">{n(g.purchases)}</td></tr>)}</tbody>
+            </table>
+            <p class="note">{genders.sort((x, y) => y[1] - x[1]).map(([g, v]) => `${GENDER[g] ?? g} ${pct(v, genderTotal)}`).join(' · ')}</p>
+          </section>
+          <section class="card">
+            <h2 style="margin-top:0">Onde aparecem</h2>
+            <table><thead><tr><th>Sítio</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Gasto</th></tr></thead>
+              <tbody>{platforms.map((r: any) => <tr><td>{PLATFORM[r.platform] ?? r.platform} · {POSITION[r.position] ?? r.position}</td><td class="num">{n(r.impressions)}</td><td class="num">{n(r.linkClicks)}</td><td class="num">{euro(r.spend)}</td></tr>)}</tbody>
+            </table>
+          </section>
+          <section class="card">
+            <h2 style="margin-top:0">Países</h2>
+            <table><thead><tr><th>País</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Compras</th></tr></thead>
+              <tbody>{countries.map((r: any) => <tr><td>{(() => { try { return countryName.of(r.country) ?? r.country; } catch { return r.country; } })()}</td><td class="num">{n(r.impressions)}</td><td class="num">{n(r.linkClicks)}</td><td class="num">{n(r.purchases)}</td></tr>)}</tbody>
+            </table>
+          </section>
+          <section class="card">
+            <h2 style="margin-top:0">Aparelho</h2>
+            <table><thead><tr><th>Aparelho</th><th class="num">Impressões</th><th class="num">%</th><th class="num">Cliques</th></tr></thead>
+              <tbody>{devices.map((r: any) => <tr><td>{DEVICE[r.device] ?? r.device}</td><td class="num">{n(r.impressions)}</td><td class="num muted">{pct(r.impressions, t!.impressions)}</td><td class="num">{n(r.linkClicks)}</td></tr>)}</tbody>
+            </table>
+          </section>
+        </div>
+      </>
+    )}
+
+    <!-- ================= Instagram ================= -->
+    <h2>Instagram</h2>
+    {ig!.error ? (
+      <div class="card setup"><p style="margin:0"><strong>Por ligar.</strong> {missing(ig!.error) || /instagram/i.test(ig!.error)
+        ? 'No Meta Business, atribui a conta de Instagram ao utilizador de sistema "CRM Mekie" (com as estatísticas) e gera um token novo com as permissões instagram_basic e instagram_manage_insights. Depois troca o META_ACCESS_TOKEN na Vercel e faz Redeploy.'
+        : ig!.error}</p></div>
+    ) : (() => { const g = ig!.data!; return (
+      <>
+        <div class="card mprofile">
+          {g.picture && <img src={g.picture} alt="" width="64" height="64" />}
+          <div><strong>@{g.username}</strong>{g.bio && <p class="note" style="margin:4px 0 0">{cut(g.bio, 160)}</p>}</div>
+          <a class="btn ghost small" href={`https://www.instagram.com/${g.username}/`} target="_blank" rel="noopener">Abrir no Instagram</a>
+        </div>
+        <div class="grid kpis" style="margin-top:14px">
+          <div class="card kpi"><p>Seguidores</p><strong>{n(g.followers)}</strong><small>a seguir {n(g.follows)} · {n(g.mediaCount)} publicações</small></div>
+          <div class="card kpi"><p>Alcance</p><strong>{n(g.reach)}</strong><small>contas, últimos {g.periodDays} dias</small></div>
+          <div class="card kpi"><p>Visualizações</p><strong>{n(g.views)}</strong><small>do conteúdo</small></div>
+          <div class="card kpi"><p>Interações</p><strong>{n(g.interactions)}</strong><small>{n(g.engaged)} contas interagiram</small></div>
+          <div class="card kpi"><p>Visitas ao perfil</p><strong>{n(g.profileViews)}</strong><small>{n(g.websiteClicks)} cliques no link da bio</small></div>
+        </div>
+        {g.media.length > 0 && (
+          <>
+            <h2>Últimas publicações</h2>
+            <div class="mgrid">
+              {g.media.map((m: any) => (
+                <a class="card mpost" href={m.link} target="_blank" rel="noopener">
+                  {m.image ? <img src={m.image} alt="" loading="lazy" /> : <div class="madcard__ph"></div>}
+                  <span class="badge done mpost__type">{m.type}</span>
+                  <p class="note" style="margin:8px 0 4px">{date(m.date)}{m.caption && ` · ${cut(m.caption, 60)}`}</p>
+                  <p class="mpost__stats">{n(m.likes)} gostos · {n(m.comments)} comentários{m.reach !== null && ` · alcance ${n(m.reach)}`}{m.saved !== null && ` · guardados ${n(m.saved)}`}{m.shares !== null && ` · partilhas ${n(m.shares)}`}</p>
+                </a>
+              ))}
+            </div>
+          </>
+        )}
+      </>
+    ); })()}
+
+    <!-- ================= Página do Facebook ================= -->
+    <h2>Página do Facebook</h2>
+    {page!.error ? (
+      <div class="card setup"><p style="margin:0"><strong>Por ligar.</strong> {missing(page!.error)
+        ? 'O token precisa das permissões read_insights, pages_read_engagement e pages_show_list, e a Página tem de estar atribuída ao utilizador de sistema "CRM Mekie" com as estatísticas.'
+        : page!.error}</p></div>
+    ) : (() => { const p = page!.data!; return (
+      <>
+        <div class="grid kpis">
+          <div class="card kpi"><p>Seguidores</p><strong>{n(p.followers)}</strong><small>{n(p.fans)} gostos</small></div>
+          <div class="card kpi"><p>Novos seguidores</p><strong>{n(p.newFollows)}</strong><small>no período</small></div>
+          <div class="card kpi"><p>Alcance</p><strong>{n(p.reach)}</strong><small>pessoas no período</small></div>
+          <div class="card kpi"><p>Interações</p><strong>{n(p.engagement)}</strong><small>com publicações</small></div>
+          <div class="card kpi"><p>Visitas à Página</p><strong>{n(p.views)}</strong></div>
+        </div>
+        {p.posts.length > 0 && (
+          <div class="table" style="margin-top:14px">
+            <table>
+              <thead><tr><th>Publicação</th><th>Data</th><th class="num">Reações</th><th class="num">Comentários</th><th class="num">Partilhas</th></tr></thead>
+              <tbody>{p.posts.map((x: any) => <tr><td><a href={x.link} target="_blank" rel="noopener">{cut(x.text || 'Sem texto', 80)}</a></td><td>{date(x.date)}</td><td class="num">{n(x.reactions)}</td><td class="num">{n(x.comments)}</td><td class="num">{n(x.shares)}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        <p class="note">Alguns números da Página podem aparecer como "—": a Meta tem vindo a retirar estatísticas antigas e só mostramos as que ela ainda dá.</p>
+      </>
+    ); })()}
+  </>
+)}
+
+
+
+<style>
+  .mchart { width: 100%; height: 150px; display: block; }
+  .mchart rect { fill: #2f67a8; }
+  .mchart rect:hover { fill: #173f6e; }
+  .mbar { height: 8px; border-radius: 4px; background: #ecebe8; overflow: hidden; }
+  .mbar i { display: block; height: 100%; background: #2f67a8; border-radius: 4px; }
+  .madgrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .madcard { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; }
+  .madcard img, .madcard__ph { width: 84px; height: 84px; object-fit: cover; border-radius: 6px; background: #ecebe8; }
+  .mprofile { display: flex; gap: 14px; align-items: center; }
+  .mprofile img { border-radius: 50%; }
+  .mprofile > div { flex: 1; min-width: 0; }
+  .mgrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .mpost { position: relative; text-decoration: none; padding: 10px; }
+  .mpost img, .mpost .madcard__ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
+  .mpost__type { position: absolute; top: 16px; left: 16px; }
+  .mpost__stats { margin: 0; font-size: 12.5px; }
+</style>
