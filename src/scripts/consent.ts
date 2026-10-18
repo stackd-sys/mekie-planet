@@ -110,6 +110,31 @@ export function setChoice(analytics: boolean, marketing: boolean) {
   document.dispatchEvent(new CustomEvent('mekie:consent'));
 }
 
+/* ---------- Contagem anónima (sem cookies, para toda a gente) ---------- */
+const consentState = () => {
+  const c = getChoice();
+  return !c ? 'sem' : c.analytics ? 'sim' : 'nao';
+};
+function beacon(data: Record<string, string>) {
+  try {
+    const body = JSON.stringify({ ...data, c: consentState() });
+    if (!navigator.sendBeacon?.('/api/stats/', new Blob([body], { type: 'application/json' })))
+      fetch('/api/stats/', { method: 'POST', body, keepalive: true, headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+  } catch {}
+}
+{
+  let ref = '';
+  try { ref = document.referrer ? new URL(document.referrer).host : ''; } catch {}
+  beacon({ t: 'pageview', p: location.pathname, r: ref, u: new URLSearchParams(location.search).get('utm_source') || '' });
+}
+
+/** Conta já o evento na contagem anónima, quando o envio para o Analytics fica à espera da resposta aos cookies */
+const preCounted = new Set<string>();
+export function countEvent(event: string) {
+  preCounted.add(event);
+  beacon({ t: 'event', e: event });
+}
+
 /* ---------- Eventos de comércio ---------- */
 export type TrackItem = { id: number | string; name: string; price: number; qty?: number; variant?: string; category?: string };
 
@@ -126,6 +151,8 @@ const PIXEL_EVENT: Record<string, string> = {
 };
 
 export function track(event: 'view_item' | 'add_to_cart' | 'begin_checkout' | 'purchase' | 'sign_up', items: TrackItem[] = [], extra: Record<string, unknown> = {}) {
+  if (preCounted.has(event)) preCounted.delete(event);
+  else beacon({ t: 'event', e: event });
   if (!trackingEnabled) return;
   const v = value(items);
   window.gtag?.('event', event, items.length ? { currency: 'EUR', value: v, items: gaItems(items), ...extra } : extra);

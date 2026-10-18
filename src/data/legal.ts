@@ -265,6 +265,7 @@ export const legalPages: LegalPage[] = [
             },
           },
           'Não tomamos decisões automáticas sobre ti. As estatísticas e a publicidade só funcionam se aceitares no aviso de cookies, e podes mudar de ideias a qualquer momento em Definições de cookies, no fundo de todas as páginas.',
+          'Independentemente dos cookies, contamos de forma anónima as visitas ao site: que páginas são vistas, de que site ou campanha se chega, o tipo de aparelho (telemóvel ou computador), os passos da compra e se a pessoa aceitou, recusou ou não respondeu ao aviso de cookies. Não usamos cookies nem guardamos o endereço IP ou qualquer identificador: cada visita só soma uma unidade a totais por dia, que não permitem identificar ninguém.',
         ],
       },
       {
@@ -334,6 +335,7 @@ export const legalPages: LegalPage[] = [
         body: [
           'Na primeira visita mostramos um aviso onde podes aceitar, recusar ou escolher por tipo. Os cookies de estatísticas e de publicidade só são ativados se aceitares. Se recusares, o site funciona igual.',
           'Podes mudar a tua escolha a qualquer momento em Definições de cookies, no fundo de todas as páginas. Guardamos a tua escolha durante 6 meses e depois voltamos a perguntar.',
+          'Para saber quantas pessoas visitam o site, fazemos também uma contagem anónima que não usa cookies nem guarda nada no teu browser: só somamos a visita a totais por dia, sem endereço IP nem identificadores (vê a Política de Privacidade).',
         ],
       },
       {

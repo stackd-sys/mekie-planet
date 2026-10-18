@@ -282,7 +282,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 <script>
   import { cart } from '../../scripts/cart';
   import { openCart } from '../../scripts/ui';
-  import { track as trackEvent, consentSettled } from '../../scripts/consent';
+  import { track as trackEvent, consentSettled, countEvent } from '../../scripts/consent';
   import * as newsletter from '../../scripts/newsletter';
   import { deliveryBy, formatDay } from '../../scripts/eta';
 
@@ -388,7 +388,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     const item = (size?: string) => ({ id: product.id, name: product.customizable ? product.name : `${product.name} ${product.color}`, price: product.price, variant: size });
     const viewed = () => trackEvent('view_item', [item()]);
     if (consentSettled()) viewed();
-    else document.addEventListener('mekie:consent', viewed, { once: true });
+    else { countEvent('view_item'); document.addEventListener('mekie:consent', viewed, { once: true }); }
     const error = form.querySelector<HTMLElement>('.buy__error')!;
     const sizeLabel = form.querySelector<HTMLElement>('[data-size-label]');
     const btn = form.querySelector<HTMLButtonElement>('[data-buy-btn]')!;

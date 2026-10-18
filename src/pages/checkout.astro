@@ -90,7 +90,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   import { cart, money, href } from '../scripts/cart';
   import * as newsletter from '../scripts/newsletter';
   import { shippingCost, type Zone } from '../data/shipping';
-  import { track, consentSettled, visitSource } from '../scripts/consent';
+  import { track, consentSettled, visitSource, countEvent } from '../scripts/consent';
   const CODE = newsletter.CODE;
   const RATE = 0.1;
   /* Código de desconto aplicado: validado no CRM; sem CRM, só o de boas-vindas */
@@ -221,7 +221,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   const items = () => cart.lines.map((l) => ({ id: l.id, name: `${l.name} ${l.color}`, price: l.price, qty: l.qty, variant: l.size }));
   const started = () => { if (cart.lines.length) track('begin_checkout', items()); };
   if (consentSettled()) started();
-  else document.addEventListener('mekie:consent', started, { once: true });
+  else { if (cart.lines.length) countEvent('begin_checkout'); document.addEventListener('mekie:consent', started, { once: true }); }
 
   const form = document.querySelector<HTMLFormElement>('[data-co-form]');
   const submitBtn = form?.querySelector<HTMLButtonElement>('[type=submit]');

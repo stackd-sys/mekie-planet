@@ -21,7 +21,7 @@ import { site } from '../data/site';
 
 <script>
   import { cart } from '../scripts/cart';
-  import { track, consentSettled } from '../scripts/consent';
+  import { track, consentSettled, countEvent } from '../scripts/consent';
   const q = new URLSearchParams(location.search);
   const n = q.get('n'), t = q.get('t') || '';
   const paid = q.get('pago') === '1';
@@ -41,7 +41,10 @@ import { site } from '../data/site';
     const send = () => track('purchase', [], { transaction_id: n, value, currency: 'EUR' });
     let sent = false;
     try { sent = sessionStorage.getItem(`mekie-purchase-${n}`) === '1'; sessionStorage.setItem(`mekie-purchase-${n}`, '1'); } catch {}
-    if (!sent) consentSettled() ? send() : document.addEventListener('mekie:consent', send, { once: true });
+    if (!sent) {
+      if (consentSettled()) send();
+      else { countEvent('purchase'); document.addEventListener('mekie:consent', send, { once: true }); }
+    }
   }
 </script>
 

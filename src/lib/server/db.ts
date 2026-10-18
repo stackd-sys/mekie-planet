@@ -154,6 +154,16 @@ create table if not exists notify_requests (
   notified_at timestamptz
 );
 
+-- contagem anónima de visitas (sem cookies, sem IP, sem identificadores): só totais por dia
+create table if not exists stats (
+  day date not null,
+  metric text not null,
+  dim text not null,
+  consent text not null,
+  n integer not null default 0,
+  primary key (day, metric, dim, consent)
+);
+
 create table if not exists admin_tokens (
   hash text primary key,
   email text not null,

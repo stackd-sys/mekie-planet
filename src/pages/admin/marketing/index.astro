@@ -44,6 +44,18 @@ const sql = await db();
 const [sales] = await sql<any[]>`
   select count(*)::int as orders, coalesce(sum(total), 0) as revenue from orders
   where status in ('paga','enviada','entregue') and created_at > now() - ${days + ' days'}::interval`;
+/* ---- Contagem anónima própria (toda a gente, com ou sem consentimento) ---- */
+const st = await sql<any[]>`select metric, dim, consent, sum(n)::int as n from stats
+  where day > (now() at time zone 'Europe/Lisbon')::date - ${days}::int group by 1, 2, 3`;
+const sumBy = (metric: string, f: (r: any) => boolean = () => true) => st.filter((r) => r.metric === metric && f(r)).reduce((a, r) => a + r.n, 0);
+const topOf = (metric: string, k = 10) => Object.entries(st.filter((r) => r.metric === metric).reduce((a: Record<string, number>, r) => ((a[r.dim] = (a[r.dim] ?? 0) + r.n), a), {}))
+  .sort((a, b) => b[1] - a[1]).slice(0, k) as [string, number][];
+const own = {
+  entries: sumBy('entrada'), pages: sumBy('pagina'),
+  consent: { sim: sumBy('entrada', (r) => r.consent === 'sim'), nao: sumBy('entrada', (r) => r.consent === 'nao'), sem: sumBy('entrada', (r) => r.consent === 'sem') },
+  ev: (e: string) => sumBy('evento', (r) => r.dim === e),
+  sources: topOf('entrada'), pagesTop: topOf('pagina', 12), devices: topOf('aparelho', 3),
+};
 const funnelSteps = ga ? [
   ['Viram uma peça', ga.ev.view_item?.totalUsers ?? 0],
   ['Puseram no carrinho', ga.ev.add_to_cart?.totalUsers ?? 0],
@@ -58,6 +70,39 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
     <div><h1>Analytics e campanhas</h1><p class="sub">Visitas do site, o caminho até à compra e o resultado dos anúncios.</p></div>
     <nav class="tabs">{[7, 30, 90].map((d) => <a href={`?dias=${d}`} class:list={{ 'is-on': d === days }}>{d} dias</a>)}</nav>
   </div>
+
+  <h2>Todas as visitas (contagem anónima)</h2>
+  <p class="note" style="margin-top:-6px">Conta toda a gente, incluindo quem recusou ou não respondeu aos cookies. Não usa cookies nem guarda dados pessoais: só totais por dia. Por isso não distingue pessoas, só visitas.</p>
+  {own.pages === 0 ? <div class="card empty">Ainda sem dados. Os números aparecem à medida que o site recebe visitas.</div> : (
+    <>
+      <div class="grid kpis">
+        <div class="card kpi"><p>Entradas no site</p><strong>{n(own.entries)}</strong><small>{n(own.pages)} páginas vistas</small></div>
+        <div class="card kpi"><p>Aceitaram estatísticas</p><strong>{pct(own.consent.sim, own.entries)}</strong><small>{n(own.consent.sim)} entradas · o que o Analytics vê</small></div>
+        <div class="card kpi"><p>Recusaram</p><strong>{pct(own.consent.nao, own.entries)}</strong><small>{n(own.consent.nao)} entradas</small></div>
+        <div class="card kpi"><p>Sem resposta</p><strong>{pct(own.consent.sem, own.entries)}</strong><small>{n(own.consent.sem)} entradas</small></div>
+        <div class="card kpi"><p>Conversão</p><strong>{pct(sales.orders, own.entries)}</strong><small>encomendas pagas por entrada</small></div>
+      </div>
+      <div class="grid two" style="margin-top:14px">
+        <section class="card">
+          <h2 style="margin-top:0">Caminho até à compra</h2>
+          <table><tbody>
+            {([['Viram uma peça', own.ev('view_item')], ['Puseram no carrinho', own.ev('add_to_cart')], ['Foram ao checkout', own.ev('begin_checkout')], ['Compras concluídas', own.ev('purchase')], ['Subscreveram a newsletter', own.ev('sign_up')]] as [string, number][]).map(([l, v]) => (
+              <tr><td>{l}</td><td class="num">{n(v)}</td></tr>
+            ))}
+          </tbody></table>
+        </section>
+        <section class="card">
+          <h2 style="margin-top:0">De onde vêm</h2>
+          <table><tbody>{own.sources.map(([k, v]) => <tr><td>{k}</td><td class="num">{n(v)}</td><td class="num muted">{pct(v, own.entries)}</td></tr>)}</tbody></table>
+          <p class="note">Aparelho: {own.devices.map(([k, v]) => `${k} ${pct(v, own.entries)}`).join(' · ')}</p>
+        </section>
+      </div>
+      <section class="card" style="margin-top:14px">
+        <h2 style="margin-top:0">Páginas mais vistas</h2>
+        <table><tbody>{own.pagesTop.map(([k, v]) => <tr><td><a href={k} target="_blank">{k}</a></td><td class="num">{n(v)}</td></tr>)}</tbody></table>
+      </section>
+    </>
+  )}
 
   <h2>Site (Google Analytics)</h2>
   {!hasGa() ? (
@@ -145,5 +190,5 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
     </>
   ) : <p class="card empty">Sem campanhas Google neste período. Se já têm campanhas, confirmem que o Google Ads está ligado ao Google Analytics.</p>}
 
-  <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. As compras da Meta e do Google só aparecem depois de ligarmos o pagamento Stripe (é aí que o site envia o evento de compra). Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.</p>
+  <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.</p>
 </Admin>
