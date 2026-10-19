@@ -331,6 +331,22 @@ export const products: Product[] = [
     details: sweatshirt('Logótipo Mekie bordado no peito e na manga'),
   },
   {
+    id: 9014,
+    slug: 'crewneck-mekie-preta',
+    name: 'Crewneck Mekie',
+    category: 'hoodies-crewnecks',
+    color: 'Preto',
+    regularPrice: 65,
+    price: 65,
+    sizes: SIZES,
+    sizeStock: { XS: 0, S: 1, M: 0, L: 1, XL: 0 },
+    /* estas unidades não foram feitas em Portugal */
+    sizeNotes: { S: 'Esta unidade não foi fabricada em Portugal.', L: 'Esta unidade não foi fabricada em Portugal.' },
+    images: [img('sweat-mekie-black-1'), look('sweat-mekie-black-sunglasses')],
+    description: '',
+    details: sweatshirt('Logótipo Mekie bordado a branco no peito e na manga'),
+  },
+  {
     id: 9011,
     slug: 'crewneck-planetas-preta',
     name: 'Crewneck Planetas',

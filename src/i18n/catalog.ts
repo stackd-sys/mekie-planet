@@ -55,6 +55,7 @@ const texts: Tr = {
   'Lavar do avesso protege o bordado e ajuda a preservar a peça': ['Washing it inside out protects the embroidery and keeps the piece looking good', 'Lavar del revés protege el bordado y ayuda a conservar la prenda'],
   'Esta unidade não foi fabricada em Portugal.': ['This unit was not made in Portugal.', 'Esta unidad no se fabricó en Portugal.'],
   'Logótipo Mekie bordado no peito e na manga': ['Mekie logo embroidered on the chest and sleeve', 'Logo Mekie bordado en el pecho y en la manga'],
+  'Logótipo Mekie bordado a branco no peito e na manga': ['Mekie logo embroidered in white on the chest and sleeve', 'Logo Mekie bordado en blanco en el pecho y en la manga'],
   'Crewneck unissexo de gola redonda clássica': ['Unisex crewneck with a classic round neck', 'Crewneck unisex de cuello redondo clásico'],
   'Gola, punhos e bainha em canelado com costura dupla': ['Ribbed collar, cuffs and hem with double stitching', 'Cuello, puños y bajo de canalé con doble costura'],
   '100% algodão': ['100% cotton', '100% algodón'],
