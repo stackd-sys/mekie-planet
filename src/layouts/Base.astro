@@ -62,8 +62,9 @@ const ogImage = new URL(image, Astro.site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'} />
-    <link rel="icon" href="/images/site/icon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/images/site/icon.png" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/images/site/favicon-96.png" type="image/png" sizes="96x96" />
+    <link rel="apple-touch-icon" href="/images/site/apple-touch-icon.png" />
     <meta name="theme-color" content="#f5f5f4" />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />

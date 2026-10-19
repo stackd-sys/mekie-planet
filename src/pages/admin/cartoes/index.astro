@@ -6,15 +6,16 @@ import { db } from '../../../lib/server/db';
 import { euro, date } from '../../../lib/server/format';
 import { postForm, done, str, num } from '../../../lib/server/admin';
 import { createGiftCard, sendGiftCard } from '../../../lib/server/orders';
-import { giftCard } from '../../../data/giftcard';
+import { giftCard, customGiftValue } from '../../../data/giftcard';
 
 const sql = await db();
 const f = await postForm(Astro);
 if (f) {
   const action = str(f, 'action');
   if (action === 'create') {
-    const value = num(f, 'value');
-    if (!value || value <= 0) return done(Astro, 'Indica o valor.', undefined, true);
+    /* "Outro valor": cartão à medida, com os mesmos limites do site */
+    const value = str(f, 'value') === 'outro' ? customGiftValue(num(f, 'custom_value')) : num(f, 'value');
+    if (!value || value <= 0) return done(Astro, `Indica o valor. No cartão à medida tem de ser um número inteiro entre ${giftCard.custom.min}€ e ${giftCard.custom.max}€.`, undefined, true);
     const code = await createGiftCard({ value, buyer: str(f, 'buyer'), recipient_name: str(f, 'recipient_name'), recipient_email: str(f, 'recipient_email').toLowerCase(), message: str(f, 'message', 250), notes: str(f, 'notes') });
     const sent = f.get('send') === 'on' && str(f, 'recipient_email') ? await sendGiftCard(code) : false;
     return done(Astro, `Cartão ${code} criado${sent ? ' e enviado por email' : ''}.`);
@@ -51,7 +52,8 @@ const [t] = await sql<any[]>`select coalesce(sum(value), 0) as sold, coalesce(su
     <form method="post" class="stack" style="margin-top:12px">
       <input type="hidden" name="action" value="create" />
       <div class="fields">
-        <label>Valor (€)<select name="value">{giftCard.values.map((v) => <option value={v}>{v}€ · {giftCard.names[v]}</option>)}</select></label>
+        <label>Valor (€)<select name="value" data-gift-value>{giftCard.values.map((v) => <option value={v}>{v}€ · {giftCard.names[v]}</option>)}<option value="outro">Outro valor · {giftCard.custom.title}</option></select></label>
+        <label data-gift-custom hidden>Outro valor (€)<input name="custom_value" type="number" inputmode="numeric" min={giftCard.custom.min} max={giftCard.custom.max} step="1" placeholder={`Mínimo ${giftCard.custom.min}€`} /></label>
         <label>De<input name="buyer" placeholder="Quem oferece" /></label>
         <label>Para<input name="recipient_name" /></label>
         <label>Email de quem recebe<input name="recipient_email" type="email" /></label>
@@ -102,3 +104,15 @@ const [t] = await sql<any[]>`select coalesce(sum(value), 0) as sold, coalesce(su
     }) : <p class="empty card">Ainda sem cartões.</p>}
   </div>
 </Admin>
+
+<script is:inline>
+  /* mostra o campo do valor quando se escolhe "Outro valor" */
+  (() => {
+    const sel = document.querySelector('[data-gift-value]');
+    const box = document.querySelector('[data-gift-custom]');
+    if (!sel || !box) return;
+    const sync = () => { box.hidden = sel.value !== 'outro'; box.querySelector('input').required = !box.hidden; };
+    sel.addEventListener('change', sync);
+    sync();
+  })();
+</script>
