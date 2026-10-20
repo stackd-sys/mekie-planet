@@ -63,6 +63,12 @@ const dict = {
   'co.error': ['Não conseguimos enviar a encomenda. Tenta outra vez.', "We couldn't send your order. Please try again.", 'No hemos podido enviar el pedido. Inténtalo otra vez.'],
   'co.welcomeOnly': ['O código {code} é para quem subscreve a newsletter. Usa o email com que subscreveste ou subscreve no fundo da página.', 'The {code} code is for newsletter subscribers. Use the email you subscribed with, or subscribe at the bottom of the page.', 'El código {code} es para quien se suscribe a la newsletter. Usa el email con el que te suscribiste o suscríbete al final de la página.'],
   'co.welcomeUsed': ['O código {code} já foi usado numa encomenda com este email.', 'The {code} code has already been used on an order with this email.', 'El código {code} ya se usó en un pedido con este email.'],
+  'pack.hoodie-tshirt': ['Pack Hoodie + T-shirt', 'Hoodie + T-shirt bundle', 'Pack Hoodie + Camiseta'],
+  'pack.crewneck-tshirt': ['Pack Crewneck + T-shirt', 'Crewneck + T-shirt bundle', 'Pack Crewneck + Camiseta'],
+  'pack.hoodie-cap': ['Pack Hoodie + Cap', 'Hoodie + Cap bundle', 'Pack Hoodie + Gorra'],
+  'pack.tshirt-cap': ['Pack T-shirt + Cap', 'T-shirt + Cap bundle', 'Pack Camiseta + Gorra'],
+  'packs': ['Packs', 'Bundles', 'Packs'],
+  'co.codePromo': ['Os códigos não se juntam às peças em promoção nem aos packs.', 'Codes do not apply to discounted pieces or bundles.', 'Los códigos no se aplican a las prendas en promoción ni a los packs.'],
   'ok.paid': ['Encomenda feita!', 'Order placed!', '¡Pedido hecho!'],
 } satisfies Record<string, readonly [string, string, string]>;
 

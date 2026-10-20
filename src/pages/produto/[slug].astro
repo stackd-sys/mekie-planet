@@ -9,6 +9,7 @@ import { langOf, href, money, amount } from '../../i18n';
 import { useT } from '../../i18n/ui';
 import { shop, shipDays } from '../../i18n/data';
 import { trYarn } from '../../i18n/catalog';
+import { promo, promoActive, kindOf } from '../../data/promo';
 import { reviewsOf, ratingOf } from '../../data/reviews';
 import Stars from '../../components/Stars.astro';
 import Icon from '../../components/Icon.astro';
@@ -42,6 +43,14 @@ const outSizes = p.sizes ? p.sizes.filter((s) => (soldOut ? true : !!p.sizeStock
 /* Dias úteis até à entrega em Portugal: peças por encomenda demoram mais */
 const etaDays = p.customizable || (p.madeToOrderDays && !(p.stock && p.stock > 0)) ? p.madeToOrderDays! : site.deliveryDays;
 const canNotify = !p.customizable && !p.madeToOrderDays && (soldOut || outSizes.length > 0);
+/* packs da promoção em que esta peça entra: "junta uma t-shirt e levas os dois por 95€" */
+const kind = kindOf(p);
+const packHints = promoActive() && kind && !soldOut
+  ? promo.packs.flatMap((pk) => {
+    const other = pk.parts[0].includes(kind) ? pk.parts[1][0] : pk.parts[1].includes(kind) ? pk.parts[0][0] : null;
+    return other ? [t('bf.packHint', { other: t(`bf.any.${other}` as never), price: amount(pk.price, lang) })] : [];
+  })
+  : [];
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category, lang), { name: fullName(p), path: h(`/produto/${p.slug}/`) }];
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${trYarn(c.name, lang)}` : trYarn(c.name, lang));
@@ -190,6 +199,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
             <p class="notify__msg" role="status" data-notify-msg hidden></p>
           </form>
         </div>
+      )}
+
+      {packHints.length > 0 && (
+        <ul class="packs-hint">{packHints.map((x) => <li>{x}</li>)}</ul>
       )}
 
       <ul class="pay" aria-label={t('payments')}>
@@ -470,6 +483,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 </script>
 
 <style>
+  .packs-hint { list-style: none; margin: 18px 0 0; padding: 12px 14px; background: #111; color: #f5f5f4; font-size: 13px; line-height: 1.5; display: grid; gap: 4px; }
   .pdp {
     display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
     gap: clamp(28px, 4vw, 72px);

@@ -1,3 +1,4 @@
+import { matchPacks, type Kind } from '../data/promo';
 export type CartLine = {
   key: string;
   id: number;
@@ -19,6 +20,10 @@ export type CartLine = {
   digital?: boolean;
   /** cartão presente com o valor escolhido pelo cliente */
   variable?: boolean;
+  /** tipo de peça para os packs da promoção (hoodie, crewneck, tshirt, cap) */
+  kind?: Kind;
+  /** já tem o desconto da promoção (não leva códigos) */
+  onSale?: boolean;
   qty: number;
 };
 
@@ -47,7 +52,7 @@ function write(lines: CartLine[]) {
 
 /* Catálogo atual (preço, stock, imagem) publicado pelo layout. Um carrinho guardado
    antes de uma mudança de preço ou de stock é corrigido ao abrir o site. */
-type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams' | 'href' | 'digital' | 'variable'> & {
+type CatalogItem = Pick<CartLine, 'slug' | 'name' | 'color' | 'price' | 'image' | 'stock' | 'madeToOrderDays' | 'grams' | 'href' | 'digital' | 'variable' | 'kind' | 'onSale'> & {
   sizeStock?: Record<string, number>;
 };
 /** Stock da linha: o do tamanho escolhido quando o produto tem stock por tamanho. */
@@ -94,6 +99,15 @@ export const cart = {
   /** Subtotal dos artigos físicos: conta para o envio grátis e para o desconto de boas-vindas */
   get goodsSubtotal() {
     return memory.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0);
+  },
+  /** Packs da promoção formados com as peças do carrinho */
+  get packs() {
+    return matchPacks(memory, document.documentElement.dataset.promo === '1');
+  },
+  /** Artigos que podem levar código de desconto: físicos, sem promoção e fora de packs */
+  get codeSubtotal() {
+    const packed = this.packs.packedKeys;
+    return memory.reduce((n, l) => n + (l.digital || l.onSale || packed.has(l.key) ? 0 : l.qty * l.price), 0);
   },
   get hasPhysical() {
     return memory.some((l) => !l.digital);

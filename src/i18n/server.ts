@@ -16,6 +16,7 @@ const dict = {
   'err.size': ['Escolhe um tamanho válido para {name}.', 'Pick a valid size for {name}.', 'Elige una talla válida para {name}.'],
   'err.only': ['Só temos {n} de {name}.', 'We only have {n} of {name}.', 'Solo tenemos {n} de {name}.'],
   'err.soldout': ['{name} esgotou.', '{name} is sold out.', '{name} se ha agotado.'],
+  'code.promo': ['Os códigos não se juntam às peças em promoção nem aos packs.', 'Codes do not apply to discounted pieces or bundles.', 'Los códigos no se aplican a las prendas en promoción ni a los packs.'],
   'code.write': ['Escreve um código.', 'Enter a code.', 'Escribe un código.'],
   'code.invalid': ['Este código não é válido.', 'This code is not valid.', 'Este código no es válido.'],
   'code.notYet': ['Este código ainda não está ativo.', 'This code is not active yet.', 'Este código aún no está activo.'],

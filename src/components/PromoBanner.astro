@@ -1,0 +1,79 @@
+---
+/* Banner da promoção (Black November) na página inicial: desconto e packs. Só aparece com a promoção ativa. */
+import Img from './Img.astro';
+import { products } from '../data/products';
+import { promo, kindOf, type Kind } from '../data/promo';
+import { site } from '../data/site';
+import { langOf, href, amount } from '../i18n';
+import { useT } from '../i18n/ui';
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (p: string) => href(lang, p);
+
+/* peça que representa cada tipo no cartão do pack, e o preço mais baixo desse tipo */
+const show: Record<Kind, string> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
+const imageOf = (k: Kind) => (products.find((p) => p.slug === show[k]) ?? products.find((p) => kindOf(p) === k))!.images[0];
+const cheapest = (k: Kind) => Math.min(...products.filter((p) => kindOf(p) === k).map((p) => p.price));
+const linkOf: Record<Kind, string> = { hoodie: '/loja/hoodies-crewnecks/', crewneck: '/loja/hoodies-crewnecks/', tshirt: '/loja/t-shirts/', cap: '/loja/caps/' };
+const packs = promo.packs.map((p) => {
+  const [a, b] = [p.parts[0][0], p.parts[1][0]];
+  return { ...p, a, b, normal: cheapest(a) + cheapest(b) };
+});
+---
+<section class="bf" aria-labelledby="bf-title">
+  <div class="bf__inner container">
+    <div class="bf__head">
+      <p class="eyebrow bf__kicker">{t('bf.kicker')}</p>
+      <h2 id="bf-title" class="bf__title display">{t('bf.name')}</h2>
+      <p class="bf__lead">{t('bf.lead')}</p>
+      <div class="bf__ctas">
+        <a href={h('/loja/hoodies-crewnecks/')} class="pill pill--light">{t('bf.cta')}</a>
+        <a href={h('/loja/t-shirts/')} class="pill bf__ghost">{t('bf.cta2')}</a>
+      </div>
+    </div>
+
+    <ul class="bf__packs">
+      {packs.map((p) => (
+        <li>
+          <a href={h(linkOf[p.a])} class="bf__pack">
+            <span class="bf__imgs" aria-hidden="true">
+              <Img src={imageOf(p.a)} alt="" width="600" height="600" sizes="160px" loading="lazy" class="bf__img bf__img--a" />
+              <Img src={imageOf(p.b)} alt="" width="600" height="600" sizes="160px" loading="lazy" class="bf__img bf__img--b" />
+            </span>
+            <span class="bf__name">{t(`pack.${p.id}` as never)}</span>
+            <span class="bf__price">{amount(p.price, lang)}</span>
+            <span class="bf__was" set:html={t('bf.instead', { n: `<del>${amount(p.normal, lang)}</del>` })} />
+            {p.price >= site.freeShippingFrom && <span class="bf__tag eyebrow">{t('bf.freeShip')}</span>}
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p class="bf__note">{t('bf.auto')} {t('bf.until')}.</p>
+  </div>
+</section>
+
+<style>
+  .bf { background: #111; color: #f5f5f4; padding: clamp(48px, 7vw, 96px) 0; }
+  .bf__inner { display: grid; gap: clamp(28px, 4vw, 48px); }
+  .bf__head { display: grid; justify-items: center; text-align: center; gap: 12px; }
+  .bf__kicker { margin: 0; font-size: 11px; color: #b9b9b4; }
+  .bf__title { margin: 0; font-size: clamp(44px, 9vw, 120px); line-height: .95; text-transform: uppercase; letter-spacing: -.01em; }
+  .bf__lead { margin: 4px 0 0; max-width: 560px; font-size: 16px; line-height: 1.55; color: #d8d8d4; }
+  .bf__ctas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .bf__ghost { background: transparent; color: #f5f5f4; box-shadow: inset 0 0 0 1px rgba(245, 245, 244, .6); }
+  .bf__ghost:hover { background: #f5f5f4; color: #111; }
+  .bf__packs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .bf__pack { display: grid; justify-items: center; gap: 6px; padding: 22px 16px 20px; background: #1d1d1d; border: 1px solid #2c2c2c; text-align: center; height: 100%; position: relative; transition: border-color .2s; }
+  .bf__pack:hover { border-color: #6b6b67; }
+  .bf__imgs { position: relative; width: 100%; max-width: 230px; aspect-ratio: 1.6 / 1; margin-bottom: 10px; }
+  .bf__imgs :global(.bf__img) { position: absolute; width: 50%; height: auto; aspect-ratio: 1; object-fit: contain; top: 0; background: #e9e8e4; border-radius: 4px; }
+  .bf__imgs :global(.bf__img--a) { left: 6%; }
+  .bf__imgs :global(.bf__img--b) { right: 6%; top: 20%; box-shadow: -6px 6px 18px rgba(0, 0, 0, .35); }
+  .bf__name { font-size: 14px; font-weight: 600; }
+  .bf__price { font-family: var(--font-display); font-size: 26px; font-weight: 600; }
+  .bf__was { font-size: 12px; color: #9d9d98; }
+  .bf__tag { position: absolute; top: 10px; right: 10px; font-size: 9.5px; padding: 4px 7px; background: #f5f5f4; color: #111; }
+  .bf__note { margin: 0; text-align: center; font-size: 12.5px; color: #9d9d98; }
+  @media (max-width: 900px) { .bf__packs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .bf__pack { padding: 18px 10px 16px; } .bf__price { font-size: 22px; } }
+</style>

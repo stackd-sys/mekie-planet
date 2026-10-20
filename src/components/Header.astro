@@ -4,6 +4,7 @@ import { site } from '../data/site';
 import { langOf, toPt, href, langs, langName, amount } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
+import { promoActive } from '../data/promo';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const lang = langOf(Astro.url.pathname);
@@ -27,7 +28,7 @@ const switcher = langs.map((l) => {
   const to = href(l, path);
   return { lang: l, href: l !== 'pt' && to === path ? href(l, '/') : to };
 });
-const announcement = [t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
+const announcement = [...(promoActive() ? [t('bf.announce')] : []), t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
 ---
 <div class="announce" role="region" aria-label={t('announce.label')}>
   <div class="announce__track">

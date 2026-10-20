@@ -47,6 +47,7 @@ const addOns = shop(lang).products.filter((p) => p.category === 'meias');
 
     <footer class="drawer__foot" data-cart-foot>
       <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>{money(0, lang)}</strong></div>
+      <div class="drawer__row drawer__packs" data-cart-packs hidden><span data-cart-packs-label></span><strong data-cart-packs-value></strong></div>
       <p class="drawer__note">{t('cart.note', { n: amount(site.freeShippingFrom, lang) })}</p>
       <a href={href(lang, '/checkout/')} class="pill pill--accent pill--block">{t('cart.checkout')}</a>
       <ul class="drawer__pay" aria-label={t('payments')}>
@@ -57,6 +58,8 @@ const addOns = shop(lang).products.filter((p) => p.category === 'meias');
 </div>
 
 <style>
+  .drawer__packs { font-size: 13px; color: var(--ink); }
+  .drawer__packs[hidden] { display: none; }
   .drawer { position: fixed; inset: 0; z-index: 110; }
   .drawer__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.4); animation: fade .3s; }
   .drawer__panel {

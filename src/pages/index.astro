@@ -2,6 +2,8 @@
 import Base from '../layouts/Base.astro';
 import Carousel from '../components/Carousel.astro';
 import Img from '../components/Img.astro';
+import PromoBanner from '../components/PromoBanner.astro';
+import { promoActive } from '../data/promo';
 import { langOf, href } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
@@ -48,6 +50,8 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
       <a href={h('/loja/')} class="pill pill--light hero__cta">{t('hero.cta')}</a>
     </div>
   </section>
+
+  {promoActive() && <PromoBanner />}
 
   <section class="section browse">
     <div class="container">

@@ -11,6 +11,7 @@ import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
 import { cartInfo } from '../data/products';
 import { organizationLd, websiteLd } from '../data/seo';
+import { promoActive } from '../data/promo';
 import { langOf, toPt, href, langs, htmlLang, ogLocale } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop, giftCatalogFor } from '../i18n/data';
@@ -49,6 +50,7 @@ const ogImage = new URL(image, Astro.site);
 <html
   lang={htmlLang[lang]}
   data-free-shipping={site.freeShippingFrom}
+  data-promo={promoActive() ? '1' : undefined}
   data-newsletter-endpoint={site.newsletterWebhook}
   data-welcome-code={site.welcomeCode}
   data-email={site.email}

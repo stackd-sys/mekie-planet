@@ -1,4 +1,5 @@
 import { applyOverrides } from '../lib/server/overrides';
+import { promo, promoActive, promoPrice, kindOf } from './promo';
 
 export type Category = {
   slug: string;
@@ -46,6 +47,8 @@ export type Product = {
   customizable?: boolean;
   images: string[];
   badge?: string;
+  /** desconto da promoção em curso, em % (mostrado na etiqueta em vez da conta exata) */
+  promoPct?: number;
   description: string;
   details?: ProductDetails;
 };
@@ -620,6 +623,13 @@ export const products: Product[] = [
 
 /* Preço e stock atuais, geridos no CRM (quando há base de dados). Sem base de dados ficam os valores acima. */
 await applyOverrides(products);
+/* promoção em curso: o preço do CRM passa a ser o preço riscado */
+const promoOn = promoActive();
+for (const p of products) {
+  p.regularPrice = p.price;
+  p.price = promoPrice(p.category, p.price, promoOn);
+  if (p.price < p.regularPrice) p.promoPct = promo.discounts[p.category];
+}
 
 export const getCategory = (slug: string) => categories.find((c) => c.slug === slug);
 export const getCollection = (slug: string) => collections.find((c) => c.slug === slug);
@@ -650,7 +660,9 @@ export const weightOf = (p: Product) => gramsByCategory[p.category] ?? 300;
 export const cartInfo = (p: Product) => ({
   id: p.id, slug: p.slug, name: p.name, color: p.color, price: p.price, image: p.images[0],
   stock: p.stock, sizeStock: p.sizeStock, madeToOrderDays: p.madeToOrderDays, grams: weightOf(p),
+  /* para os packs e para saber se a peça já está com desconto */
+  kind: kindOf(p), onSale: p.price < p.regularPrice,
 });
 export const variantsOf = (p: Product) => products.filter((o) => o.name === p.name);
 export const discount = (p: Product) =>
-  p.regularPrice > p.price ? Math.round((1 - p.price / p.regularPrice) * 100) : 0;
+  p.promoPct ?? (p.regularPrice > p.price ? Math.round((1 - p.price / p.regularPrice) * 100) : 0);

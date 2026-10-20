@@ -13,10 +13,13 @@ import { serverT, asLang, mailDate } from '../../i18n/server';
 import { lineName, destinationsFor } from '../../i18n/data';
 import { trName, trColor } from '../../i18n/catalog';
 import { pushNotify } from './push';
+import { promoActive, promoPrice, kindOf, matchPacks, type Kind } from '../../data/promo';
 
 export type OrderLine = {
   id: number; slug: string; name: string; color: string; size: string; custom: string;
   qty: number; price: number; grams: number; digital: boolean; madeToOrder: boolean;
+  /** promoção: tipo de peça para os packs e se já tem desconto */
+  kind?: Kind; onSale?: boolean;
 };
 
 export type Customer = {
@@ -130,6 +133,15 @@ export async function sendGiftCard(code: string) {
 
 type RawLine = { id?: unknown; qty?: unknown; size?: unknown; custom?: unknown; amount?: unknown };
 
+/** nomes dos packs (para a encomenda e o CRM, em português) */
+const PACK_NAMES: Record<string, string> = {
+  'hoodie-tshirt': 'Pack Hoodie + T-shirt', 'crewneck-tshirt': 'Pack Crewneck + T-shirt', 'hoodie-cap': 'Pack Hoodie + Cap', 'tshirt-cap': 'Pack T-shirt + Cap',
+};
+
+/** nome do pack na língua do cliente (guardado em português) */
+const packLabelIn = (label: string, lang: Lang) =>
+  lang === 'en' ? label.replace(/\bPack\b/g, 'Bundle') : label;
+
 /** linha de cartão presente */
 const isGiftLine = (l: OrderLine) => giftCatalog.some((g) => g.id === l.id);
 
@@ -139,6 +151,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
   const nameOf = (p: (typeof products)[number], size = '') => `${trName(p.name, lang)} ${trColor(p.color, lang)}${size ? ` (${size})` : ''}`;
   const sql = await db();
   const state = new Map((await sql<any[]>`select id, price, stock, size_stock from products_state`).map((r) => [r.id, r]));
+  const promoOn = promoActive();
   const lines: OrderLine[] = [];
   const errors: string[] = [];
 
@@ -156,32 +169,42 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
     const p = products.find((x) => x.id === id);
     if (!p) { errors.push(t('err.gone')); continue; }
     const s = state.get(id);
-    const price = s ? Number(s.price) : p.price;
+    /* preço do CRM (ou do código), com o desconto da promoção se estiver a decorrer agora */
+    const base = s ? Number(s.price) : p.regularPrice;
+    const price = promoPrice(p.category, base, promoOn);
     if (p.sizes && !p.sizes.includes(size)) { errors.push(t('err.size', { name: trName(p.name, lang) })); continue; }
     const stock = p.sizeStock ? Number((s?.size_stock ?? p.sizeStock)[size] ?? 0) : s?.stock ?? p.stock;
     if (!p.madeToOrderDays && stock !== undefined && stock !== null && qty > stock) {
       errors.push(stock > 0 ? t('err.only', { n: stock, name: nameOf(p, size) }) : t('err.soldout', { name: nameOf(p, size) }));
       continue;
     }
-    lines.push({ id, slug: p.slug, name: p.name, color: p.customizable ? '' : p.color, size, custom, qty, price, grams: weightOf(p), digital: false, madeToOrder: Boolean(p.madeToOrderDays) });
+    lines.push({ id, slug: p.slug, name: p.name, color: p.customizable ? '' : p.color, size, custom, qty, price, grams: weightOf(p), digital: false, madeToOrder: Boolean(p.madeToOrderDays), kind: kindOf(p), onSale: price < base });
   }
 
   const dest = destinations.find((d) => d.name === country) ?? destinations[0];
   const subtotal = round(lines.reduce((n, l) => n + l.qty * l.price, 0));
   const goods = round(lines.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0));
   const grams = lines.reduce((n, l) => n + l.qty * l.grams, 0);
-  const shipping = shippingCost(dest.zone as Zone, goods, grams);
+  /* packs da promoção: as peças juntam-se sozinhas, do pack mais vantajoso para o menos */
+  const packs = matchPacks(lines.map((l, i) => ({ key: String(i), kind: l.kind, price: l.price, qty: l.qty })), promoOn);
+  const packDiscount = packs.discount;
+  const packLabel = packs.matches.map((m) => `${m.count > 1 ? `${m.count}× ` : ''}${PACK_NAMES[m.pack.id] ?? m.pack.id}`).join(', ');
+  /* o envio grátis conta os artigos físicos já com o preço dos packs */
+  const shipping = shippingCost(dest.zone as Zone, round(goods - packDiscount), grams);
+  /* os códigos só descontam peças sem promoção e fora de packs */
+  const codeBase = round(lines.reduce((n, l, i) => n + (l.digital || l.onSale || packs.packedKeys.has(String(i)) ? 0 : l.qty * l.price), 0));
 
   let discount = 0, discountCode = '', codeError = '';
   if (clean(codeRaw)) {
-    const c = await checkCode(codeRaw, email, goods, lang);
-    if (c.ok) {
+    const c = await checkCode(codeRaw, email, codeBase, lang);
+    if (c.ok && codeBase <= 0) codeError = t('code.promo');
+    else if (c.ok) {
       discountCode = c.code;
-      discount = round(c.kind === 'percent' ? goods * c.value / 100 : Math.min(c.value, goods));
+      discount = round(c.kind === 'percent' ? codeBase * c.value / 100 : Math.min(c.value, codeBase));
     } else codeError = c.message;
   }
 
-  const beforeGift = round(subtotal - discount + shipping);
+  const beforeGift = round(subtotal - packDiscount - discount + shipping);
   let giftAmount = 0, giftCodeUsed = '', giftError = '';
   if (clean(giftRaw)) {
     const g = await giftBalance(giftRaw);
@@ -191,7 +214,7 @@ export async function priceOrder(raw: RawLine[], country: string, codeRaw: strin
     } else giftError = g.status === 'empty' ? t('gift.empty') : g.status === 'expired' ? t('gift.expired') : t('gift.notFound');
   }
 
-  return { lines, errors, dest, subtotal, goods, shipping, discount, discountCode, codeError, giftAmount, giftCode: giftCodeUsed, giftError, total: round(beforeGift - giftAmount) };
+  return { lines, errors, dest, subtotal, goods, shipping, packDiscount, packLabel, discount, discountCode, codeError, giftAmount, giftCode: giftCodeUsed, giftError, total: round(beforeGift - giftAmount) };
 }
 
 /* ---------- Criar encomenda ---------- */
@@ -248,10 +271,10 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
     const address = physical && hasAddress ? { morada: c.morada, codigo_postal: c.codigo_postal, localidade: c.localidade, pais: priced.dest.name, zone: priced.dest.zone } : null;
     const [o] = await tx`
       insert into orders (number, customer_id, email, name, phone, nif, address, lines, subtotal, discount, discount_code,
-        shipping, gift_code, gift_amount, total, customer_notes, source, utm, lang)
+        shipping, gift_code, gift_amount, total, customer_notes, source, utm, lang, pack_discount, pack_label)
       values (${number}, ${cust.id}, ${c.email}, ${name}, ${c.phone}, ${c.nif}, ${address ? tx.json(address) : null}, ${tx.json(priced.lines)},
         ${priced.subtotal}, ${priced.discount}, ${priced.discountCode}, ${priced.shipping}, ${priced.giftCode}, ${priced.giftAmount},
-        ${priced.total}, ${c.notas}, ${source}, ${body?.utm && typeof body.utm === 'object' ? tx.json(cleanUtm(body.utm)) : null}, ${lang})
+        ${priced.total}, ${c.notas}, ${source}, ${body?.utm && typeof body.utm === 'object' ? tx.json(cleanUtm(body.utm)) : null}, ${lang}, ${priced.packDiscount}, ${priced.packLabel})
       returning *`;
     await tx`insert into order_events (order_id, text) values (${o.id}, ${source === 'site' ? 'Encomenda recebida no site' : 'Encomenda registada no CRM'})`;
     if (priced.discountCode) await tx`insert into code_uses (code, email, order_number) values (${priced.discountCode}, ${c.email}, ${number})`;
@@ -272,6 +295,7 @@ const linesHtml = (o: any, lang: Lang = 'pt') => {
   return `<table style="width:100%;border-collapse:collapse;font-size:14px">${(o.lines as OrderLine[]).map((l) => `
   <tr><td style="padding:6px 0;border-bottom:1px solid #e2e2df">${l.qty}× ${escapeHtml(isGiftLine(l) ? `${lineName(l.name, '', lang)}, ${amount(l.price, lang)} · ${giftTitleFromPt(l.color.split(' · ')[1] ?? '', lang)}` : lineName(l.name, l.color, lang))}${l.size ? `, ${escapeHtml(l.size)}` : ''}${l.custom ? `<br><span style="color:#5c5c5c">${escapeHtml(l.custom)}</span>` : ''}</td>
   <td style="padding:6px 0;border-bottom:1px solid #e2e2df;text-align:right">${eur(l.qty * l.price)}</td></tr>`).join('')}
+  ${Number(o.pack_discount) ? `<tr><td style="padding:6px 0">${escapeHtml(packLabelIn(o.pack_label, lang))}</td><td style="text-align:right">-${eur(o.pack_discount)}</td></tr>` : ''}
   ${Number(o.discount) ? `<tr><td style="padding:6px 0">${t('m.discount', { code: escapeHtml(o.discount_code) })}</td><td style="text-align:right">-${eur(o.discount)}</td></tr>` : ''}
   <tr><td style="padding:6px 0">${t('m.shipping')}</td><td style="text-align:right">${Number(o.shipping) ? eur(o.shipping) : t('m.free')}</td></tr>
   ${Number(o.gift_amount) ? `<tr><td style="padding:6px 0">${t('m.gift')}</td><td style="text-align:right">-${eur(o.gift_amount)}</td></tr>` : ''}

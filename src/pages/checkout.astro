@@ -82,6 +82,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
         <p class="eyebrow">{t('co.summary')}</p>
         <ul class="co__lines" data-co-lines></ul>
         <div class="co__row"><span>Subtotal</span><span data-cart-subtotal></span></div>
+        <div class="co__row" data-co-pack-row hidden><span data-co-pack-label></span><span data-co-pack></span></div>
         <div class="co__row" data-co-discount-row hidden><span data-co-discount-label></span><span data-co-discount></span></div>
         <div class="co__row" data-co-ship-row><span>{t('co.shipping')}</span><span data-co-ship></span></div>
         <div class="co__row" data-co-gift-row hidden><span>{t('gift')}</span><span data-co-gift></span></div>
@@ -118,13 +119,16 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   let gift = { code: '', balance: 0, verified: false };
   const totals = () => {
     const sub = cart.subtotal;
-    /* o desconto e o envio grátis contam só os artigos físicos, antes do desconto */
     const goods = cart.goodsSubtotal;
-    const disc = !discount ? 0 : Math.round((discount.kind === 'percent' ? goods * discount.value / 100 : Math.min(discount.value, goods)) * 100) / 100;
-    const ship = shippingCost(zone(), goods, cart.grams);
-    const before = Math.round((sub - disc + ship) * 100) / 100;
+    /* packs da promoção; os códigos só contam as peças sem promoção e fora de packs */
+    const pack = cart.packs.discount;
+    const base = cart.codeSubtotal;
+    const disc = !discount ? 0 : Math.round((discount.kind === 'percent' ? base * discount.value / 100 : Math.min(discount.value, base)) * 100) / 100;
+    /* o envio grátis conta os artigos físicos já com o preço dos packs, antes do código */
+    const ship = shippingCost(zone(), goods - pack, cart.grams);
+    const before = Math.round((sub - pack - disc + ship) * 100) / 100;
     const giftUsed = gift.verified ? Math.min(gift.balance, before) : 0;
-    return { sub, disc, ship, giftUsed, total: before - giftUsed };
+    return { sub, pack, disc, ship, giftUsed, total: before - giftUsed };
   };
   country.addEventListener('change', () => render(cart.lines));
   const describe = (d: Discount) => (d.kind === 'percent' ? tc('co.percent', { n: lang === 'en' ? String(d.value) : String(d.value).replace('.', ',') }) : tc('co.fixed', { n: money(d.value) }));
@@ -135,8 +139,9 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     if (value) {
       try {
         const email = document.querySelector<HTMLInputElement>('[name=email]')?.value || '';
-        const res = await newsletter.codeCheck(value, email, cart.goodsSubtotal);
-        if (res.status === 'ok') result = { code: res.code, kind: res.kind, value: res.value };
+        const res = await newsletter.codeCheck(value, email, cart.codeSubtotal);
+        if (res.status === 'ok' && cart.codeSubtotal <= 0) message = tc('co.codePromo');
+        else if (res.status === 'ok') result = { code: res.code, kind: res.kind, value: res.value };
         else if (res.status === 'invalid') message = res.message;
         else result = welcomeFallback(value);
       } catch {
@@ -197,8 +202,12 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
   });
 
   const render = (lines: typeof cart.lines) => {
-    const { sub, disc, ship, giftUsed, total } = totals();
+    const { sub, pack, disc, ship, giftUsed, total } = totals();
     const physical = cart.hasPhysical;
+    const packRow = document.querySelector<HTMLElement>('[data-co-pack-row]')!;
+    packRow.hidden = pack === 0;
+    document.querySelector<HTMLElement>('[data-co-pack-label]')!.textContent = cart.packs.matches.map((m) => `${m.count > 1 ? `${m.count}× ` : ''}${tc(`pack.${m.pack.id}` as never)}`).join(', ');
+    document.querySelector<HTMLElement>('[data-co-pack]')!.textContent = `-${money(pack)}`;
     shipFields.hidden = !physical;
     shipFields.querySelectorAll<HTMLInputElement>('[data-req]').forEach((el) => (el.required = physical));
     document.querySelector<HTMLElement>('[data-digital-note]')!.hidden = physical || lines.length === 0;
@@ -307,7 +316,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
     }
 
     const lines = cart.lines;
-    const { sub, disc, ship, giftUsed, total } = totals();
+    const { sub, pack, disc, ship, giftUsed, total } = totals();
     const physical = cart.hasPhysical;
     const body = [
       'Olá Mekie! Quero fazer esta encomenda:',
@@ -315,6 +324,7 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
       ...lines.map((l) => `• ${l.qty}x ${l.name}, ${l.custom || l.color}${l.size ? `, tamanho ${l.size}` : ''}: ${money(l.qty * l.price)}${made(l) ? ` (${made(l)} por encomenda, ${l.madeToOrderDays} dias úteis)` : ''}`),
       '',
       `Subtotal: ${money(sub)}`,
+      pack ? `Packs: -${money(pack)}` : '',
       disc ? `Desconto ${applied}: -${money(disc)}` : '',
       physical ? `Envio (${f.get('pais')}): ${ship === 0 ? 'grátis' : money(ship)}` : 'Envio: cartão presente por email',
       gift.code ? `Cartão presente ${gift.code}: ${gift.verified ? `-${money(giftUsed)}` : 'saldo por confirmar'}` : '',

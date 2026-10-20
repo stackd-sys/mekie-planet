@@ -73,8 +73,15 @@ cart.subscribe((lines) => {
   document.querySelectorAll<HTMLElement>('[data-cart-count-label]').forEach((el) => (el.textContent = count ? `(${count})` : ''));
   document.querySelectorAll<HTMLElement>('[data-cart-subtotal]').forEach((el) => (el.textContent = money(subtotal)));
 
-  /* o cartão presente não conta para o envio grátis */
-  const goods = lines.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0);
+  /* o cartão presente não conta para o envio grátis; os packs da promoção sim, já com o desconto */
+  const packs = cart.packs;
+  const goods = lines.reduce((n, l) => n + (l.digital ? 0 : l.qty * l.price), 0) - packs.discount;
+  const packRow = document.querySelector<HTMLElement>('[data-cart-packs]');
+  if (packRow) {
+    packRow.hidden = packs.discount === 0;
+    packRow.querySelector('[data-cart-packs-label]')!.textContent = packs.matches.map((m) => `${m.count > 1 ? `${m.count}× ` : ''}${tc(`pack.${m.pack.id}` as never)}`).join(', ');
+    packRow.querySelector('[data-cart-packs-value]')!.textContent = `-${money(packs.discount)}`;
+  }
   const missing = Math.max(0, FREE_FROM - goods);
   const shipText = document.querySelector<HTMLElement>('[data-ship-text]');
   const shipBar = document.querySelector<HTMLElement>('[data-ship-bar]');

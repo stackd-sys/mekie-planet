@@ -127,6 +127,7 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
             </tr>
           ))}
           <tr><td></td><td class="muted">Subtotal</td><td class="num">{euro(o.subtotal)}</td></tr>
+          {Number(o.pack_discount) > 0 && <tr><td></td><td class="muted">{o.pack_label || 'Packs'}</td><td class="num">-{euro(o.pack_discount)}</td></tr>}
           {Number(o.discount) > 0 && <tr><td></td><td class="muted">Desconto {o.discount_code}</td><td class="num">-{euro(o.discount)}</td></tr>}
           {o.address && <tr><td></td><td class="muted">Envio</td><td class="num">{Number(o.shipping) ? euro(o.shipping) : 'Grátis'}</td></tr>}
           {Number(o.gift_amount) > 0 && <tr><td></td><td class="muted">Cartão presente {o.gift_code}</td><td class="num">-{euro(o.gift_amount)}</td></tr>}
