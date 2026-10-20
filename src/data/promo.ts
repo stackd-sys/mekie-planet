@@ -30,7 +30,8 @@ export const promo = {
 };
 
 const preview = () => {
-  try { return typeof process !== 'undefined' && process.env?.PROMO_PREVIEW === '1'; } catch { return false; }
+  /* PROMO_PREVIEW=1 em local, ou as pré-visualizações da Vercel (ramos que não são o site oficial) */
+  try { return typeof process !== 'undefined' && (process.env?.PROMO_PREVIEW === '1' || process.env?.VERCEL_ENV === 'preview'); } catch { return false; }
 };
 
 /** A promoção está ativa nesta data? */
