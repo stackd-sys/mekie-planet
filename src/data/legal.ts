@@ -13,7 +13,7 @@ export type LegalPage = {
   sections: { heading?: string; body: Block[] }[];
 };
 
-export const legalUpdated = '16 de outubro de 2026';
+export const legalUpdated = '20 de outubro de 2026';
 
 const { company, email } = site;
 const seller = [company.legalName, company.kind, company.nif && `NIF ${company.nif}`, `com sede na ${company.address}`]
@@ -56,7 +56,7 @@ export const legalPages: LegalPage[] = [
       {
         heading: 'Preços',
         body: [
-          'Os preços estão em euros e incluem IVA à taxa legal em vigor. Os portes de envio não estão incluídos e são apresentados no checkout antes de concluíres a encomenda.',
+          'Os preços estão em euros. A Mekie Planet está no regime de isenção de IVA do artigo 53.º do Código do IVA, por isso não cobramos IVA e os preços não o incluem. Os portes de envio não estão incluídos e são apresentados no checkout antes de concluíres a encomenda.',
           'Se, por erro manifesto, um preço estiver errado, avisamos-te antes de enviar a encomenda e podes escolher entre continuar com o preço correto ou cancelar, com reembolso total.',
         ],
       },
@@ -169,7 +169,7 @@ export const legalPages: LegalPage[] = [
       },
       {
         heading: 'Impostos',
-        body: ['Os preços incluem IVA. Nos envios para a União Europeia não há taxas alfandegárias.'],
+        body: ['Não cobramos IVA (regime de isenção do artigo 53.º do Código do IVA). Nos envios para a União Europeia não há taxas alfandegárias.'],
       },
     ],
   },

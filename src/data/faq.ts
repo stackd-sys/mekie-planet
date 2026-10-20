@@ -59,7 +59,7 @@ export const faqGroups: FaqGroup[] = [
     items: [
       {
         q: 'Que formas de pagamento aceitam?',
-        a: 'MB WAY, Multibanco e cartão. Os preços incluem IVA.',
+        a: 'MB WAY, Multibanco e cartão. Não cobramos IVA: estamos no regime de isenção do artigo 53.º do Código do IVA.',
       },
       {
         q: 'Como uso o código de 10% da newsletter?',

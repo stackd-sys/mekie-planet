@@ -74,7 +74,7 @@ export const faqGroupsEs: FaqGroup[] = [
     items: [
       {
         q: '¿Qué formas de pago aceptáis?',
-        a: 'MB WAY, Multibanco y tarjeta. Los precios incluyen IVA.',
+        a: 'MB WAY, Multibanco y tarjeta. No cobramos IVA: estamos en el régimen de exención del artículo 53.º del Código del IVA portugués.',
       },
       {
         q: `¿Cómo uso el código del ${site.welcomeDiscount} % de la newsletter?`,

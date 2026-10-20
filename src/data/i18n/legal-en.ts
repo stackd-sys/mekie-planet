@@ -3,7 +3,7 @@ import { site } from '../site';
 import { giftCard } from '../giftcard';
 import { shipping, packagingGrams } from '../shipping';
 
-export const legalUpdatedEn = '16 October 2026';
+export const legalUpdatedEn = '20 October 2026';
 
 const { company, email } = site;
 const seller = [
@@ -65,7 +65,7 @@ export const legalPagesEn: LegalPage[] = [
       {
         heading: 'Prices',
         body: [
-          'Prices are in euros and include VAT at the legal rate in force. Shipping costs are not included and are shown at checkout before you complete your order.',
+          'Prices are in euros. Mekie Planet is under the VAT exemption scheme of article 53 of the Portuguese VAT Code, so we do not charge VAT and prices do not include it. Shipping costs are not included and are shown at checkout before you complete your order.',
           'If a price is wrong due to an obvious error, we will let you know before shipping the order, and you can choose to go ahead at the correct price or cancel with a full refund.',
         ],
       },
@@ -178,7 +178,7 @@ export const legalPagesEn: LegalPage[] = [
       },
       {
         heading: 'Taxes',
-        body: ['Prices include VAT. There are no customs duties on shipments within the European Union.'],
+        body: ['We do not charge VAT (exemption scheme of article 53 of the Portuguese VAT Code). There are no customs duties on shipments within the European Union.'],
       },
     ],
   },

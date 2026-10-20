@@ -3,7 +3,7 @@ import { site } from '../site';
 import { giftCard } from '../giftcard';
 import { shipping, packagingGrams } from '../shipping';
 
-export const legalUpdatedEs = '16 de octubre de 2026';
+export const legalUpdatedEs = '20 de octubre de 2026';
 
 const { company, email } = site;
 const seller = [
@@ -65,7 +65,7 @@ export const legalPagesEs: LegalPage[] = [
       {
         heading: 'Precios',
         body: [
-          'Los precios están en euros e incluyen el IVA al tipo legal vigente. Los gastos de envío no están incluidos y se muestran en el checkout antes de que completes el pedido.',
+          'Los precios están en euros. Mekie Planet está en el régimen de exención de IVA del artículo 53.º del Código del IVA portugués, así que no cobramos IVA y los precios no lo incluyen. Los gastos de envío no están incluidos y se muestran en el checkout antes de que completes el pedido.',
           'Si, por un error evidente, un precio está mal, te avisamos antes de enviar el pedido y puedes elegir entre seguir con el precio correcto o cancelar, con reembolso total.',
         ],
       },
@@ -178,7 +178,7 @@ export const legalPagesEs: LegalPage[] = [
       },
       {
         heading: 'Impuestos',
-        body: ['Los precios incluyen IVA. En los envíos a la Unión Europea no hay aranceles aduaneros.'],
+        body: ['No cobramos IVA (régimen de exención del artículo 53.º del Código del IVA portugués). En los envíos a la Unión Europea no hay aranceles aduaneros.'],
       },
     ],
   },

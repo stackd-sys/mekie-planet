@@ -87,7 +87,7 @@ const dict = {
   'cart.addItem': ['Adicionar {name}', 'Add {name}', 'Añadir {name}'],
   'cart.empty': ['O teu carrinho está vazio.', 'Your cart is empty.', 'Tu cesta está vacía.'],
   'cart.toShop': ['Ir para a loja', 'Go to the shop', 'Ir a la tienda'],
-  'cart.note': ['IVA incluído. Portes calculados no checkout, grátis em Portugal acima de {n}.', 'VAT included. Shipping calculated at checkout, free in Portugal over {n}.', 'IVA incluido. Gastos de envío calculados en el checkout, gratis en Portugal a partir de {n}.'],
+  'cart.note': ['Isento de IVA (art. 53.º do CIVA). Portes calculados no checkout, grátis em Portugal acima de {n}.', 'No VAT charged (art. 53 of the Portuguese VAT Code). Shipping calculated at checkout, free in Portugal over {n}.', 'Sin IVA (art. 53.º del Código del IVA portugués). Gastos de envío calculados en el checkout, gratis en Portugal a partir de {n}.'],
   'cart.checkout': ['Finalizar compra', 'Checkout', 'Finalizar compra'],
 
   /* Popup da newsletter */
@@ -164,7 +164,7 @@ const dict = {
   'p.ref': ['Ref.', 'Ref.', 'Ref.'],
   'p.review1': ['1 opinião', '1 review', '1 opinión'],
   'p.reviews': ['{n} opiniões', '{n} reviews', '{n} opiniones'],
-  'p.tax': ['IVA incluído. Portes calculados no checkout.', 'VAT included. Shipping calculated at checkout.', 'IVA incluido. Gastos de envío calculados en el checkout.'],
+  'p.tax': ['Isento de IVA (art. 53.º do CIVA). Portes calculados no checkout.', 'No VAT charged (art. 53 of the Portuguese VAT Code). Shipping calculated at checkout.', 'Sin IVA (art. 53.º del Código del IVA portugués). Gastos de envío calculados en el checkout.'],
   'p.customOrder': ['<strong>Feito à mão por encomenda,</strong> com as cores que escolheres. Entrega em {n} dias úteis.', '<strong>Handmade to order,</strong> in the colours you choose. Delivered in {n} working days.', '<strong>Hecho a mano por encargo,</strong> con los colores que elijas. Entrega en {n} días laborables.'],
   'p.ready1': ['1 unidade pronta a enviar.', '1 unit ready to ship.', '1 unidad lista para enviar.'],
   'p.readyN': ['{n} unidades prontas a enviar.', '{n} units ready to ship.', '{n} unidades listas para enviar.'],

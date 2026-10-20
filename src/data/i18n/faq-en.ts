@@ -73,7 +73,7 @@ export const faqGroupsEn: FaqGroup[] = [
     items: [
       {
         q: 'Which payment methods do you accept?',
-        a: 'MB WAY, Multibanco and card. Prices include VAT.',
+        a: 'MB WAY, Multibanco and card. We do not charge VAT: we are under the exemption scheme of article 53 of the Portuguese VAT Code.',
       },
       {
         q: `How do I use the ${site.welcomeDiscount}% newsletter code?`,
