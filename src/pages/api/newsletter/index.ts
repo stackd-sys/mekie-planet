@@ -30,6 +30,16 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!isEmail(email)) return json({ status: 'error', error: 'email inválido' }, 400);
 
+    /* bots: resposta igual à de sucesso, mas nada fica guardado nem sai email */
+    if (action === 'notify' || action === 'subscribe') {
+      const { spamReason } = await import('../../../lib/server/antispam');
+      const reason = await spamReason(sql, request, p, email);
+      if (reason) {
+        console.warn(`[Mekie] Pedido travado (${reason}): ${action} ${email.split('@')[1]}`);
+        return json(action === 'notify' ? { status: 'new' } : { status: 'new', subscribed: true, used: false });
+      }
+    }
+
     if (action === 'notify') {
       const product = cut('product', 120), size = cut('size', 20);
       const [dup] = await sql`select 1 from notify_requests where email = ${email} and product = ${product} and size = ${size} and notified_at is null`;

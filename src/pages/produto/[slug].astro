@@ -185,6 +185,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
               )}
               <input class="field" type="email" name="email" placeholder={t('p.yourEmail')} required autocomplete="email" aria-label={t('p.yourEmail')} />
             </div>
+            <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <button type="submit" class="pill pill--block">{t('p.notifyBtn')}</button>
             <p class="notify__fine">{t('p.notifyFine')}</p>
             <p class="notify__msg" role="status" data-notify-msg hidden></p>
@@ -334,7 +335,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       const btn = nForm.querySelector<HTMLButtonElement>('[type=submit]')!;
       btn.disabled = true;
       try {
-        const res = await newsletter.notify(email, notify.dataset.name || '', size);
+        const res = await newsletter.notify(email, notify.dataset.name || '', size, String(new FormData(nForm).get('website') || ''));
         show(res.status === 'exists'
           ? tc('notify.exists', { size: size ? tc('notify.existsSize', { s: size }) : '', email })
           : tc('notify.ok', { email, what: size ? tc('notify.okSize', { s: size }) : tc('notify.okAny') }));

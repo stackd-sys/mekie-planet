@@ -11,12 +11,24 @@ import { site } from '../../../data/site';
 import { href } from '../../../i18n';
 import { serverT, asLang } from '../../../i18n/server';
 import { trName, trColor } from '../../../i18n/catalog';
+import { dottedGmail } from '../../../lib/server/antispam';
 
 const sql = await db();
 const view = Astro.url.searchParams.get('ver') === 'avisos' ? 'avisos' : 'subscritores';
 const f = await postForm(Astro);
 if (f) {
   const action = str(f, 'action');
+  /* lista de subscritores: retirar um, ou apagar vários de uma vez (spam) */
+  if (f.get('unsub')) {
+    await sql`update subscribers set unsubscribed_at = now() where email = ${str(f, 'unsub').toLowerCase()}`;
+    return done(Astro, 'Email retirado da newsletter.');
+  }
+  if (action === 'delete-selected') {
+    const emails = f.getAll('emails').map((e) => String(e).toLowerCase()).slice(0, 2000);
+    if (!emails.length) return done(Astro, 'Não escolheste nenhum email.', undefined, true);
+    await sql`delete from subscribers where email = any(${emails})`;
+    return done(Astro, `${emails.length} ${emails.length === 1 ? 'email apagado' : 'emails apagados'} da lista.`);
+  }
   if (action === 'unsubscribe') {
     await sql`update subscribers set unsubscribed_at = now() where email = ${str(f, 'email').toLowerCase()}`;
     return done(Astro, 'Email retirado da newsletter.');
@@ -50,6 +62,7 @@ if (f) {
     return sent ? done(Astro, `Aviso enviado a ${sent} ${sent === 1 ? 'pessoa' : 'pessoas'}.`) : done(Astro, 'Nenhum email saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
   }
 }
+const [{ blocked }] = await sql<any[]>`select count(*)::int as blocked from signup_attempts where blocked <> '' and at > now() - interval '30 days'`;
 const subs = view === 'subscritores' ? await sql<any[]>`
   select s.*, exists (select 1 from orders o where o.email = s.email and o.status in ('paga','enviada','entregue')) as bought
   from subscribers s where s.unsubscribed_at is null order by s.created_at desc limit 2000` : [];
@@ -69,23 +82,53 @@ const [{ total, month }] = await sql<any[]>`select count(*)::int as total, count
 
   {view === 'subscritores' ? (
     <>
-      <div class="bar"><a class="btn ghost small" href="/admin/newsletter/exportar/">Exportar CSV</a></div>
-      <div class="table">
-        {subs.length ? (
-          <table>
-            <thead><tr><th>Email</th><th>Desde</th><th>Origem</th><th>Já comprou</th><th></th></tr></thead>
-            <tbody>
-              {subs.map((s) => (
-                <tr>
-                  <td>{s.email}</td><td>{date(s.created_at)}</td><td>{s.source || '—'}</td>
-                  <td>{s.bought ? <span class="badge ok">Sim</span> : <span class="muted">Não</span>}</td>
-                  <td class="num"><form method="post" class="inline" onsubmit="return confirm('Retirar este email da newsletter?')"><input type="hidden" name="action" value="unsubscribe" /><input type="hidden" name="email" value={s.email} /><button class="btn ghost small">Retirar</button></form></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p class="empty">Ainda sem subscritores.</p>}
-      </div>
+      <p class="note">{blocked > 0 ? `${blocked} tentativas de bots travadas nos últimos 30 dias (não ficaram na lista nem receberam email).` : 'As tentativas de bots travadas aparecem aqui.'}</p>
+      <form method="post" data-bulk>
+        <div class="bar">
+          <a class="btn ghost small" href="/admin/newsletter/exportar/">Exportar CSV</a>
+          <button type="button" class="btn ghost small" data-pick-suspect>Selecionar suspeitos</button>
+          <button type="submit" class="btn danger small" name="action" value="delete-selected" data-delete disabled>Apagar selecionados</button>
+        </div>
+        <div class="table">
+          {subs.length ? (
+            <table>
+              <thead><tr><th><input type="checkbox" data-all aria-label="Selecionar todos" /></th><th>Email</th><th>Desde</th><th>Origem</th><th>Já comprou</th><th></th></tr></thead>
+              <tbody>
+                {subs.map((s) => {
+                  const suspect = !s.bought && dottedGmail(s.email);
+                  return (
+                    <tr>
+                      <td><input type="checkbox" name="emails" value={s.email} data-suspect={suspect ? '1' : undefined} aria-label={`Selecionar ${s.email}`} /></td>
+                      <td>{s.email} {suspect && <span class="badge warn">Suspeito</span>}</td><td>{date(s.created_at)}</td><td>{s.source || '—'}</td>
+                      <td>{s.bought ? <span class="badge ok">Sim</span> : <span class="muted">Não</span>}</td>
+                      <td class="num"><button class="btn ghost small" name="unsub" value={s.email} onclick="return confirm('Retirar este email da newsletter?')">Retirar</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : <p class="empty">Ainda sem subscritores.</p>}
+        </div>
+      </form>
+      <script is:inline>
+        (() => {
+          const form = document.querySelector('[data-bulk]');
+          if (!form) return;
+          const boxes = () => [...form.querySelectorAll('input[name=emails]')];
+          const del = form.querySelector('[data-delete]');
+          const sync = () => {
+            const n = boxes().filter((b) => b.checked).length;
+            del.disabled = n === 0;
+            del.textContent = n ? `Apagar ${n} selecionado${n === 1 ? '' : 's'}` : 'Apagar selecionados';
+          };
+          form.addEventListener('change', (e) => {
+            if (e.target.matches('[data-all]')) boxes().forEach((b) => (b.checked = e.target.checked));
+            sync();
+          });
+          form.querySelector('[data-pick-suspect]').addEventListener('click', () => { boxes().forEach((b) => (b.checked = b.dataset.suspect === '1')); sync(); });
+          del.addEventListener('click', (e) => { if (!confirm('Apagar os emails selecionados da lista? Não dá para desfazer.')) e.preventDefault(); });
+        })();
+      </script>
       <details class="card" style="margin-top:14px">
         <summary style="cursor:pointer;font-weight:600">Importar emails (por exemplo, da antiga Google Sheet)</summary>
         <form method="post" class="stack" style="margin-top:12px">

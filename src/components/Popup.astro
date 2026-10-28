@@ -21,6 +21,8 @@ const n = site.welcomeDiscount;
       <form class="popup__form" data-newsletter="popup" novalidate>
         <label class="sr-only" for="popup-email">Email</label>
         <input class="popup__input" id="popup-email" type="email" name="email" placeholder="EMAIL" required autocomplete="email" data-autofocus />
+        <!-- armadilha para bots: invisível para as pessoas -->
+        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <label class="popup__consent">
           <input type="checkbox" name="consent" value="yes" required />
           <span>{t('popup.consent')} <a href={href(lang, '/politica-de-privacidade/')} class="link-underline">{t('popup.privacy')}</a></span>
