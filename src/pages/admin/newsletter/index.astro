@@ -62,7 +62,7 @@ if (f) {
     return sent ? done(Astro, `Aviso enviado a ${sent} ${sent === 1 ? 'pessoa' : 'pessoas'}.`) : done(Astro, 'Nenhum email saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
   }
 }
-const [{ blocked }] = await sql<any[]>`select count(*)::int as blocked from signup_attempts where blocked <> '' and at > now() - interval '30 days'`;
+const [{ blocked }] = await sql<any[]>`select count(*)::int as blocked from signup_attempts where blocked not in ('', 'encomenda') and at > now() - interval '30 days'`;
 const subs = view === 'subscritores' ? await sql<any[]>`
   select s.*, exists (select 1 from orders o where o.email = s.email and o.status in ('paga','enviada','entregue')) as bought
   from subscribers s where s.unsubscribed_at is null order by s.created_at desc limit 2000` : [];
@@ -82,7 +82,7 @@ const [{ total, month }] = await sql<any[]>`select count(*)::int as total, count
 
   {view === 'subscritores' ? (
     <>
-      <p class="note">{blocked > 0 ? `${blocked} tentativas de bots travadas nos últimos 30 dias (não ficaram na lista nem receberam email).` : 'As tentativas de bots travadas aparecem aqui.'}</p>
+      <p class="note">{blocked > 0 ? `${blocked} tentativas de bots travadas nos últimos 30 dias, na newsletter, nos avisos e nas encomendas (nada ficou guardado nem saiu email).` : 'As tentativas de bots travadas aparecem aqui.'}</p>
       <form method="post" data-bulk>
         <div class="bar">
           <a class="btn ghost small" href="/admin/newsletter/exportar/">Exportar CSV</a>
