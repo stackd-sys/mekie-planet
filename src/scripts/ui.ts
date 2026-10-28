@@ -183,7 +183,7 @@ document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) =
     if (btn) btn.disabled = true;
     try {
       const before = newsletter.knownLocally(email);
-      const res = await newsletter.subscribe(email, form.dataset.newsletter || 'site');
+      const res = await newsletter.subscribe(email, form.dataset.newsletter || 'site', String(data.get('website') || ''));
       const outcome: Outcome = res.used ? 'used' : res.status === 'exists' || (res.status === 'unknown' && before) ? 'exists' : 'new';
       if (outcome === 'new') track('sign_up', [], { method: form.dataset.newsletter || 'site' });
       newsletter.rememberLocally(email);

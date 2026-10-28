@@ -53,8 +53,13 @@ async function call<T extends { status: string } = Status>(params: Record<string
   return { status: 'unknown' };
 }
 
-export const subscribe = (email: string, source: string) =>
+/* defesa contra bots: quanto tempo a página esteve aberta e a armadilha (campo escondido "website") */
+const OPENED = Date.now();
+const human = (hp: string) => ({ hp, ms: String(Date.now() - OPENED) });
+
+export const subscribe = (email: string, source: string, hp = '') =>
   call({
+    ...human(hp),
     action: 'subscribe',
     email: normalise(email),
     consent: 'true',
@@ -86,8 +91,9 @@ export const codeCheck = (code: string, email: string, goods: number) =>
   call<CodeStatus>({ action: 'code', code: code.trim().toUpperCase(), email: normalise(email), goods: goods.toFixed(2) });
 
 /** Pedido de aviso quando um tamanho ou produto esgotado voltar. */
-export const notify = (email: string, product: string, size: string) =>
+export const notify = (email: string, product: string, size: string, hp = '') =>
   call<{ status: 'new' | 'exists' }>({
+    ...human(hp),
     action: 'notify',
     email: normalise(email),
     product,

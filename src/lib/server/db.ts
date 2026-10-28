@@ -190,6 +190,15 @@ create table if not exists push_subs (
   last_ok timestamptz
 );
 
+-- tentativas de subscrição (newsletter e avisos), para travar bots; o endereço de rede só fica como código diário
+create table if not exists signup_attempts (
+  id bigserial primary key,
+  ip_hash text not null,
+  email_domain text not null default '',
+  blocked text not null default '',
+  at timestamptz not null default now()
+);
+
 -- valores internos guardados pelo próprio CRM (ex.: chaves das notificações)
 create table if not exists settings (
   key text primary key,
