@@ -59,3 +59,39 @@ export async function spamReason(sql: any, request: Request, p: URLSearchParams,
   if (Math.random() < 0.05) await sql`delete from signup_attempts where at < now() - interval '30 days'`;
   return reason;
 }
+
+/** Texto de bot: palavras compridas com maiúsculas soltas no meio ("LrPsyfUDsavRrCPhwvgaAob") */
+export const gibberish = (s: string) =>
+  s.split(/[\s·,]+/).some((w) => w.length >= 12 && !/[0-9@.]/.test(w) && (w.slice(1).match(/[A-Z]/g) || []).length >= 3);
+
+/** NIF: português (9 algarismos) ou de outro país (letras do país e números); os bots escrevem letras ao acaso */
+const validNif = (nif: string) => {
+  const v = nif.replace(/[\s.-]/g, '').toUpperCase();
+  return !v || /^\d{9}$/.test(v) || (/^[A-Z]{0,2}[0-9A-Z]{6,14}$/.test(v) && (v.match(/\d/g) || []).length >= 6);
+};
+
+/** encomendas por endereço de rede numa hora */
+const ORDERS_PER_HOUR = 5;
+/** tempo mínimo na página do checkout antes de encomendar (ms) */
+const ORDER_MIN_MS = 3000;
+
+/** Encomenda de bot? Devolve o motivo, ou '' se parecer uma pessoa. */
+export async function orderSpamReason(sql: any, request: Request, body: any) {
+  const hash = ipHash(request);
+  const origin = request.headers.get('origin');
+  const c = body?.customer ?? {};
+  const texts = [c.nome, c.apelido, c.notas, c.morada, c.localidade, ...(Array.isArray(body?.lines) ? body.lines.map((l: any) => l?.custom) : [])]
+    .map((x) => String(x ?? ''));
+  let reason = '';
+  if (body?.hp) reason = 'armadilha';
+  else if (!body?.ms || Number(body.ms) < ORDER_MIN_MS) reason = 'rápido demais';
+  else if (origin && ![...hosts(), request.headers.get('x-forwarded-host'), request.headers.get('host')].includes(new URL(origin).host)) reason = 'outro site';
+  else if (texts.some(gibberish)) reason = 'texto ao acaso';
+  else if (!validNif(String(c.nif ?? ''))) reason = 'NIF inválido';
+  else {
+    const [{ n }] = await sql`select count(*)::int as n from signup_attempts where ip_hash = ${hash} and blocked like 'encomenda%' and at > now() - interval '1 hour'`;
+    if (n >= ORDERS_PER_HOUR) reason = 'demasiadas encomendas';
+  }
+  await sql`insert into signup_attempts (ip_hash, email_domain, blocked) values (${hash}, ${String(c.email ?? '').split('@')[1] || ''}, ${reason ? `encomenda: ${reason}` : 'encomenda'})`;
+  return reason;
+}

@@ -48,6 +48,8 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
           </div>
           <p class="co__hint" data-digital-note hidden>{t('co.digital')}</p>
           <input class="field" name="nif" placeholder={t('co.nif')} inputmode="numeric" />
+          <!-- armadilha para bots: invisível para as pessoas -->
+          <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <textarea class="field" name="notas" placeholder={t('co.notes')}></textarea>
         </fieldset>
         <fieldset>
@@ -253,6 +255,9 @@ const madeToMeasure = products.filter((p) => p.customizable).map((p) => p.id);
       gift: gift.code,
       utm: visitSource(),
       lang,
+      /* defesa contra bots: campo escondido e tempo na página */
+      hp: String(f.get('website') || ''),
+      ms: Math.round(performance.now()),
       customer: Object.fromEntries(['email', 'telefone', 'nome', 'apelido', 'nif', 'notas', 'morada', 'codigo_postal', 'localidade', 'pais'].map((k) => [k === 'telefone' ? 'phone' : k, String(f.get(k) ?? '')])),
     };
     let res: Response;

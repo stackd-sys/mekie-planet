@@ -26,6 +26,13 @@ export const POST: APIRoute = async ({ request, url }) => {
     const { createOrder, setStatus, sendOrderPaid } = await import('../../../lib/server/orders');
     const { hasStripe, createCheckout } = await import('../../../lib/server/stripe');
     const { db } = await import('../../../lib/server/db');
+    /* bots: nada é gravado e não se abre pagamento na Stripe (evita testes de cartões roubados) */
+    const { orderSpamReason } = await import('../../../lib/server/antispam');
+    const spam = await orderSpamReason(await db(), request, body);
+    if (spam) {
+      console.warn(`[Mekie] Encomenda travada (${spam})`);
+      return json({ error: t('err.save') }, 422);
+    }
     const stripe = hasStripe();
     /* com a Stripe, os emails saem só quando o pagamento é confirmado */
     const res = await createOrder(body, { emails: !stripe });
