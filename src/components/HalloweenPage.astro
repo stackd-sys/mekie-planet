@@ -1,0 +1,105 @@
+---
+/* Halloween na página inicial: a página toda passa a noite (fundo escuro, laranja de abóbora),
+   com teias fixas nos cantos do ecrã, morcegos e uma aranha que desce com o scroll.
+   O conteúdo e a ordem da página não mudam. Ligado em Base.astro, só na página inicial e só nas datas de season.ts. */
+const corner = (() => {
+  const size = 150, spokes = 6, rings = 5;
+  const angles = Array.from({ length: spokes }, (_, i) => (i / (spokes - 1)) * (Math.PI / 2));
+  const pt = (r: number, a: number) => [r * Math.cos(a), r * Math.sin(a)].map((n) => n.toFixed(1));
+  let d = angles.map((a) => `M0 0L${pt(size, a).join(' ')}`).join('');
+  for (let k = 1; k <= rings; k++) {
+    const r = (size * k) / (rings + 0.6);
+    angles.forEach((a, i) => {
+      if (i) d += `M${pt(r, angles[i - 1]).join(' ')}Q${pt(r * 0.86, (a + angles[i - 1]) / 2).join(' ')} ${pt(r, a).join(' ')}`;
+    });
+  }
+  return d;
+})();
+const bat = 'M50 30c-4-8-10-12-16-12 2 4 2 8 0 11-5-5-12-6-20-3 6 2 10 6 11 12 5-3 11-3 17 1 2-4 5-6 8-6s6 2 8 6c6-4 12-4 17-1 1-6 5-10 11-12-8-3-15-2-20 3-2-3-2-7 0-11-6 0-12 4-16 12z';
+---
+<div class="hwp" aria-hidden="true">
+  <svg class="hwp__web hwp__web--bl" viewBox="0 0 150 150"><path d={corner} /></svg>
+  <svg class="hwp__web hwp__web--br" viewBox="0 0 150 150"><path d={corner} /></svg>
+  <div class="hwp__spider" data-hw-spider>
+    <span class="hwp__thread"></span>
+    <svg viewBox="0 0 60 60" class="hwp__body">
+      <g stroke="#e9e1d6" stroke-width="2.2" fill="none" stroke-linecap="round">
+        <path d="M24 30 12 20 6 26M24 33 9 31 3 38M26 36 14 42 10 50M28 38 22 48 20 56" />
+        <path d="M36 30 48 20 54 26M36 33 51 31 57 38M34 36 46 42 50 50M32 38 38 48 40 56" />
+      </g>
+      <ellipse cx="30" cy="36" rx="8" ry="9" fill="#e9e1d6" />
+      <circle cx="30" cy="25" r="6" fill="#e9e1d6" />
+      <circle cx="27.6" cy="24" r="1.5" fill="#ff7a1a" /><circle cx="32.4" cy="24" r="1.5" fill="#ff7a1a" />
+    </svg>
+  </div>
+  {[1, 2, 3].map((n) => <svg class={`hwp__bat hwp__bat--${n}`} viewBox="0 0 100 50"><path d={bat} /></svg>)}
+  <div class="hwp__fog"></div>
+</div>
+
+<script is:inline>
+  /* a aranha desce à medida que se faz scroll */
+  (() => {
+    const s = document.querySelector('[data-hw-spider]');
+    if (!s || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    const move = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - innerHeight || 1;
+      s.style.setProperty('--drop', `${Math.min(1, scrollY / max) * 55}vh`);
+    };
+    addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(move); }, { passive: true });
+    move();
+  })();
+</script>
+
+<style is:global>
+  /* noite: as cores do site passam para escuro, com laranja de abóbora */
+  html[data-hw] {
+    --bg: #100c13;
+    --surface: #1b1520;
+    --ink: #f1ebe2;
+    --ink-soft: #a99fb0;
+    --line: #2f2636;
+    --pill: #ff7a1a;
+    --accent: #ff7a1a;
+    --accent-dark: #ff9548;
+    --sale: #ff7a1a;
+  }
+  html[data-hw], html[data-hw] body { background: #100c13; }
+  html[data-hw] .pill { color: #140b05; }
+  html[data-hw] .pill:hover { background: #ffa25c; }
+  html[data-hw] .pill--light { background: #f1ebe2; color: #140b05; }
+  html[data-hw] .pill--outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  html[data-hw] .pill--outline:hover { background: var(--ink); color: #140b05; }
+  /* logótipo preto passa a claro (no topo por cima da foto já fica branco) */
+  html[data-hw] .header.is-solid .header__logo img,
+  html[data-hw] .header--overlay:hover .header__logo img,
+  html[data-hw] .mnav__top img,
+  html[data-hw] .popup__logo { filter: invert(1); }
+  /* cartões de produto: as peças continuam em fundo claro, para as peças pretas se verem */
+  html[data-hw] .card__media { background: #e8e2da; border-radius: 2px; }
+  html[data-hw] .card__tag { color: #140b05; }
+  html[data-hw] .card__dots i.is-on { background: #140b05; }
+  html[data-hw] .section-title, html[data-hw] .card__title { text-shadow: 0 0 18px rgba(255, 122, 26, .25); }
+  html[data-hw] .perks, html[data-hw] .footer { background: #0b080e; }
+
+  .hwp { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
+  .hwp__web { position: absolute; width: clamp(90px, 12vw, 180px); height: auto; fill: none; stroke: rgba(241, 235, 226, .45); stroke-width: 1.1; }
+  .hwp__web--bl { left: 0; bottom: 0; transform: scaleY(-1); }
+  .hwp__web--br { right: 0; bottom: 0; transform: scale(-1, -1); }
+  .hwp__spider { position: absolute; top: 0; left: clamp(18px, 6vw, 90px); display: grid; justify-items: center; }
+  .hwp__thread { width: 1px; height: calc(70px + var(--drop, 0px)); background: rgba(241, 235, 226, .45); transition: height .25s linear; }
+  .hwp__body { width: 36px; margin-top: -3px; animation: hwpSway 4s ease-in-out infinite; transform-origin: top center; }
+  .hwp__bat { position: absolute; width: 44px; fill: #f1ebe2; opacity: 0; animation: hwpFly 16s linear infinite; }
+  .hwp__bat--1 { top: 30%; animation-delay: 3s; }
+  .hwp__bat--2 { top: 55%; width: 30px; animation-delay: 9s; animation-duration: 19s; }
+  .hwp__bat--3 { top: 75%; width: 36px; animation-delay: 14s; animation-duration: 13s; }
+  .hwp__bat path { transform-origin: 50px 25px; animation: hwpFlap .3s ease-in-out infinite alternate; }
+  .hwp__fog { position: absolute; left: -20%; right: -20%; bottom: -6%; height: 22%; background: radial-gradient(50% 60% at 30% 80%, rgba(200, 190, 215, .14), transparent 70%), radial-gradient(45% 55% at 75% 85%, rgba(200, 190, 215, .12), transparent 70%); filter: blur(16px); animation: hwpFog 20s ease-in-out infinite alternate; }
+  @keyframes hwpSway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+  @keyframes hwpFly { 0% { left: -8%; opacity: 0; transform: translateY(0); } 8% { opacity: .55; } 50% { transform: translateY(-50px); } 92% { opacity: .55; } 100% { left: 105%; opacity: 0; transform: translateY(10px); } }
+  @keyframes hwpFlap { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
+  @keyframes hwpFog { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+  @media (max-width: 700px) { .hwp__spider { left: auto; right: 14px; } .hwp__web { width: 80px; } }
+  @media (prefers-reduced-motion: reduce) { .hwp__bat { display: none; } .hwp__body, .hwp__fog { animation: none; } }
+</style>

@@ -7,6 +7,8 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import CartDrawer from '../components/CartDrawer.astro';
 import Popup from '../components/Popup.astro';
+import HalloweenPage from '../components/HalloweenPage.astro';
+import { halloweenActive } from '../data/season';
 import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
 import { cartInfo } from '../data/products';
@@ -25,6 +27,8 @@ interface Props {
   ogType?: 'website' | 'product' | 'article';
 }
 const lang = langOf(Astro.url.pathname);
+/* Halloween: só na página inicial (nas três línguas) */
+const hwPage = halloweenActive() && toPt(Astro.url.pathname) === '/';
 const t = useT(lang);
 /* Preço, stock e nomes atuais (na língua da página), para o carrinho guardado no browser se manter certo */
 const catalog = Object.fromEntries([...shop(lang).products.map((p) => [p.id, { ...cartInfo(p), href: href(lang, `/produto/${p.slug}/`) }]), ...giftCatalogFor(lang).map((g) => [g.id, { ...g, href: href(lang, g.href) }])]);
@@ -48,6 +52,7 @@ const ogImage = new URL(image, Astro.site);
 <!doctype html>
 <html
   lang={htmlLang[lang]}
+  data-hw={hwPage ? '' : undefined}
   data-free-shipping={site.freeShippingFrom}
   data-newsletter-endpoint={site.newsletterWebhook}
   data-welcome-code={site.welcomeCode}
@@ -96,6 +101,7 @@ const ogImage = new URL(image, Astro.site);
       <slot />
     </main>
     <Footer />
+    {hwPage && <HalloweenPage />}
     <CartDrawer />
     {popup && <Popup />}
     {(site.analytics.ga4 || site.analytics.metaPixel) && <CookieBanner />}
