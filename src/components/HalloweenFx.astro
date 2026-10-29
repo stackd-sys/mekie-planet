@@ -1,0 +1,96 @@
+---
+/* Efeitos de Halloween por cima de uma secção (teias, aranha, morcegos, nevoeiro).
+   Só decoração: não tapa cliques e fica parado para quem pede menos movimento. */
+interface Props { variant?: 'hero' | 'corner' }
+const { variant = 'hero' } = Astro.props;
+
+/* teia de canto: raios a partir do canto e fios curvos entre eles */
+function web(size: number, spokes = 7, rings = 6) {
+  const angles = Array.from({ length: spokes }, (_, i) => (i / (spokes - 1)) * (Math.PI / 2));
+  const pt = (r: number, a: number) => [r * Math.cos(a), r * Math.sin(a)];
+  let d = angles.map((a) => { const [x, y] = pt(size, a); return `M0 0L${x.toFixed(1)} ${y.toFixed(1)}`; }).join('');
+  for (let k = 1; k <= rings; k++) {
+    const r = (size * k) / (rings + 0.6);
+    angles.forEach((a, i) => {
+      if (!i) return;
+      const [x1, y1] = pt(r, angles[i - 1]);
+      const [x2, y2] = pt(r, a);
+      /* o fio cede um pouco para o canto, como numa teia de verdade */
+      const [cx, cy] = pt(r * 0.86, (a + angles[i - 1]) / 2);
+      d += `M${x1.toFixed(1)} ${y1.toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    });
+  }
+  return d;
+}
+const big = web(260);
+const small = web(150, 6, 5);
+const bat = 'M50 30c-4-8-10-12-16-12 2 4 2 8 0 11-5-5-12-6-20-3 6 2 10 6 11 12 5-3 11-3 17 1 2-4 5-6 8-6s6 2 8 6c6-4 12-4 17-1 1-6 5-10 11-12-8-3-15-2-20 3-2-3-2-7 0-11-6 0-12 4-16 12z';
+---
+{variant === 'hero' ? (
+  <div class="hfx" aria-hidden="true">
+    <div class="hfx__glow"></div>
+    <svg class="hfx__web hfx__web--tl" viewBox="0 0 260 260"><path d={big} /></svg>
+    <svg class="hfx__web hfx__web--tr" viewBox="0 0 260 260"><path d={big} /></svg>
+    <svg class="hfx__web hfx__web--bl" viewBox="0 0 150 150"><path d={small} /></svg>
+    <div class="hfx__spider">
+      <span class="hfx__thread"></span>
+      <svg viewBox="0 0 60 60" class="hfx__body">
+        <g stroke="#111" stroke-width="2.4" fill="none" stroke-linecap="round">
+          <path d="M24 30 12 20 6 26M24 33 9 31 3 38M26 36 14 42 10 50M28 38 22 48 20 56" />
+          <path d="M36 30 48 20 54 26M36 33 51 31 57 38M34 36 46 42 50 50M32 38 38 48 40 56" />
+        </g>
+        <ellipse cx="30" cy="36" rx="8" ry="9" fill="#111" />
+        <circle cx="30" cy="25" r="6" fill="#111" />
+        <circle cx="27.6" cy="24" r="1.4" fill="#ff7a1a" /><circle cx="32.4" cy="24" r="1.4" fill="#ff7a1a" />
+      </svg>
+    </div>
+    {[1, 2, 3, 4, 5].map((n) => (
+      <svg class={`hfx__bat hfx__bat--${n}`} viewBox="0 0 100 50"><path d={bat} /></svg>
+    ))}
+    <div class="hfx__fog"></div>
+  </div>
+) : (
+  <svg class="hfx-corner" viewBox="0 0 150 150" aria-hidden="true"><path d={small} /></svg>
+)}
+
+<style>
+  .hfx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+  .hfx__glow { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 115%, rgba(255, 96, 0, .38), transparent 55%), radial-gradient(130% 110% at 50% 40%, transparent 40%, rgba(8, 4, 14, .8)), rgba(28, 10, 44, .32); mix-blend-mode: multiply; }
+  .hfx::after { content: ''; position: absolute; inset: 0; background: radial-gradient(70% 50% at 50% 100%, rgba(255, 110, 20, .18), transparent 70%); }
+  .hfx__web { position: absolute; width: clamp(170px, 24vw, 340px); height: auto; fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: 1.1; filter: drop-shadow(0 0 1px rgba(0, 0, 0, .6)); }
+  .hfx__web--tl { top: 0; left: 0; }
+  .hfx__web--tr { top: 0; right: 0; transform: scaleX(-1); }
+  .hfx__web--bl { bottom: 0; left: 0; width: clamp(90px, 11vw, 170px); transform: scaleY(-1); opacity: .8; }
+
+  .hfx__spider { position: absolute; top: 0; right: clamp(70px, 11vw, 190px); display: grid; justify-items: center; animation: hfxDrop 7s ease-in-out infinite; transform-origin: top center; }
+  .hfx__thread { width: 1px; height: clamp(110px, 22vh, 220px); background: rgba(255, 255, 255, .6); }
+  .hfx__body { width: clamp(42px, 4.2vw, 64px); margin-top: -4px; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .35)); }
+
+  .hfx__bat { position: absolute; width: 56px; fill: #0d0b0a; opacity: 0; animation: hfxFly 13s linear infinite; }
+  .hfx__bat--1 { top: 22%; animation-delay: 1s; }
+  .hfx__bat--2 { top: 34%; width: 30px; animation-delay: 5.5s; animation-duration: 15s; }
+  .hfx__bat--3 { top: 16%; width: 40px; animation-delay: 9s; animation-duration: 11s; }
+  .hfx__bat--4 { top: 28%; width: 64px; animation-delay: 3s; animation-duration: 9s; }
+  .hfx__bat--5 { top: 12%; width: 26px; animation-delay: 7s; animation-duration: 17s; }
+  .hfx__bat path { transform-origin: 50px 25px; animation: hfxFlap .28s ease-in-out infinite alternate; }
+
+  .hfx__fog { position: absolute; left: -20%; right: -20%; bottom: -10%; height: 38%; background: radial-gradient(50% 60% at 30% 70%, rgba(230, 230, 235, .28), transparent 70%), radial-gradient(45% 55% at 75% 75%, rgba(230, 230, 235, .22), transparent 70%); filter: blur(14px); animation: hfxFog 18s ease-in-out infinite alternate; }
+
+  .hfx-corner { position: absolute; top: 0; right: 0; z-index: 2; width: clamp(90px, 12vw, 170px); height: auto; fill: none; stroke: rgba(255, 255, 255, .6); stroke-width: 1.1; transform: scaleX(-1); pointer-events: none; filter: drop-shadow(0 0 1px rgba(0, 0, 0, .6)); }
+
+  @keyframes hfxDrop { 0%, 100% { transform: translateY(-30px) rotate(-2deg); } 50% { transform: translateY(12px) rotate(2deg); } }
+  @keyframes hfxFly {
+    0% { left: -8%; opacity: 0; transform: translateY(0); }
+    8% { opacity: .9; }
+    50% { transform: translateY(-40px); }
+    92% { opacity: .9; }
+    100% { left: 105%; opacity: 0; transform: translateY(10px); }
+  }
+  @keyframes hfxFlap { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
+  @keyframes hfxFog { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hfx__spider, .hfx__bat, .hfx__bat path, .hfx__fog { animation: none; }
+    .hfx__bat { display: none; }
+  }
+</style>
