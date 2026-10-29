@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "astro",
   "regions": ["fra1"],
+  "crons": [
+    { "path": "/api/cron/promo", "schedule": "5 0 1 11 *" },
+    { "path": "/api/cron/promo", "schedule": "5 0 1 12 *" }
+  ],
   "trailingSlash": true,
   "redirects": [
     { "source": "/produto/sweatshirt-mekie-cru/", "destination": "/produto/crewneck-mekie-cru/", "statusCode": 301 },
