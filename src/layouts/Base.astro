@@ -27,8 +27,8 @@ interface Props {
   ogType?: 'website' | 'product' | 'article';
 }
 const lang = langOf(Astro.url.pathname);
-/* Halloween: só na página inicial (nas três línguas) */
-const hwPage = halloweenActive() && toPt(Astro.url.pathname) === '/';
+/* Halloween: o site todo em modo noite, nas três línguas */
+const hwPage = halloweenActive();
 const t = useT(lang);
 /* Preço, stock e nomes atuais (na língua da página), para o carrinho guardado no browser se manter certo */
 const catalog = Object.fromEntries([...shop(lang).products.map((p) => [p.id, { ...cartInfo(p), href: href(lang, `/produto/${p.slug}/`) }]), ...giftCatalogFor(lang).map((g) => [g.id, { ...g, href: href(lang, g.href) }])]);

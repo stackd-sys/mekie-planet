@@ -1,7 +1,7 @@
 ---
-/* Halloween na página inicial: a página toda passa a noite (fundo escuro, laranja de abóbora),
+/* Halloween no site: as páginas passam a noite (fundo escuro, laranja de abóbora),
    com teias fixas nos cantos do ecrã, morcegos e uma aranha que desce com o scroll.
-   O conteúdo e a ordem da página não mudam. Ligado em Base.astro, só na página inicial e só nas datas de season.ts. */
+   O conteúdo e a ordem da página não mudam. Ligado em Base.astro, em todas as páginas, só nas datas de season.ts. */
 const corner = (() => {
   const size = 150, spokes = 6, rings = 5;
   const angles = Array.from({ length: spokes }, (_, i) => (i / (spokes - 1)) * (Math.PI / 2));
@@ -74,11 +74,26 @@ const bat = 'M50 30c-4-8-10-12-16-12 2 4 2 8 0 11-5-5-12-6-20-3 6 2 10 6 11 12 5
   /* logótipo preto passa a claro (no topo por cima da foto já fica branco) */
   html[data-hw] .header.is-solid .header__logo img,
   html[data-hw] .header--overlay:hover .header__logo img,
+  html[data-hw] .header:not(.header--overlay) .header__logo img,
   html[data-hw] .mnav__top img,
   html[data-hw] .popup__logo { filter: invert(1); }
   /* cartões de produto: as peças continuam em fundo claro, para as peças pretas se verem */
   html[data-hw] .card__media { background: #e8e2da; border-radius: 2px; }
-  html[data-hw] .card__tag { color: #140b05; }
+  html[data-hw] .card__tag, html[data-hw] .quick { color: #140b05; }
+  /* fotos de produto recortadas (fundo transparente) ficam num fundo claro em todo o lado */
+  html[data-hw] .gallery__item:not(.gallery__item--cover), html[data-hw] .swatch img, html[data-hw] .line__img,
+  html[data-hw] .co__lines img, html[data-hw] .upsell__item img, html[data-hw] .sticky-buy img { background: #e8e2da; }
+  html[data-hw] .field { color-scheme: dark; }
+  /* destaques que eram preto com texto branco passam a abóbora com texto escuro */
+  html[data-hw] .chip.is-active,
+  html[data-hw] .gc__value input:checked + span,
+  html[data-hw] .quick__size:hover,
+  html[data-hw] .header__count,
+  html[data-hw] .co__lines .q,
+  html[data-hw] .code__copy,
+  html[data-hw] .ptab { background: #ff7a1a; border-color: #ff7a1a; color: #140b05; }
+  html[data-hw] .pill--light:hover { background: #ff7a1a; color: #140b05; }
+  html[data-hw] .header--overlay.is-solid, html[data-hw] .header:not(.header--overlay) { box-shadow: 0 1px 0 var(--line); }
   html[data-hw] .card__dots i.is-on { background: #140b05; }
   html[data-hw] .section-title, html[data-hw] .card__title { text-shadow: 0 0 18px rgba(255, 122, 26, .25); }
   html[data-hw] .perks, html[data-hw] .footer { background: #0b080e; }
