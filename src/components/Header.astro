@@ -4,6 +4,8 @@ import { site } from '../data/site';
 import { langOf, toPt, href, langs, langName, amount } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
+import { halloweenActive } from '../data/season';
+const hw = halloweenActive();
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const lang = langOf(Astro.url.pathname);
@@ -27,9 +29,9 @@ const switcher = langs.map((l) => {
   const to = href(l, path);
   return { lang: l, href: l !== 'pt' && to === path ? href(l, '/') : to };
 });
-const announcement = [t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
+const announcement = [...(hw ? [t('hw.announce')] : []), t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
 ---
-<div class="announce" role="region" aria-label={t('announce.label')}>
+<div class:list={['announce', { 'announce--hw': hw }]} role="region" aria-label={t('announce.label')}>
   <div class="announce__track">
     {announcement.map((text, i) => <p class:list={['announce__item eyebrow', { 'is-active': i === 0 }]}>{text}</p>)}
   </div>
@@ -136,6 +138,7 @@ const announcement = [t('announce.last'), t('announce.free', { n: amount(site.fr
     z-index: 60;
     overflow: hidden;
   }
+  .announce--hw { background: #ff7a1a; color: #120c06; }
   .announce__track { position: relative; height: 100%; }
   .announce__item {
     position: absolute; inset: 0;

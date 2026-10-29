@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Carousel from '../components/Carousel.astro';
+import { halloweenActive } from '../data/season';
 import Img from '../components/Img.astro';
 import { langOf, href } from '../i18n';
 import { useT } from '../i18n/ui';
@@ -10,6 +11,8 @@ const t = useT(lang);
 const h = (p: string) => href(lang, p);
 const { products, collections } = shop(lang);
 const colName = (slug: string) => collections.find((c) => c.slug === slug)!.name;
+/* Halloween: o destaque passa a ser a coleção Esqueleto (e a faixa dela sai de baixo, para não repetir as fotos) */
+const hw = halloweenActive();
 /* textos alternativos das fotos: [português, inglês, espanhol] */
 const alt = (a: [string, string, string]) => a[lang === 'en' ? 1 : lang === 'es' ? 2 : 0];
 
@@ -40,14 +43,29 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
 
 ---
 <Base overlayHeader popup>
-  <section class="hero">
-    <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt={t('hero.alt')} width="1536" height="1024" fetchpriority="high" />
-    <div class="hero__shade"></div>
-    <div class="hero__content">
-      <h1 class="hero__title">{t('hero.title')}</h1>
-      <a href={h('/loja/')} class="pill pill--light hero__cta">{t('hero.cta')}</a>
-    </div>
-  </section>
+  {hw ? (
+    <section class="hero hero--hw">
+      <div class="hw__media">
+        <Img src="/images/lookbook/esqueleto-black-hood.webp" sizes="(max-width: 700px) 100vw, 50vw" alt={t('hw.alt1')} width="1024" height="1536" fetchpriority="high" />
+        <Img src="/images/lookbook/esqueleto-duo.webp" sizes="50vw" alt={t('hw.alt2')} width="1024" height="1536" class="hw__second" />
+      </div>
+      <div class="hero__shade hw__shade"></div>
+      <div class="hero__content">
+        <p class="hw__kicker eyebrow">{t('hw.kicker')}</p>
+        <h1 class="hero__title">{t('hw.title')}</h1>
+        <a href={h('/colecoes/esqueleto/')} class="pill hero__cta hw__cta">{t('hw.cta')}</a>
+      </div>
+    </section>
+  ) : (
+    <section class="hero">
+      <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt={t('hero.alt')} width="1536" height="1024" fetchpriority="high" />
+      <div class="hero__shade"></div>
+      <div class="hero__content">
+        <h1 class="hero__title">{t('hero.title')}</h1>
+        <a href={h('/loja/')} class="pill pill--light hero__cta">{t('hero.cta')}</a>
+      </div>
+    </section>
+  )}
 
   <section class="section browse">
     <div class="container">
@@ -57,7 +75,7 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
     </div>
   </section>
 
-  {bands.map((b, i) => (
+  {bands.filter((b) => !(hw && b.href.includes('esqueleto'))).map((b, i, shown) => (
     <>
       <a href={b.href} class="band">
         {b.images.map((src, n) => (
@@ -69,7 +87,7 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
           <span class="pill pill--light">{t('collection.see')}</span>
         </div>
       </a>
-      {i === bands.length - 1 && (
+      {i === shown.length - 1 && (
         <section class="tiles section">
           <a href={h('/loja/')} class="tiles__grid" aria-label={t('shop.see')}>
             {tiles.map((t) => (
@@ -109,6 +127,19 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
   }
   .hero__cta { margin-top: 22px; min-height: 46px; padding: 0 32px; }
   @keyframes heroIn { from { opacity: 0; transform: translateY(14px); } }
+
+  /* Halloween */
+  .hero--hw { background: #0c0b0a; }
+  .hw__media { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+  .hw__media :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; filter: saturate(.85) contrast(1.05); }
+  .hw__shade { background: linear-gradient(180deg, rgba(12,11,10,.55) 0%, rgba(12,11,10,.1) 30%, rgba(30,12,0,.5) 58%, rgba(12,11,10,.9) 100%); }
+  .hw__kicker { margin: 0 0 10px; padding: 5px 12px; background: #ff7a1a; color: #120c06; font-size: 11px; font-weight: 600; letter-spacing: .3em; }
+  .hw__cta { background: #ff7a1a; color: #120c06; border-color: #ff7a1a; }
+  .hw__cta:hover { background: #fff; color: #120c06; border-color: #fff; }
+  @media (max-width: 700px) {
+    .hw__media { grid-template-columns: 1fr; }
+    .hw__media :global(.hw__second) { display: none; }
+  }
 
   .center { display: flex; justify-content: center; margin-top: 44px; }
 

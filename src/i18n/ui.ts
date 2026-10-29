@@ -153,6 +153,13 @@ const dict = {
   'collection.desc': ['Coleção {name} da Mekie Planet.', 'The Mekie Planet {name} collection.', 'Colección {name} de Mekie Planet.'],
   'collection.see': ['Ver coleção', 'View collection', 'Ver colección'],
 
+  'hw.announce': ['Halloween · O esqueleto Mekie saiu do armário', 'Halloween · The Mekie skeleton is out of the closet', 'Halloween · El esqueleto Mekie ha salido del armario'],
+  'hw.kicker': ['Halloween', 'Halloween', 'Halloween'],
+  'hw.title': ['Bro, o básico nunca falha. Nem no Halloween.', 'Bro, the basics never fail. Not even on Halloween.', 'Bro, lo básico nunca falla. Ni en Halloween.'],
+  'hw.cta': ['Ver coleção Esqueleto', 'Shop the Skeleton collection', 'Ver colección Esqueleto'],
+  'hw.alt1': ['Rapariga de capuz com o hoodie Esqueleto preto, junto ao lago', 'Girl with her hood up in the black Skeleton Hoodie, by the lake', 'Chica con la capucha puesta y la hoodie Esqueleto negra, junto al lago'],
+  'hw.alt2': ['Rapaz com o hoodie Esqueleto amarelo pastel e rapariga com crewneck preta Mekie', 'Guy in the pastel yellow Skeleton Hoodie and girl in a black Mekie crewneck', 'Chico con la hoodie Esqueleto amarillo pastel y chica con crewneck negra Mekie'],
+
   /* Página inicial */
   'hero.title': ['Bro, o básico nunca falha', 'Bro, the basics never fail', 'Bro, lo básico nunca falla'],
   'hero.cta': ['Comprar agora', 'Shop now', 'Comprar ahora'],
