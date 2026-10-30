@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request, url }) => {
       await sql`insert into order_events (order_id, text, by) values (${o.id}, ${`A Stripe não abriu a página de pagamento: ${(e as Error).message.replace(/^Stripe: /, '').slice(0, 200)}`}, 'site')`;
       return json({ error: t('err.payment') }, 502);
     }
-    await sql`update orders set stripe_session = ${session.id} where id = ${o.id}`;
+    await sql`update orders set stripe_session = ${session.id}, stripe_url = ${session.url} where id = ${o.id}`;
     return json({ ...res, payUrl: session.url });
   } catch (e) {
     console.error('[Mekie] Erro ao gravar encomenda:', e);

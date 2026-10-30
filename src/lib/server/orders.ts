@@ -266,7 +266,7 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
 /* ---------- Emails da encomenda ---------- */
 
 /** Linhas da encomenda para os emails. Os nomes estão guardados em português: traduzem-se para a língua do cliente. */
-const linesHtml = (o: any, lang: Lang = 'pt') => {
+export const linesHtml = (o: any, lang: Lang = 'pt') => {
   const t = serverT(lang);
   const eur = (v: unknown) => money(Number(v ?? 0), lang);
   return `<table style="width:100%;border-collapse:collapse;font-size:14px">${(o.lines as OrderLine[]).map((l) => `

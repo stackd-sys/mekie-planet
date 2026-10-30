@@ -63,6 +63,9 @@ alter table orders add column if not exists stripe_payment_intent text not null 
 alter table orders add column if not exists refunded numeric(10,2) not null default 0;
 /* língua em que o cliente comprou: os emails seguem nessa língua */
 alter table orders add column if not exists lang text not null default 'pt';
+/* checkout abandonado: endereço da página de pagamento e quando saiu o email de lembrete */
+alter table orders add column if not exists stripe_url text not null default '';
+alter table orders add column if not exists recovery_sent_at timestamptz;
 create index if not exists orders_created on orders (created_at desc);
 create index if not exists orders_email on orders (email);
 
