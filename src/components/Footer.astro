@@ -22,7 +22,7 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
 
 <footer class="footer">
   <div class="footer__grid container">
-    <div class="footer__col footer__news" data-newsletter-box>
+    <div class="footer__col footer__news" id="newsletter" data-newsletter-box>
       <p class="footer__title eyebrow">{t('news.title')}</p>
       <p class="footer__text eyebrow" data-before set:html={t('news.text', { n: site.welcomeDiscount })} />
       <form class="newsletter-form" data-newsletter="footer" novalidate>

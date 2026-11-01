@@ -12,6 +12,8 @@ export type Post = {
   image: string;
   imageAlt: string;
   body: PostBlock[];
+  /** Nota no topo do artigo a partir de uma data (AAAA-MM-DDTHH:MM:SSZ), por exemplo quando uma promoção acaba */
+  notice?: { from: string; html: string };
 };
 
 const posts: Post[] = [
@@ -22,6 +24,10 @@ const posts: Post[] = [
     date: '2026-11-01',
     image: '/images/lookbook/group-crop.webp',
     imageAlt: 'Grupo de amigos com hoodies e t-shirts Mekie',
+    notice: {
+      from: '2026-12-01T00:00:00Z',
+      html: 'A Black November 2026 já terminou e os preços deste artigo deixaram de estar em vigor. Vê os <a href="/loja/">preços atuais na loja</a> e <a href="#newsletter">subscreve a newsletter</a> para saberes primeiro da próxima promoção.',
+    },
     body: [
       'A Black Friday calha este ano a 27 de novembro. Só que um dia é pouco para pensar com calma no que queres comprar, e menos ainda para tratar das prendas de Natal sem stress. Por isso, na Mekie, a Black Friday dura o mês inteiro. Chamamos-lhe Black November e vai de 1 a 30 de novembro.',
       { h: 'O que está em promoção' },
