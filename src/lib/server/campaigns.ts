@@ -55,7 +55,7 @@ export const campaigns: Campaign[] = [
 
 const ix = (lang: Lang) => (lang === 'en' ? 1 : lang === 'es' ? 2 : 0);
 const utm = (id: string) => `utm_source=newsletter&utm_medium=email&utm_campaign=${id}`;
-const show: Record<Kind, string> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
+const show: Partial<Record<Kind, string>> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
 const imageOf = (k: Kind) => (products.find((p) => p.slug === show[k]) ?? products.find((p) => kindOf(p) === k))!.images[0];
 
 /** HTML do email numa língua; `leave` é o link pessoal para sair da newsletter */

@@ -3,7 +3,7 @@
    e o servidor confirma sempre os preços com a data do momento da compra.
    Para ver a promoção antes do tempo, em local: PROMO_PREVIEW=1 na construção do site. */
 
-export type Kind = 'hoodie' | 'crewneck' | 'tshirt' | 'cap';
+export type Kind = 'hoodie' | 'crewneck' | 'tshirt' | 'cap' | 'scrunchie';
 
 export type Pack = {
   id: string;
@@ -27,6 +27,10 @@ export const promo = {
     { id: 'hoodie-cap', parts: [['hoodie'], ['cap']], price: 80 },
     { id: 'tshirt-cap', parts: [['tshirt'], ['cap']], price: 65 },
   ] as Pack[],
+  /** desconto por volume: em cada `buy` peças deste tipo, a mais barata é oferecida */
+  volume: [
+    { id: 'scrunchie-4x3', kind: 'scrunchie', buy: 4 },
+  ] as { id: string; kind: Kind; buy: number }[],
 };
 
 const preview = () => {
@@ -49,6 +53,7 @@ export function kindOf(p: { slug: string; category: string }): Kind | undefined 
   if (p.category === 'hoodies-crewnecks') return p.slug.startsWith('crewneck') ? 'crewneck' : 'hoodie';
   if (p.category === 't-shirts') return 'tshirt';
   if (p.category === 'caps') return 'cap';
+  if (p.category === 'scrunchies') return 'scrunchie';
   return undefined;
 }
 
@@ -76,6 +81,20 @@ export function matchPacks(lines: PackLine[], active: boolean) {
       keys.add(a.key).add(b.key);
     }
     if (count) matches.push({ pack, count, discount: Math.round(discount * 100) / 100, keys: [...keys] });
+  }
+  /* volume (scrunchies: leva 4, paga 3): das peças que sobram, em cada grupo de 4 a mais barata é oferecida */
+  for (const v of promo.volume) {
+    const free = units.filter((u) => !u.used && u.kind === v.kind);
+    const groups = Math.floor(free.length / v.buy);
+    if (!groups) continue;
+    let discount = 0;
+    const keys = new Set<string>();
+    for (let g = 0; g < groups; g++) {
+      const group = free.slice(g * v.buy, (g + 1) * v.buy);
+      group.forEach((u) => { u.used = true; keys.add(u.key); });
+      discount += group[group.length - 1].price;
+    }
+    matches.push({ pack: { id: v.id, parts: [[v.kind], [v.kind]], price: 0 }, count: groups, discount: Math.round(discount * 100) / 100, keys: [...keys] });
   }
   const packedKeys = new Set(matches.flatMap((m) => m.keys));
   return { matches, discount: Math.round(matches.reduce((n, m) => n + m.discount, 0) * 100) / 100, packedKeys };

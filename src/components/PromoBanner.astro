@@ -13,7 +13,7 @@ const t = useT(lang);
 const h = (p: string) => href(lang, p);
 
 /* peça que representa cada tipo no cartão do pack, e o preço mais baixo desse tipo */
-const show: Record<Kind, string> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
+const show: Partial<Record<Kind, string>> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
 const imageOf = (k: Kind) => (products.find((p) => p.slug === show[k]) ?? products.find((p) => kindOf(p) === k))!.images[0];
 const packs = allPacks();
 ---
@@ -50,6 +50,7 @@ const packs = allPacks();
         </li>
       ))}
     </ul>
+    <p class="bf__vol"><a href={h('/loja/scrunchies/')}><strong>{t('bf.volLine')}</strong> <u>{t('bf.volSee')}</u></a></p>
     <p class="bf__note">{t('bf.auto')} {t('bf.until')}.</p>
   </div>
 </section>
@@ -82,6 +83,9 @@ const packs = allPacks();
   .bf__was { font-size: 12px; color: #9d9d98; }
   .bf__tag { position: absolute; top: 10px; right: 10px; font-size: 9.5px; padding: 4px 7px; background: #f5f5f4; color: #111; }
   .bf__see { margin-top: 8px; font-size: 10.5px; color: #fff; border-bottom: 1px solid #e10600; padding-bottom: 2px; }
+  .bf__vol { margin: 0; text-align: center; font-size: 15px; }
+  .bf__vol strong { color: #ff3b30; }
+  .bf__vol u { font-size: 12px; margin-left: 6px; }
   .bf__note { margin: 0; text-align: center; font-size: 12.5px; color: #9d9d98; }
   @media (max-width: 900px) { .bf__packs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 420px) { .bf__pack { padding: 18px 10px 16px; } .bf__price { font-size: 22px; } }

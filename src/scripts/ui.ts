@@ -1,3 +1,4 @@
+import { promo } from '../data/promo';
 import { cart, money, href, maxQty } from './cart';
 import * as newsletter from './newsletter';
 import { track, consentSettled } from './consent';
@@ -81,6 +82,15 @@ cart.subscribe((lines) => {
     packRow.hidden = packs.discount === 0;
     packRow.querySelector('[data-cart-packs-label]')!.textContent = packs.matches.map((m) => `${m.count > 1 ? `${m.count}× ` : ''}${tc(`pack.${m.pack.id}` as never)}`).join(', ');
     packRow.querySelector('[data-cart-packs-value]')!.textContent = `-${money(packs.discount)}`;
+  }
+  /* scrunchies leva 4, paga 3: diz quantos faltam para o próximo oferecido */
+  const nudge = document.querySelector<HTMLElement>('[data-cart-nudge]');
+  if (nudge) {
+    const vol = document.documentElement.dataset.promo === '1' ? promo.volume[0] : undefined;
+    const n = vol ? lines.reduce((k, l) => k + (l.kind === vol.kind ? l.qty : 0), 0) : 0;
+    const left = vol && n % vol.buy ? vol.buy - (n % vol.buy) : 0;
+    nudge.hidden = !left;
+    if (left) nudge.textContent = left === 1 ? tc('vol.more1') : tc('vol.moreN', { n: left });
   }
   const missing = Math.max(0, FREE_FROM - goods);
   const shipText = document.querySelector<HTMLElement>('[data-ship-text]');

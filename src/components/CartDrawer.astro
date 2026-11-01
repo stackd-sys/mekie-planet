@@ -49,6 +49,7 @@ import { promoActive } from '../data/promo';
 
     <footer class="drawer__foot" data-cart-foot>
       <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>{money(0, lang)}</strong></div>
+      <p class="drawer__nudge" data-cart-nudge hidden></p>
       <div class="drawer__row drawer__packs" data-cart-packs hidden><span data-cart-packs-label></span><strong data-cart-packs-value></strong></div>
       {promoActive() && <p class="drawer__bf">{t('bf.name')} · {t('bf.ends').toLowerCase()} <Countdown /></p>}
       <p class="drawer__note">{t('cart.note', { n: amount(site.freeShippingFrom, lang) })}</p>
@@ -61,6 +62,7 @@ import { promoActive } from '../data/promo';
 </div>
 
 <style>
+  .drawer__nudge { margin: 0 0 10px; padding: 8px 12px; border: 1.5px dashed #e10600; color: #e10600; font-size: 12.5px; font-weight: 600; text-align: center; }
   .drawer__bf { margin: 0 0 10px; padding: 8px 12px; background: #e10600; color: #fff; font-size: 12px; font-weight: 600; text-align: center; border-radius: 3px; }
   :global(.line__left) { color: #e10600; font-weight: 600; }
   .drawer__packs { font-size: 13px; color: var(--ink); }

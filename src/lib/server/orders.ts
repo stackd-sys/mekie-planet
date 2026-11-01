@@ -136,11 +136,13 @@ type RawLine = { id?: unknown; qty?: unknown; size?: unknown; custom?: unknown; 
 /** nomes dos packs (para a encomenda e o CRM, em português) */
 const PACK_NAMES: Record<string, string> = {
   'hoodie-tshirt': 'Pack Hoodie + T-shirt', 'crewneck-tshirt': 'Pack Crewneck + T-shirt', 'hoodie-cap': 'Pack Hoodie + Cap', 'tshirt-cap': 'Pack T-shirt + Cap',
+  'scrunchie-4x3': 'Scrunchies: leva 4, paga 3',
 };
 
 /** nome do pack na língua do cliente (guardado em português) */
 const packLabelIn = (label: string, lang: Lang) =>
-  lang === 'en' ? label.replace(/\bPack\b/g, 'Bundle') : label;
+  lang === 'en' ? label.replace(/\bPack\b/g, 'Bundle').replace('leva 4, paga 3', 'buy 3, get 1 free')
+  : lang === 'es' ? label.replace('leva 4, paga 3', 'llévate 4, paga 3') : label;
 
 /** linha de cartão presente */
 const isGiftLine = (l: OrderLine) => giftCatalog.some((g) => g.id === l.id);
