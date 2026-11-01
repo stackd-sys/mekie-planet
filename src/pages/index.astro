@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import Carousel from '../components/Carousel.astro';
 import Img from '../components/Img.astro';
 import PromoBanner from '../components/PromoBanner.astro';
-import { promoActive } from '../data/promo';
+import { promoActive, promo, kindOf } from '../data/promo';
+import { isSoldOut } from '../data/products';
 import HalloweenFx from '../components/HalloweenFx.astro';
 import { halloweenActive } from '../data/season';
 /* Halloween: a página fica igual, só com efeitos por cima (teias, aranha, morcegos, nevoeiro) */
@@ -42,7 +43,18 @@ const bands = [
 ];
 /* Um produto de cada modelo: um cap, umas meias, um scrunchie, uma t-shirt e um hoodie de cada bordado */
 const family = (p: (typeof products)[number]) => (['caps', 'meias', 'scrunchies', 'tote-bag'].includes(p.category) ? p.category : p.name);
-const featured = products.filter((p, i) => products.findIndex((o) => family(o) === family(p)) === i);
+/* de cada modelo mostra-se uma cor com stock, se houver */
+const picks = products.filter((p, i) => products.findIndex((o) => family(o) === family(p)) === i)
+  .map((p) => products.find((o) => family(o) === family(p) && !isSoldOut(o)) ?? p);
+/* ordem: primeiro as peças em promoção, depois as restantes e no fim as esgotadas (dentro de cada grupo fica a ordem da loja) */
+const volumeKinds = promoActive() ? promo.volume.map((v) => v.kind) : [];
+const rank = (p: (typeof products)[number]) => {
+  if (isSoldOut(p)) return 3;
+  if (p.price < p.regularPrice) return 0;
+  const k = kindOf(p);
+  return k && volumeKinds.includes(k) ? 1 : 2;
+};
+const featured = picks.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).map((x) => x.p);
 
 ---
 <Base overlayHeader popup>
