@@ -1,0 +1,197 @@
+---
+/* Página de um pack da Black November: o cliente escolhe as duas peças (modelo, cor e tamanho)
+   e junta-as ao carrinho de uma vez. O preço do pack aplica-se sozinho no carrinho (promo.ts, matchPacks).
+   Só existe enquanto a promoção está ativa. */
+import Base from '../../layouts/Base.astro';
+import Img from '../../components/Img.astro';
+import Countdown from '../../components/Countdown.astro';
+import { cartInfo, isSoldOut } from '../../data/products';
+import { promo, promoActive, kindOf, type Kind } from '../../data/promo';
+import { packInfo, packs } from '../../data/packs';
+import { langOf, href, money, amount } from '../../i18n';
+import { useT } from '../../i18n/ui';
+import { shop } from '../../i18n/data';
+
+export function getStaticPaths() {
+  return promoActive() ? promo.packs.map((p) => ({ params: { id: p.id }, props: { id: p.id } })) : [];
+}
+interface Props { id: string }
+const lang = langOf(Astro.url.pathname);
+const t = useT(lang);
+const h = (path: string) => href(lang, path);
+const pack = packInfo(promo.packs.find((p) => p.id === Astro.props.id)!);
+const title = t(`pack.${pack.id}` as never);
+
+/* peças que podem entrar em cada lado do pack: com stock e sem personalização */
+const options = (k: Kind) => shop(lang).products
+  .filter((p) => kindOf(p) === k && !isSoldOut(p) && !p.customizable)
+  .map((p) => ({ ...cartInfo(p), name: p.name, color: p.color, href: h(`/produto/${p.slug}/`), sizes: p.sizes ?? [], regular: p.regularPrice }));
+const steps = [pack.a, pack.b].map((k) => ({ kind: k, items: options(k) }));
+const others = packs().filter((p) => p.id !== pack.id);
+---
+<Base title={`${title} · Black November`} description={t('pk.lead', { price: amount(pack.price, lang) })} image={steps[0].items[0]?.image}>
+  <div class="pk container" data-pack={JSON.stringify(steps.map((s) => s.items))} data-missing={t('pk.missing')} data-added={t('pk.added')} data-add={t('pk.add')} data-size={t('pk.size')}>
+    <div class="pk__visual" aria-hidden="true">
+      {steps.map((s, i) => (
+        <figure class:list={['pk__fig', `pk__fig--${i}`]}>
+          {s.items[0] && <Img src={s.items[0].image} alt="" width="800" height="800" sizes="(max-width: 900px) 60vw, 30vw" loading="eager" data-pk-img={i} />}
+        </figure>
+      ))}
+      <span class="pk__badge">-{pack.pct}%</span>
+    </div>
+
+    <div class="pk__info">
+      <p class="eyebrow pk__kicker">Black November</p>
+      <h1 class="pk__title">{title}</h1>
+      <p class="price pk__price">
+        <del>{money(pack.normal, lang)}</del>
+        <ins>{money(pack.price, lang)}</ins>
+        <span class="pk__off">-{pack.pct}%</span>
+      </p>
+      <div class="pk__box">
+        <p>{t('pk.lead', { price: amount(pack.price, lang) })}</p>
+        <p class="pk__ends">{t('bf.ends')} <Countdown /></p>
+      </div>
+
+      <form class="pk__form" data-pk-form novalidate>
+        {steps.map((s, i) => (
+          <fieldset class="pk__step" data-step={i}>
+            <legend class="pk__legend"><span class="pk__n">{i + 1}</span>{t(`pk.pick.${s.kind}` as never)}</legend>
+            <div class="pk__opts">
+              {s.items.map((o, j) => (
+                <label class="pk__opt" title={`${o.name} · ${o.color}`}>
+                  <input type="radio" name={`item${i}`} value={j} checked={j === 0} />
+                  <Img src={o.image} alt="" width="200" height="200" sizes="96px" loading="lazy" />
+                  <span class="pk__optname">{o.name}</span>
+                  <span class="pk__optcolor">{o.color}</span>
+                </label>
+              ))}
+            </div>
+            <div class="pk__sizes" data-sizes={i}></div>
+          </fieldset>
+        ))}
+        <p class="pk__error" data-pk-error role="alert" hidden></p>
+        <button type="submit" class="pill pill--accent pill--block pk__btn">{t('pk.add')}</button>
+        <p class="pk__note">{t('bf.auto')} {t('p.tax')}</p>
+      </form>
+    </div>
+  </div>
+
+  <section class="pk-more container">
+    <h2 class="section-title">{t('pk.others')}</h2>
+    <ul class="pk-more__list">
+      {others.map((o) => (
+        <li><a href={h(`/pack/${o.id}/`)}><span>{t(`pack.${o.id}` as never)}</span><strong>{amount(o.price, lang)}</strong><small>-{o.pct}%</small></a></li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<script>
+  import { cart } from '../../scripts/cart';
+  import { openCart } from '../../scripts/ui';
+
+  const root = document.querySelector<HTMLElement>('[data-pack]')!;
+  const steps = JSON.parse(root.dataset.pack!) as any[][];
+  const form = root.querySelector<HTMLFormElement>('[data-pk-form]')!;
+  const error = root.querySelector<HTMLElement>('[data-pk-error]')!;
+  const btn = form.querySelector<HTMLButtonElement>('.pk__btn')!;
+  const picked = (i: number) => steps[i][Number((form.querySelector(`[name=item${i}]:checked`) as HTMLInputElement)?.value ?? 0)];
+
+  /* tamanhos da peça escolhida; os esgotados ficam riscados */
+  const renderSizes = (i: number) => {
+    const o = picked(i);
+    const box = root.querySelector<HTMLElement>(`[data-sizes="${i}"]`)!;
+    box.innerHTML = o.sizes.length
+      ? `<p class="pk__sizelabel">${root.dataset.size}</p>` + o.sizes.map((s: string) => {
+        const left = o.sizeStock ? o.sizeStock[s] ?? 0 : 1;
+        return `<label class="size${left ? '' : ' is-out'}"><input type="radio" name="size${i}" value="${s}"${left ? '' : ' disabled'} /><span>${s}</span></label>`;
+      }).join('')
+      : '';
+    const img = root.querySelector<HTMLImageElement>(`[data-pk-img="${i}"]`);
+    if (img) { img.src = o.image; img.removeAttribute('srcset'); }
+  };
+  steps.forEach((_, i) => renderSizes(i));
+  form.addEventListener('change', (e) => {
+    const t = e.target as HTMLInputElement;
+    const m = t.name.match(/^item(\d)$/);
+    if (m) renderSizes(Number(m[1]));
+    error.hidden = true;
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const lines = steps.map((_, i) => {
+      const o = picked(i);
+      const size = (form.querySelector(`[name=size${i}]:checked`) as HTMLInputElement | null)?.value;
+      return { o, size, ok: !o.sizes.length || Boolean(size) };
+    });
+    if (lines.some((l) => !l.ok)) {
+      error.textContent = root.dataset.missing!;
+      error.hidden = false;
+      return;
+    }
+    for (const { o, size } of lines) {
+      const { sizes, regular, ...info } = o;
+      cart.add({ ...info, ...(size ? { size } : {}) }, 1);
+    }
+    btn.textContent = root.dataset.added!;
+    setTimeout(() => (btn.textContent = root.dataset.add!), 1600);
+    openCart();
+  });
+</script>
+
+<style>
+  .pk { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); padding-top: clamp(24px, 4vw, 56px); padding-bottom: clamp(40px, 6vw, 80px); align-items: start; }
+  .pk__visual { position: sticky; top: 120px; aspect-ratio: 1.15 / 1; background: #111; border-radius: 4px; overflow: hidden; }
+  .pk__fig { position: absolute; margin: 0; width: 56%; aspect-ratio: 1; background: #e9e8e4; border-radius: 4px; overflow: hidden; }
+  .pk__fig :global(img) { width: 100%; height: 100%; object-fit: contain; }
+  .pk__fig--0 { left: 6%; top: 8%; }
+  .pk__fig--1 { right: 6%; bottom: 8%; box-shadow: -10px 10px 30px rgba(0, 0, 0, .45); }
+  .pk__badge { position: absolute; top: 14px; right: 14px; padding: 8px 14px; background: #e10600; color: #fff; font-family: var(--font-display); font-size: clamp(20px, 2.4vw, 30px); font-weight: 600; transform: rotate(4deg); border-radius: 3px; }
+
+  .pk__kicker { margin: 0 0 8px; color: #e10600; font-weight: 700; font-size: 11px; }
+  .pk__title { margin: 0; font-size: clamp(22px, 2.4vw, 30px); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+  .pk__price { margin: 14px 0 16px; display: flex; gap: 10px; align-items: center; font-size: 22px; }
+  .pk__price ins { color: #e10600; font-weight: 600; }
+  .pk__off { font-size: 11px; letter-spacing: .1em; background: #e10600; color: #fff; padding: 4px 8px; border-radius: 999px; }
+  .pk__box { padding: 12px 14px; background: #e10600; color: #fff; font-size: 13.5px; line-height: 1.5; border-radius: 3px; }
+  .pk__box p { margin: 0; }
+  .pk__ends { font-weight: 700; margin-top: 4px !important; }
+
+  .pk__form { margin-top: 26px; display: grid; gap: 22px; }
+  .pk__step { border: 0; margin: 0; padding: 18px 0 0; border-top: 1px solid var(--line); min-width: 0; }
+  .pk__legend { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; padding: 0; margin-bottom: 12px; }
+  .pk__n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--bg); font-size: 12px; }
+  .pk__opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .pk__opt { display: grid; gap: 3px; cursor: pointer; font-size: 11.5px; line-height: 1.3; }
+  .pk__opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .pk__opt :global(img) { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; transition: border-color .2s; }
+  .pk__opt:has(input:checked) :global(img) { border: 2px solid #e10600; }
+  .pk__opt:has(input:focus-visible) :global(img) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .pk__optname { font-weight: 600; }
+  .pk__optcolor { color: var(--ink-soft); }
+  .pk__sizes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+  .pk__sizes :global(.size) { position: relative; }
+  .pk__sizes :global(.size input) { position: absolute; opacity: 0; pointer-events: none; }
+  .pk__sizes :global(.size span) { display: grid; place-items: center; min-width: 46px; height: 42px; padding: 0 10px; border: 1px solid var(--line); font-size: 12px; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+  .pk__sizes :global(.size span:hover) { border-color: var(--ink); }
+  .pk__sizes :global(.size input:checked + span) { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .pk__sizes :global(.size.is-out span) { color: #b5b5b5; text-decoration: line-through; cursor: not-allowed; }
+  .pk__sizes :global(.pk__sizelabel) { width: 100%; margin: 0; font-size: 13px; }
+  .pk__error { margin: 0; color: #e10600; font-size: 13px; font-weight: 600; }
+  .pk__note { margin: 0; font-size: 12px; color: var(--ink-soft); text-align: center; }
+
+  .pk-more { padding-bottom: clamp(48px, 7vw, 96px); }
+  .pk-more__list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .pk-more__list a { display: grid; gap: 4px; justify-items: center; padding: 20px 12px; background: #111; color: #f5f5f4; text-align: center; border-radius: 3px; border: 1px solid #111; transition: border-color .2s; }
+  .pk-more__list a:hover { border-color: #e10600; }
+  .pk-more__list strong { font-family: var(--font-display); font-size: 24px; color: #ff3b30; }
+  .pk-more__list small { font-size: 11px; font-weight: 700; background: #e10600; color: #fff; padding: 2px 7px; }
+
+  @media (max-width: 900px) {
+    .pk { grid-template-columns: 1fr; }
+    .pk__visual { position: relative; top: 0; }
+    .pk-more__list { grid-template-columns: 1fr; }
+  }
+</style>

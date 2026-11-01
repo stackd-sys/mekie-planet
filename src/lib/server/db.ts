@@ -66,6 +66,13 @@ alter table orders add column if not exists lang text not null default 'pt';
 /* packs da promoção: desconto e nome dos packs */
 alter table orders add column if not exists pack_discount numeric(10,2) not null default 0;
 alter table orders add column if not exists pack_label text not null default '';
+/* campanhas da newsletter: quem já recebeu cada uma (para nunca sair duas vezes) */
+create table if not exists campaign_sends (
+  campaign text not null,
+  email text not null,
+  sent_at timestamptz not null default now(),
+  primary key (campaign, email)
+);
 /* checkout abandonado: endereço da página de pagamento e quando saiu o email de lembrete */
 alter table orders add column if not exists stripe_url text not null default '';
 alter table orders add column if not exists recovery_sent_at timestamptz;

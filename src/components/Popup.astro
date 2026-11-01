@@ -1,11 +1,15 @@
 ---
 import Icon from './Icon.astro';
+import Countdown from './Countdown.astro';
 import { site } from '../data/site';
 import { langOf, href } from '../i18n';
 import { useT } from '../i18n/ui';
+import { promoActive } from '../data/promo';
 const lang = langOf(Astro.url.pathname);
 const t = useT(lang);
 const n = site.welcomeDiscount;
+/* Black November: o popup fala da promoção (o código de boas-vindas não se junta aos descontos) */
+const bf = promoActive();
 ---
 <div class="popup" data-popup hidden>
   <div class="popup__backdrop" data-popup-close></div>
@@ -14,8 +18,9 @@ const n = site.welcomeDiscount;
       <img src="/images/site/logo.png" alt="Mekie" width="160" height="53" class="popup__logo" />
 
       <div data-before>
-        <p id="popup-title" class="popup__title">{t('popup.title', { n })}</p>
-        <p class="popup__sub">{t('popup.sub')}</p>
+        {bf && <p class="popup__kicker eyebrow">{t('bf.ends')} <Countdown /></p>}
+        <p id="popup-title" class:list={['popup__title', { 'popup__title--bf': bf }]}>{bf ? t('popup.bfTitle') : t('popup.title', { n })}</p>
+        <p class="popup__sub">{bf ? t('popup.bfSub', { n }) : t('popup.sub')}</p>
       </div>
 
       <form class="popup__form" data-newsletter="popup" novalidate>
@@ -27,7 +32,7 @@ const n = site.welcomeDiscount;
           <input type="checkbox" name="consent" value="yes" required />
           <span>{t('popup.consent')} <a href={href(lang, '/politica-de-privacidade/')} class="link-underline">{t('popup.privacy')}</a></span>
         </label>
-        <button class="pill pill--accent pill--block" type="submit">{t('popup.cta', { n })}</button>
+        <button class="pill pill--accent pill--block" type="submit">{bf ? t('popup.bfCta') : t('popup.cta', { n })}</button>
         <p class="popup__msg" role="alert" data-msg hidden></p>
       </form>
 
@@ -38,7 +43,7 @@ const n = site.welcomeDiscount;
         <button type="button" class="pill pill--block" data-popup-close>{t('popup.keep')}</button>
       </div>
 
-      <p class="popup__fine">{t('popup.fine')}</p>
+      <p class="popup__fine">{bf ? t('popup.bfFine') : t('popup.fine')}</p>
     </div>
     <div class="popup__media">
       <img src="/images/lookbook/mushrooms-duo-sm.webp" alt="" width="540" height="810" loading="lazy" />
@@ -47,12 +52,16 @@ const n = site.welcomeDiscount;
   </div>
 </div>
 
-<div class="ptab" data-popup-tab hidden>
-  <button type="button" class="ptab__open eyebrow" data-popup-open>{t('popup.tab', { n })}</button>
+<div class:list={['ptab', { 'ptab--bf': bf }]} data-popup-tab hidden>
+  <button type="button" class="ptab__open eyebrow" data-popup-open>{bf ? 'Black November' : t('popup.tab', { n })}</button>
   <button type="button" class="ptab__x" aria-label={t('popup.hide')} data-tab-dismiss><Icon name="close" size={12} /></button>
 </div>
 
 <style>
+  .popup__kicker { margin: 0 0 8px; color: #e10600; font-weight: 700; font-size: 10.5px; }
+  .popup__title--bf { color: #e10600; }
+  .ptab--bf { background: #e10600 !important; color: #fff !important; }
+  .ptab--bf button { color: #fff; }
   .popup { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; }
   .popup[hidden] { display: none; }
   .popup__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); animation: fadeP .3s; }

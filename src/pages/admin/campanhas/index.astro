@@ -1,0 +1,80 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { date } from '../../../lib/server/format';
+import { postForm, done, str } from '../../../lib/server/admin';
+import { campaigns, campaignHtml, campaignStats, sendCampaign, sendCampaignTest } from '../../../lib/server/campaigns';
+import { site } from '../../../data/site';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  const id = str(f, 'id');
+  const action = str(f, 'action');
+  if (action === 'test') {
+    const to = Astro.locals.admin || site.inbox;
+    const lang = (['pt', 'en', 'es'] as const).find((l) => l === str(f, 'lang')) ?? 'pt';
+    return (await sendCampaignTest(id, to, lang))
+      ? done(Astro, `Email de teste enviado para ${to}.`)
+      : done(Astro, 'O teste não saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
+  }
+  if (action === 'send' && str(f, 'confirm') === 'ENVIAR') {
+    const { sent, total } = await sendCampaign(sql, id);
+    if (!total) return done(Astro, 'Não há ninguém por enviar: todos os subscritores já receberam esta campanha.');
+    return sent === total
+      ? done(Astro, `Campanha enviada a ${sent} ${sent === 1 ? 'pessoa' : 'pessoas'}.`)
+      : done(Astro, `Saíram ${sent} de ${total}. Os restantes ficam por enviar; podes tentar outra vez.`, undefined, true);
+  }
+  if (action === 'send') return done(Astro, 'Para enviar, escreve ENVIAR na caixa de confirmação.', undefined, true);
+}
+const stats = await campaignStats(sql);
+const [{ active }] = await sql<any[]>`select count(*)::int as active from subscribers where unsubscribed_at is null`;
+const today = new Date().toISOString().slice(0, 10);
+const view = Astro.url.searchParams.get('ver') ?? '';
+const lang = (['pt', 'en', 'es'] as const).find((l) => l === Astro.url.searchParams.get('l')) ?? 'pt';
+const preview = campaigns.find((c) => c.id === view);
+---
+<Admin title="Campanhas">
+  <h1>Campanhas</h1>
+  <p class="sub">Emails para a newsletter, já escritos e traduzidos. Cada subscritor recebe na sua língua e nunca recebe a mesma campanha duas vezes. Subscritores ativos: <strong>{active}</strong>.</p>
+  <Flash />
+
+  {campaigns.map((c) => {
+    const s = stats[c.id];
+    const due = c.date <= today;
+    return (
+      <section class="card" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+          <h2 style="margin:0">{c.label}</h2>
+          <span class:list={['muted']}>Enviar a {date(new Date(`${c.date}T09:00:00Z`))}{s ? ` · já enviada a ${s.n} (última vez ${date(s.last, true)})` : due ? ' · por enviar' : ''}</span>
+        </div>
+        <p style="margin:8px 0 0"><strong>Assunto:</strong> {c.subject[0]}</p>
+        <div class="bar" style="margin:14px 0 0;flex-wrap:wrap">
+          <a class="btn ghost" href={`?ver=${c.id}#ver`}>Ver o email</a>
+          <form method="post" class="inline">
+            <input type="hidden" name="action" value="test" /><input type="hidden" name="id" value={c.id} />
+            <select name="lang" aria-label="Língua do teste"><option value="pt">PT</option><option value="en">EN</option><option value="es">ES</option></select>
+            <button class="btn ghost">Enviar teste para mim</button>
+          </form>
+          <form method="post" class="inline" onsubmit="return confirm('Enviar esta campanha a todos os subscritores?')">
+            <input type="hidden" name="action" value="send" /><input type="hidden" name="id" value={c.id} />
+            <input name="confirm" placeholder="Escreve ENVIAR" autocomplete="off" style="width:130px" />
+            <button class="btn">Enviar a todos</button>
+          </form>
+        </div>
+      </section>
+    );
+  })}
+
+  {preview && (
+    <section class="card" id="ver" style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <h2 style="margin:0">{preview.label}</h2>
+        <span>{(['pt', 'en', 'es'] as const).map((l) => <a href={`?ver=${preview.id}&l=${l}#ver`} style={`margin-left:10px;${l === lang ? 'font-weight:700' : ''}`}>{l.toUpperCase()}</a>)}</span>
+      </div>
+      <iframe title="Pré-visualização" srcdoc={campaignHtml(preview, lang, '#')} style="width:100%;height:1100px;border:1px solid var(--line);margin-top:12px;background:#fff"></iframe>
+    </section>
+  )}
+</Admin>

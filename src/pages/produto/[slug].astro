@@ -49,7 +49,7 @@ const kind = kindOf(p);
 const packHints = promoActive() && kind && !soldOut
   ? promo.packs.flatMap((pk) => {
     const other = pk.parts[0].includes(kind) ? pk.parts[1][0] : pk.parts[1].includes(kind) ? pk.parts[0][0] : null;
-    return other ? [t('bf.packHint', { other: t(`bf.any.${other}` as never), price: amount(pk.price, lang) })] : [];
+    return other ? [{ text: t('bf.packHint', { other: t(`bf.any.${other}` as never), price: amount(pk.price, lang) }), url: h(`/pack/${pk.id}/`) }] : [];
   })
   : [];
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
@@ -210,7 +210,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       )}
 
       {packHints.length > 0 && (
-        <ul class="packs-hint">{packHints.map((x) => <li>{x}</li>)}</ul>
+        <ul class="packs-hint">{packHints.map((x) => <li><a href={x.url}>{x.text} <u>{t('pk.see')}</u></a></li>)}</ul>
       )}
 
       <ul class="pay" aria-label={t('payments')}>

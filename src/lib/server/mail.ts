@@ -35,3 +35,29 @@ export async function sendMail(to: string, subject: string, html: string, replyT
   }
   return true;
 }
+
+/** Vários emails de uma vez (até 100 por pedido à Resend). Devolve quantos saíram. */
+export async function sendBatch(mails: { to: string; subject: string; html: string; unsubscribe?: string }[]) {
+  if (!hasMail()) {
+    console.warn(`[Mekie] ${mails.length} emails não enviados (falta RESEND_API_KEY)`);
+    return 0;
+  }
+  let sent = 0;
+  for (let i = 0; i < mails.length; i += 100) {
+    const chunk = mails.slice(i, i + 100);
+    const res = await fetch('https://api.resend.com/emails/batch', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(chunk.map((m) => ({
+        from: FROM(), to: [m.to], subject: m.subject, html: m.html, reply_to: site.inbox,
+        ...(m.unsubscribe ? { headers: { 'List-Unsubscribe': `<${m.unsubscribe}>` } } : {}),
+      }))),
+    });
+    if (!res.ok) {
+      console.error('[Mekie] Resend (lote) respondeu', res.status, await res.text().catch(() => ''));
+      break;
+    }
+    sent += chunk.length;
+  }
+  return sent;
+}

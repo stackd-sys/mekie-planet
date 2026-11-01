@@ -13,6 +13,8 @@ import Faq from '../perguntas-frequentes.astro';
 import Checkout from '../checkout.astro';
 import Received from '../encomenda-recebida.astro';
 import Legal from '../[legal].astro';
+import PackPage from '../pack/[id].astro';
+import { promo, promoActive } from '../../data/promo';
 import { categories, products, collections } from '../../data/products';
 import { legalPages } from '../../data/legal';
 import { href } from '../../i18n';
@@ -31,6 +33,7 @@ export function getStaticPaths() {
     ['/perguntas-frequentes/', 'faq', {}],
     ['/checkout/', 'checkout', {}],
     ['/encomenda-recebida/', 'received', {}],
+    ...(promoActive() ? promo.packs.map((p): [string, string, Record<string, unknown>] => [`/pack/${p.id}/`, 'pack', { id: p.id }]) : []),
     ...legalPages.map((p, index): [string, string, Record<string, unknown>] => [`/${p.slug}/`, 'legal', { index }]),
   ];
   return (['en', 'es'] as const).flatMap((lang) =>
@@ -55,3 +58,4 @@ const { page, props } = Astro.props as { page: string; props: any };
 {page === 'checkout' && <Checkout />}
 {page === 'received' && <Received />}
 {page === 'legal' && <Legal {...props} />}
+{page === 'pack' && <PackPage {...props} />}

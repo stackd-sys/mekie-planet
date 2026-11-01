@@ -74,6 +74,7 @@ const dict = {
   'm.abandon': ['Vimos que começaste uma encomenda na Mekie mas o pagamento ficou por concluir. Guardámos tudo para ti:', 'We noticed you started an order at Mekie but didn’t finish paying. We saved everything for you:', 'Vimos que empezaste un pedido en Mekie pero no terminaste el pago. Te lo hemos guardado todo:'],
   'm.abandonBtn': ['CONCLUIR A COMPRA', 'COMPLETE MY ORDER', 'TERMINAR LA COMPRA'],
   'm.abandonTitle': ['{name}, ficou a meio', '{name}, you left this behind', '{name}, se te ha quedado a medias'],
+  'm.abandonPromo': ['Os preços Black November acabam a 30 de novembro.', 'Black November prices end on 30 November.', 'Los precios Black November terminan el 30 de noviembre.'],
   'm.abandonLink': ['O link para pagar fica ativo até amanhã.', 'The payment link stays active until tomorrow.', 'El enlace de pago sigue activo hasta mañana.'],
   'm.perkFree': ['Envio grátis acima de {n}', 'Free shipping over {n}', 'Envío gratis desde {n}'],
   'm.perkReturns': ['Devoluções em 14 dias', '14-day returns', 'Devoluciones en 14 días'],

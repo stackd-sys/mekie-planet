@@ -8,6 +8,7 @@ import { serverT, asLang } from '../../i18n/server';
 import { products, totalStock, isSoldOut, type Product } from '../../data/products';
 import { giftCatalog, giftImage, giftTitleFromPt } from '../../data/giftcard';
 import { site } from '../../data/site';
+import { promoActive } from '../../data/promo';
 import { href, money, amount, type Lang } from '../../i18n';
 import { trProduct, trName, trColor } from '../../i18n/catalog';
 
@@ -81,6 +82,7 @@ function body(o: any, url: string, lang: Lang) {
   return `
     <p style="margin:0 0 20px">${t('m.abandon')}</p>
     <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 6px">${items}${totals}</table>
+    ${promoActive() ? `<p style="margin:24px 0 0;padding:10px 14px;background:#e10600;color:#ffffff;font-size:14px;font-weight:bold;text-align:center">${t('m.abandonPromo')}</p>` : ''}
     <p style="text-align:center;margin:28px 0 8px">${button(t('m.abandonBtn'))}</p>
     <p style="text-align:center;font-size:12.5px;color:#5c5c5c;margin:0 0 34px">${t('m.abandonLink')}</p>
     <table role="presentation" style="width:100%;border-collapse:collapse;background:#ffffff;border-radius:6px;margin:0 0 34px">

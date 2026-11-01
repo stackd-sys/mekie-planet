@@ -38,7 +38,7 @@ const announcement = [...(hw ? [t('hw.announce')] : []), t('announce.last'), t('
 <div class:list={['announce', { 'announce--hw': hw, 'announce--bf': bf }]} role="region" aria-label={t('announce.label')}>
   <div class="announce__track">
     {bf ? (
-      <a href={href(lang, '/loja/')} class="announce__bf eyebrow"><span class="announce__long">{t('bf.announce')}</span><span class="announce__short">{t('bf.short')}</span><span>·</span><span>{t('bf.ends')} <Countdown /></span></a>
+      <a href={href(lang, '/loja/')} class="announce__bf eyebrow"><span class="announce__long">{t('bf.announce')}</span><span class="announce__short">{t('bf.name')}</span><span>·</span><span>{t('bf.ends')} <Countdown /></span></a>
     ) : announcement.map((text, i) => <p class:list={['announce__item eyebrow', { 'is-active': i === 0 }]}>{text}</p>)}
   </div>
 </div>
@@ -148,7 +148,7 @@ const announcement = [...(hw ? [t('hw.announce')] : []), t('announce.last'), t('
   .announce--bf { background: #e10600; }
   .announce__bf { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 10.5px; padding: 0 12px; text-align: center; font-weight: 600; }
   .announce__short { display: none; }
-  @media (max-width: 700px) { .announce__long { display: none; } .announce__short { display: inline; } }
+  @media (max-width: 700px) { .announce__long { display: none; } .announce__short { display: inline; } .announce__bf { flex-wrap: nowrap; gap: 6px; font-size: 9.5px; letter-spacing: .08em; white-space: nowrap; } }
   .announce__track { position: relative; height: 100%; }
   .announce__item {
     position: absolute; inset: 0;
