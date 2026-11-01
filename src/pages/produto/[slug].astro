@@ -38,6 +38,8 @@ const related = [
 ].slice(0, 8);
 const cartData = { ...cartInfo(p), href: h(`/produto/${p.slug}/`), sizeNotes: p.sizeNotes };
 const total = totalStock(p);
+/* portes grátis em Portugal: a peça sozinha já passa o valor mínimo */
+const freeShip = !p.customizable && p.price >= site.freeShippingFrom;
 const soldOut = isSoldOut(p);
 /* Tamanhos esgotados (ou o produto todo) para o "Avisa-me quando voltar" */
 const outSizes = p.sizes ? p.sizes.filter((s) => (soldOut ? true : !!p.sizeStock && !p.sizeStock[s])) : [];
@@ -101,7 +103,8 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           <p class="bfbox__ends">{t('bf.ends')} <Countdown /></p>
         </div>
       )}
-      <p class="info__tax">{t('p.tax')}</p>
+      {freeShip && <p class="freeship"><Icon name="truck" size={18} /><span><strong>{t('p.freeShip')}</strong><br />{t('p.freeShipSub', { n: amount(site.freeShippingFrom, lang) })}</span></p>}
+      <p class="info__tax">{freeShip ? t('p.taxFree') : t('p.tax')}</p>
       {p.customizable ? (
         <div class="info__order">
           <p set:html={t('p.customOrder', { n: p.madeToOrderDays! })} />
@@ -522,6 +525,8 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   }
   .info__price { font-size: 16px; gap: 10px; align-items: center; }
   .info__off { font-size: 10px; letter-spacing: .1em; background: #e10600; color: #fff; padding: 3px 7px; border-radius: 999px; }
+  .freeship { display: flex; gap: 10px; align-items: center; margin: 0 0 14px; padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 3px; font-size: 12.5px; line-height: 1.45; }
+  .freeship strong { font-size: 13.5px; letter-spacing: .02em; }
   .info__tax { margin: 8px 0 26px; font-size: 12px; color: var(--ink-soft); }
 
   .opt { border: 0; margin: 0 0 24px; padding: 0; }

@@ -5,6 +5,8 @@
 import Base from '../../layouts/Base.astro';
 import Img from '../../components/Img.astro';
 import Countdown from '../../components/Countdown.astro';
+import Icon from '../../components/Icon.astro';
+import { site } from '../../data/site';
 import { cartInfo, isSoldOut } from '../../data/products';
 import { promo, promoActive, kindOf, type Kind } from '../../data/promo';
 import { packInfo, packs } from '../../data/packs';
@@ -52,6 +54,7 @@ const others = packs().filter((p) => p.id !== pack.id);
         <p>{t('pk.lead', { price: amount(pack.price, lang) })}</p>
         <p class="pk__ends">{t('bf.ends')} <Countdown /></p>
       </div>
+      {pack.price >= site.freeShippingFrom && <p class="freeship"><Icon name="truck" size={18} /><span><strong>{t('p.freeShip')}</strong><br />{t('p.freeShipSub', { n: amount(site.freeShippingFrom, lang) })}</span></p>}
 
       <form class="pk__form" data-pk-form novalidate>
         {steps.map((s, i) => (
@@ -72,7 +75,7 @@ const others = packs().filter((p) => p.id !== pack.id);
         ))}
         <p class="pk__error" data-pk-error role="alert" hidden></p>
         <button type="submit" class="pill pill--accent pill--block pk__btn">{t('pk.add')}</button>
-        <p class="pk__note">{t('bf.auto')} {t('p.tax')}</p>
+        <p class="pk__note">{t('bf.auto')} {pack.price >= site.freeShippingFrom ? t('p.taxFree') : t('p.tax')}</p>
       </form>
     </div>
   </div>
@@ -157,6 +160,10 @@ const others = packs().filter((p) => p.id !== pack.id);
   .pk__off { font-size: 11px; letter-spacing: .1em; background: #e10600; color: #fff; padding: 4px 8px; border-radius: 999px; }
   .pk__box { padding: 12px 14px; background: #e10600; color: #fff; font-size: 13.5px; line-height: 1.5; border-radius: 3px; }
   .pk__box p { margin: 0; }
+  .pk__box { margin-bottom: 12px; }
+  .freeship { display: flex; gap: 10px; align-items: center; margin: 0 0 14px; padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 3px; font-size: 12.5px; line-height: 1.45; }
+  .freeship strong { font-size: 13.5px; letter-spacing: .02em; }
+
   .pk__ends { font-weight: 700; margin-top: 4px !important; }
 
   .pk__form { margin-top: 26px; display: grid; gap: 22px; }
