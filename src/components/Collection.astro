@@ -2,10 +2,12 @@
 import ProductCard from './ProductCard.astro';
 import Img from './Img.astro';
 import type { Product } from '../data/products';
-import { langOf, href } from '../i18n';
+import { langOf, href, amount } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
 import Countdown from './Countdown.astro';
+import { categorySeo } from '../data/i18n/category-seo';
+import { site } from '../data/site';
 import { promo, promoActive } from '../data/promo';
 interface Props { title: string; intro?: string; products: Product[]; current: string; image?: string }
 const { title, intro, current, image } = Astro.props;
@@ -15,6 +17,8 @@ const s = shop(lang);
 const products = Astro.props.products.map(s.tr);
 /* faixa da promoção por volume quando a lista tem scrunchies */
 const volume = promoActive() && current === 'scrunchies' && promo.volume.length > 0;
+/* texto da categoria no fundo da página */
+const seo = categorySeo[current]?.[lang];
 const chips = [
   { href: href(lang, '/loja/'), label: t('grid.everything'), key: '' },
   ...(s.lowStock().length ? [{ href: href(lang, '/loja/ultimas-unidades/'), label: t('last'), key: 'ultimas-unidades' }] : []),
@@ -90,6 +94,13 @@ const chips = [
   )}
 </div>
 
+{seo && (
+  <section class="seo-text container">
+    <h2 class="seo-text__title">{seo.h}</h2>
+    {seo.p.map((x) => <p>{x.replace('{free}', amount(site.freeShippingFrom, lang))}</p>)}
+  </section>
+)}
+
 <script>
   const grid = document.querySelector<HTMLElement>('[data-grid]');
   const select = document.querySelector<HTMLSelectElement>('[data-sort]');
@@ -124,6 +135,9 @@ const chips = [
 </script>
 
 <style>
+  .seo-text { max-width: 760px; margin: clamp(40px, 6vw, 72px) auto clamp(48px, 7vw, 88px); padding-top: 32px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+  .seo-text__title { margin: 0 0 12px; font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .02em; }
+  .seo-text p { margin: 0 0 12px; }
   .volstrip { background: #e10600; color: #fff; padding: 14px 0; text-align: center; }
   .volstrip .container { display: grid; gap: 4px; justify-items: center; font-size: 13.5px; line-height: 1.45; }
   .volstrip strong { font-size: 18px; letter-spacing: .04em; text-transform: uppercase; }

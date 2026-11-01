@@ -4,7 +4,7 @@ import Img from '../../components/Img.astro';
 import { blogPosts, formatDate } from '../../data/blog';
 import { breadcrumbLd } from '../../data/seo';
 ---
-<Base title="Blog" description="Dicas para cuidar da tua roupa bordada, escolher o tamanho certo e aproveitar a Ericeira. Histórias e novidades da Mekie Planet.">
+<Base title="Blog: dicas e histórias da Mekie" description="Dicas para cuidar da tua roupa bordada, escolher o tamanho certo e aproveitar a Ericeira. Histórias e novidades da Mekie Planet.">
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(breadcrumbLd([{ name: 'Início', path: '/' }, { name: 'Blog', path: '/blog/' }]))} />
   <section class="container blog">
     <h1 class="display blog__title">Blog</h1>

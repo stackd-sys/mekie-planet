@@ -103,8 +103,8 @@ const categoryTr: Record<string, Record<'en' | 'es', Pick<Category, 'name' | 'se
     es: { name: 'Camisetas', seoTitle: 'Camisetas oversize bordadas', intro: 'Camisetas oversize unisex 100% algodón, con las setas Mekie bordadas en el pecho y el logo en la manga.' },
   },
   acessorios: {
-    en: { name: 'Accessories', seoTitle: 'Accessories: caps, bucket hats, socks, scrunchies and tote bags', intro: 'Corduroy caps, an organic cotton bucket hat, socks, handmade crochet scrunchies and embroidered tote bags.' },
-    es: { name: 'Accesorios', seoTitle: 'Accesorios: gorras, bucket hats, calcetines, scrunchies y tote bags', intro: 'Gorras de pana, bucket hat de algodón orgánico, calcetines, scrunchies de ganchillo hechos a mano y tote bags bordadas.' },
+    en: { name: 'Accessories', seoTitle: 'Accessories: caps, socks, scrunchies and more', intro: 'Corduroy caps, an organic cotton bucket hat, socks, handmade crochet scrunchies and embroidered tote bags.' },
+    es: { name: 'Accesorios', seoTitle: 'Accesorios: gorras, calcetines y scrunchies', intro: 'Gorras de pana, bucket hat de algodón orgánico, calcetines, scrunchies de ganchillo hechos a mano y tote bags bordadas.' },
   },
   caps: {
     en: { name: 'Caps', seoTitle: 'Embroidered corduroy caps', intro: 'Corduroy caps with the Mekie logo embroidered. One size, adjustable.' },

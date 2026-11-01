@@ -6,7 +6,7 @@ import { langOf } from '../i18n';
 import { useT } from '../i18n/ui';
 const t = useT(langOf(Astro.url.pathname));
 ---
-<Base title={t('contact')} description={t('ct.desc', { email: site.email })}>
+<Base title={t('ct.seo')} description={t('ct.desc', { email: site.email })}>
   <section class="container ct">
     <div>
       <h1 class="display ct__title">{t('contact')}</h1>

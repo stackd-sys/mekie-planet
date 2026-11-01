@@ -16,6 +16,53 @@ export type Post = {
 
 const posts: Post[] = [
   {
+    slug: 'black-friday-2026-roupa-bordada',
+    title: 'Black Friday 2026: um mês de descontos na Mekie',
+    description: 'Este ano a Black Friday da Mekie dura o mês de novembro todo: -15% em hoodies, t-shirts e crewnecks, packs com até 22% de desconto e scrunchies leva 4, paga 3.',
+    date: '2026-11-01',
+    image: '/images/lookbook/group-crop.webp',
+    imageAlt: 'Grupo de amigos com hoodies e t-shirts Mekie',
+    body: [
+      'A Black Friday calha este ano a 27 de novembro. Só que um dia é pouco para pensar com calma no que queres comprar, e menos ainda para tratar das prendas de Natal sem stress. Por isso, na Mekie, a Black Friday dura o mês inteiro. Chamamos-lhe Black November e vai de 1 a 30 de novembro.',
+      { h: 'O que está em promoção' },
+      'Todos os hoodies, t-shirts e crewnecks têm -15%. O desconto já aparece no preço de cada peça, não precisas de código.',
+      {
+        list: [
+          '<a href="/loja/hoodies-crewnecks/">Hoodies</a>: de 70€ para 59€.',
+          '<a href="/loja/hoodies-crewnecks/">Crewnecks</a>: de 65€ para 55€.',
+          '<a href="/loja/t-shirts/">T-shirts</a>: de 50€ para 42€.',
+        ],
+      },
+      { h: 'Os packs: duas peças, um preço' },
+      'Se juntares duas peças, poupas ainda mais. O preço do pack aplica-se sozinho no carrinho, basta adicionares as duas peças que quiseres, com a cor e o tamanho que preferires.',
+      {
+        list: [
+          'Hoodie + T-shirt por 95€, em vez de 120€.',
+          'Crewneck + T-shirt por 90€, em vez de 115€.',
+          'Hoodie + Cap por 80€, em vez de 100€.',
+          'T-shirt + Cap por 65€, em vez de 80€.',
+        ],
+      },
+      'Todos os packs passam os 65€, por isso o envio para Portugal fica por nossa conta.',
+      { h: 'Scrunchies: leva 4, paga 3' },
+      'Os <a href="/loja/scrunchies/">scrunchies de crochet</a> são feitos à mão por nós, um a um. Em novembro, em cada 4 scrunchies, um é oferecido. Podes misturar cores e incluir o personalizado, em que escolhes as duas cores do fio.',
+      { h: 'Aproveita para as prendas de Natal' },
+      'Novembro é a altura certa para tratar das prendas. Os preços estão mais baixos, há mais tamanhos disponíveis e não tens a correria de dezembro. Algumas ideias:',
+      {
+        list: [
+          'Um pack Hoodie + Cap, para quem vive de capuz e boné.',
+          'Uma t-shirt e umas <a href="/loja/meias/">meias Mekie</a>, para uma prenda mais pequena.',
+          'Quatro scrunchies, um para ti e três para oferecer. Um sai de graça.',
+          'O <a href="/cartao-presente/">cartão presente</a>, para quem não sabes o tamanho. A pessoa escolhe e o valor fica guardado.',
+        ],
+      },
+      { h: 'E se o tamanho não servir?' },
+      'Tens 14 dias para trocar ou devolver, também nas peças em promoção. Se estás entre dois tamanhos, lê primeiro o nosso <a href="/blog/como-escolher-o-tamanho-de-um-hoodie-oversized/">guia de tamanhos dos hoodies</a>. A entrega em Portugal é feita pelos CTT e demora até 7 dias úteis, por isso, se a prenda é para o Natal, não deixes para o fim.',
+      { h: 'Até quando?' },
+      'A Black November termina a 30 de novembro, à meia-noite. A partir de 1 de dezembro os preços voltam ao normal e os packs desaparecem. Se já tens uma peça debaixo de olho, é agora. Vê tudo na <a href="/loja/">loja</a>.',
+    ],
+  },
+  {
     slug: 'como-lavar-roupa-bordada',
     title: 'Como lavar roupa bordada para durar anos',
     description: 'Temperatura, avesso, secagem e ferro: o que fazer para o bordado do teu hoodie ou da tua t-shirt continuar como no primeiro dia.',
@@ -48,7 +95,7 @@ const posts: Post[] = [
   },
   {
     slug: 'fim-de-semana-na-ericeira-o-que-levar',
-    title: 'Um fim de semana na Ericeira: o que levar na mala',
+    title: 'Fim de semana na Ericeira: o que levar na mala',
     description: 'A Mekie é da Ericeira. Fica a nossa lista para um fim de semana de praia, surf e pôr do sol, sem levar a casa às costas.',
     date: '2026-07-10',
     image: '/images/lookbook/bucket-tee.webp',

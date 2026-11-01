@@ -42,6 +42,8 @@ const {
   noindex = false,
   ogType = 'website',
 } = Astro.props;
+/* o Google corta as descrições acima de ~160 caracteres: cortamos nós, numa palavra inteira */
+const metaDesc = description.length > 158 ? `${description.slice(0, 155).replace(/[\s,.;:]+\S*$/, '')}…` : description;
 const fullTitle = title ? `${title} | ${site.name}` : `${site.name} | ${t('meta.title')}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 /* a mesma página nas outras línguas (o blog só existe em português) */
@@ -67,7 +69,7 @@ const ogImage = new URL(image, Astro.site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="google-site-verification" content="z6AZyhQRCtGsQ4bo8Cw4kzhHFD6bCYKY6wiiclCtmwg" />
     <title>{fullTitle}</title>
-    <meta name="description" content={description} />
+    <meta name="description" content={metaDesc} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'} />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
@@ -78,13 +80,13 @@ const ogImage = new URL(image, Astro.site);
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={fullTitle} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={metaDesc} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:locale" content={ogLocale[lang]} />
     <meta property="og:image:alt" content={fullTitle} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:description" content={metaDesc} />
     <meta name="twitter:image" content={ogImage} />
     {!noindex && alternates.map((a) => <link rel="alternate" hreflang={htmlLang[a.lang]} href={a.url} />)}
     {!noindex && <link rel="alternate" hreflang="x-default" href={alternates[0].url} />}

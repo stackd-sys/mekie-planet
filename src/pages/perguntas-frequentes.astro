@@ -18,7 +18,7 @@ const faqLd = {
   ),
 };
 ---
-<Base title={t('faq.title')} description={t('faq.desc')}>
+<Base title={t('faq.seo')} description={t('faq.desc')}>
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(faqLd)} />
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: t('home'), path: href(lang, '/') }, { name: t('faq.title'), path: href(lang, '/perguntas-frequentes/') }]))} />
 

@@ -35,7 +35,7 @@ const productLd = {
   },
 };
 ---
-<Base title={name} description={t('gc.desc', { values: giftValues(lang), validity: giftValidity })} image={giftImage(first.price, lang)} ogType="product">
+<Base title={t('gc.seo')} description={t('gc.desc', { values: giftValues(lang), validity: giftValidity })} image={giftImage(first.price, lang)} ogType="product">
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(productLd)} />
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd([{ name: t('home'), path: href(lang, '/') }, { name, path }]))} />
 

@@ -1,4 +1,5 @@
 /* Dados estruturados (schema.org) para o Google: produtos, envios, devoluções e navegação */
+import { promo, promoActive } from './promo';
 import { site } from './site';
 import { shippingCost, type Zone } from './shipping';
 import { reviewsOf, ratingOf } from './reviews';
@@ -86,6 +87,8 @@ export const categoryTrail = (slug: string, lang: Lang = 'pt') => {
   return trail;
 };
 
+const sentence = (x: string) => (/[.!?]$/.test(x.trim()) ? x.trim() : `${x.trim()}.`);
+
 /** Texto do produto para a meta description e para o Google */
 export const productSummary = (p: Product) => {
   const feature = p.details?.features[0];
@@ -117,7 +120,8 @@ export const productLd = (p: Product, lang: Lang = 'pt') => {
     sku: String(p.id),
     url: abs(href(lang, `/produto/${p.slug}/`)),
     image: p.images.map(abs),
-    description: [productSummary(p), ...(p.details?.features.slice(1) ?? [])].join(' '),
+    /* cada pormenor numa frase própria, com ponto final */
+    description: [productSummary(p), ...(p.details?.features.slice(1) ?? []).map(sentence)].join(' '),
     color: p.color,
     category: cat && trCategory(cat, lang).name,
     ...(p.details?.composition.length ? { material: p.details.composition.join(', ') } : {}),
@@ -128,6 +132,16 @@ export const productLd = (p: Product, lang: Lang = 'pt') => {
       '@type': 'Offer',
       priceCurrency: 'EUR',
       price: p.price.toFixed(2),
+      /* em promoção: preço antigo riscado e data de fim, para o Google mostrar o desconto */
+      ...(p.price < p.regularPrice && promoActive()
+        ? {
+          priceValidUntil: new Date(new Date(promo.end).getTime() - 86400000).toISOString().slice(0, 10),
+          priceSpecification: [
+            { '@type': 'UnitPriceSpecification', price: p.price.toFixed(2), priceCurrency: 'EUR' },
+            { '@type': 'UnitPriceSpecification', priceType: 'https://schema.org/StrikethroughPrice', price: p.regularPrice.toFixed(2), priceCurrency: 'EUR' },
+          ],
+        }
+        : {}),
       availability: isSoldOut(p)
         ? 'https://schema.org/OutOfStock'
         : p.madeToOrderDays && !total

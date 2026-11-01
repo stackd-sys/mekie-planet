@@ -36,12 +36,12 @@ const dict = {
   /* Metadados */
   'meta.title': ['Hoodies, t-shirts e acessórios bordados', 'Embroidered hoodies, T-shirts and accessories', 'Hoodies, camisetas y accesorios bordados'],
   'meta.desc': [
-    'Mekie Planet: hoodies e t-shirts bordados, caps, bucket hats, meias, scrunchies e tote bags. Roupa descontraída, sempre com estilo. Envio CTT para Portugal e União Europeia.',
-    'Mekie Planet: embroidered hoodies and T-shirts, caps, bucket hats, socks, scrunchies and tote bags. Laid-back clothes, always with style. Shipping to Portugal and the European Union.',
-    'Mekie Planet: hoodies y camisetas bordadas, gorras, bucket hats, calcetines, scrunchies y tote bags. Ropa relajada, siempre con estilo. Envíos a Portugal y a la Unión Europea.',
+    'Hoodies e t-shirts bordados, caps, bucket hats, meias, scrunchies e tote bags da Mekie Planet. Envio CTT para Portugal e União Europeia.',
+    'Embroidered hoodies and T-shirts, caps, bucket hats, socks, scrunchies and tote bags by Mekie Planet. Shipping to Portugal and the EU.',
+    'Hoodies y camisetas bordadas, gorras, bucket hats, calcetines, scrunchies y tote bags de Mekie Planet. Envíos a Portugal y a la UE.',
   ],
   'meta.ship': ['Envio CTT para Portugal e União Europeia.', 'Shipping to Portugal and the European Union.', 'Envíos a Portugal y a la Unión Europea.'],
-  'meta.shipFree': ['Envio CTT para Portugal, grátis acima de {n}.', 'Shipping across Europe, free in Portugal over {n}.', 'Envíos a toda Europa, gratis en Portugal a partir de {n}.'],
+  'meta.shipFree': ['Envio grátis em Portugal acima de {n}.', 'Free shipping in Portugal over {n}.', 'Envío gratis en Portugal desde {n}.'],
 
   /* Barra de avisos */
   'announce.last': ['Últimas unidades', 'Last units', 'Últimas unidades'],
@@ -150,7 +150,7 @@ const dict = {
   'grid.soonText': ['Esta categoria está a ser preparada para o próximo drop.', 'This category is being prepared for the next drop.', 'Estamos preparando esta categoría para el próximo drop.'],
   'grid.notifyMe': ['Sê o primeiro a saber', 'Be the first to know', 'Sé el primero en enterarte'],
   'shop.title': ['Loja online: hoodies, t-shirts e acessórios', 'Online shop: hoodies, T-shirts and accessories', 'Tienda online: hoodies, camisetas y accesorios'],
-  'shop.desc': ['Toda a loja Mekie Planet: hoodies e t-shirts bordados, caps de bombazina, bucket hat, meias, scrunchies de crochet e tote bags. Envio CTT para Portugal e União Europeia.', 'The whole Mekie Planet shop: embroidered hoodies and T-shirts, corduroy caps, bucket hat, socks, crochet scrunchies and tote bags. Shipping to Portugal and the European Union.', 'Toda la tienda Mekie Planet: hoodies y camisetas bordadas, gorras de pana, bucket hat, calcetines, scrunchies de ganchillo y tote bags. Envíos a Portugal y a la Unión Europea.'],
+  'shop.desc': ['Toda a loja Mekie: hoodies e t-shirts bordados, caps de bombazina, bucket hat, meias, scrunchies de crochet e tote bags. Envio para Portugal e UE.', 'The whole Mekie shop: embroidered hoodies and T-shirts, corduroy caps, bucket hat, socks, crochet scrunchies and tote bags. Shipping to Portugal and the EU.', 'Toda la tienda Mekie: hoodies y camisetas bordadas, gorras de pana, bucket hat, calcetines, scrunchies de ganchillo y tote bags. Envíos a Portugal y la UE.'],
   'last.intro': ['Peças com poucas unidades em stock. Quando acabam, podem não voltar.', 'Pieces with only a few units left. Once they are gone, they may not come back.', 'Prendas con pocas unidades en stock. Cuando se acaban, puede que no vuelvan.'],
   'collection': ['Coleção', 'Collection', 'Colección'],
   'collection.title': ['Coleção {name}', '{name} collection', 'Colección {name}'],
@@ -290,7 +290,11 @@ const dict = {
   'ab.p4': ['Queres um bucket hat e um hoodie bordado? Temos. És mais de cap e t-shirt? Também temos. Descobre as nossas peças e os nossos desenhos nas redes sociais.', 'Want a bucket hat and an embroidered hoodie? We have them. More of a cap and T-shirt person? We have those too. Check out our pieces and designs on social media.', '¿Quieres un bucket hat y una hoodie bordada? Los tenemos. ¿Eres más de gorra y camiseta? También. Descubre nuestras prendas y diseños en redes sociales.'],
 
   /* Contactos */
-  'ct.desc': ['Fala com a Mekie: {email} ou Instagram @mekie_planet.', 'Talk to Mekie: {email} or Instagram @mekie_planet.', 'Habla con Mekie: {email} o Instagram @mekie_planet.'],
+  'ct.desc': ['Fala com a Mekie por email ({email}) ou pelo Instagram @mekie_planet. Ajudamos com encomendas, tamanhos, trocas e devoluções.', 'Talk to Mekie by email ({email}) or on Instagram @mekie_planet. We help with orders, sizes, exchanges and returns.', 'Habla con Mekie por email ({email}) o por Instagram @mekie_planet. Te ayudamos con pedidos, tallas, cambios y devoluciones.'],
+  'ct.seo': ['Contactos e apoio ao cliente', 'Contact and customer support', 'Contacto y atención al cliente'],
+  'ab.seo': ['Sobre nós: a história da Mekie', 'About us: the Mekie story', 'Sobre nosotros: la historia de Mekie'],
+  'faq.seo': ['Perguntas frequentes: envios, tamanhos e trocas', 'FAQ: shipping, sizes and returns', 'Preguntas frecuentes: envíos, tallas y cambios'],
+  'gc.seo': ['Cartão presente digital Mekie', 'Mekie digital gift card', 'Tarjeta regalo digital Mekie'],
   'ct.lead': ['Tens dúvidas sobre tamanhos, encomendas ou devoluções? Manda-nos uma mensagem.', 'Questions about sizes, orders or returns? Send us a message. We reply in English too.', '¿Dudas sobre tallas, pedidos o devoluciones? Escríbenos. También respondemos en español.'],
   'ct.name': ['Nome', 'Name', 'Nombre'],
   'ct.subject': ['Assunto', 'Subject', 'Asunto'],

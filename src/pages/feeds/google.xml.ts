@@ -1,5 +1,6 @@
 /* Ficheiro de produtos para o Google Merchant Center (Shopping e resultados grátis do Google).
    Uma linha por tamanho, agrupadas por produto. Gerado em cada deploy, com o stock e os preços do CRM. */
+import { promo, promoActive } from '../../data/promo';
 import type { APIRoute } from 'astro';
 import { products, categories, totalStock, fullName, weightOf, type Product } from '../../data/products';
 import { packagingGrams } from '../../data/shipping';
@@ -33,6 +34,7 @@ function item(p: Product, size?: string) {
     <g:availability>${available ? 'in_stock' : 'out_of_stock'}</g:availability>
     <g:price>${price(onSale ? p.regularPrice : p.price)}</g:price>
     ${onSale ? `<g:sale_price>${price(p.price)}</g:sale_price>` : ''}
+    ${onSale && promoActive() ? `<g:sale_price_effective_date>${promo.start}/${promo.end}</g:sale_price_effective_date>` : ''}
     <g:brand>${esc(site.name)}</g:brand>
     <g:condition>new</g:condition>
     <g:identifier_exists>no</g:identifier_exists>

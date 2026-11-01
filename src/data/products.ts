@@ -66,7 +66,7 @@ export const categories: Category[] = [
   },
   {
     slug: 'acessorios', name: 'Acessórios', image: '/images/lookbook/stack-leaves.webp',
-    seoTitle: 'Acessórios: caps, bucket hats, meias, scrunchies e tote bags',
+    seoTitle: 'Acessórios: caps, meias, scrunchies e mais',
     intro: 'Caps de bombazina, bucket hat de algodão orgânico, meias, scrunchies de crochet feitos à mão e tote bags bordadas.',
   },
   {
