@@ -66,6 +66,15 @@ alter table orders add column if not exists lang text not null default 'pt';
 /* packs da promoção: desconto e nome dos packs */
 alter table orders add column if not exists pack_discount numeric(10,2) not null default 0;
 alter table orders add column if not exists pack_label text not null default '';
+/* campanhas agendadas no CRM: saem sozinhas à hora marcada */
+create table if not exists campaign_schedule (
+  campaign text primary key,
+  send_at timestamptz not null,
+  created_by text not null default '',
+  created_at timestamptz not null default now(),
+  done_at timestamptz,
+  result text not null default ''
+);
 /* campanhas da newsletter: quem já recebeu cada uma (para nunca sair duas vezes) */
 create table if not exists campaign_sends (
   campaign text not null,

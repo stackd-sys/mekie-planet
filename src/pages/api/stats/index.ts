@@ -47,5 +47,8 @@ export const POST: APIRoute = async ({ request, url }) => {
   /* aproveita a visita para lembrar quem deixou o pagamento a meio (no máximo de 10 em 10 minutos) */
   const { maybeRecoverCheckouts } = await import('../../../lib/server/recovery');
   await maybeRecoverCheckouts();
+  /* e para enviar as campanhas da newsletter agendadas no CRM */
+  const { maybeSendScheduled } = await import('../../../lib/server/campaigns');
+  await maybeSendScheduled();
   return ok();
 };

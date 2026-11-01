@@ -5,7 +5,7 @@ import Flash from '../../../components/admin/Flash.astro';
 import { db } from '../../../lib/server/db';
 import { date } from '../../../lib/server/format';
 import { postForm, done, str } from '../../../lib/server/admin';
-import { campaigns, campaignHtml, campaignStats, sendCampaign, sendCampaignTest } from '../../../lib/server/campaigns';
+import { campaigns, campaignHtml, campaignStats, sendCampaign, sendCampaignTest, scheduleCampaign, cancelSchedule, schedules, lisbonToDate, toLisbonInput, maybeSendScheduled } from '../../../lib/server/campaigns';
 import { site } from '../../../data/site';
 
 const sql = await db();
@@ -28,8 +28,21 @@ if (f) {
       : done(Astro, `Saíram ${sent} de ${total}. Os restantes ficam por enviar; podes tentar outra vez.`, undefined, true);
   }
   if (action === 'send') return done(Astro, 'Para enviar, escreve ENVIAR na caixa de confirmação.', undefined, true);
+  if (action === 'schedule') {
+    const at = lisbonToDate(str(f, 'at', 20));
+    if (!at) return done(Astro, 'Escolhe o dia e a hora do envio.', undefined, true);
+    if (at.getTime() < Date.now() - 60000) return done(Astro, 'Essa hora já passou. Escolhe uma hora no futuro.', undefined, true);
+    await scheduleCampaign(sql, id, at, Astro.locals.admin || '');
+    return done(Astro, `Agendada para ${date(at, true)} (hora de Lisboa).`);
+  }
+  if (action === 'unschedule') {
+    await cancelSchedule(sql, id);
+    return done(Astro, 'Agendamento cancelado.');
+  }
 }
+await maybeSendScheduled();
 const stats = await campaignStats(sql);
+const sched = await schedules(sql);
 const [{ active }] = await sql<any[]>`select count(*)::int as active from subscribers where unsubscribed_at is null`;
 const today = new Date().toISOString().slice(0, 10);
 const view = Astro.url.searchParams.get('ver') ?? '';
@@ -39,6 +52,7 @@ const preview = campaigns.find((c) => c.id === view);
 <Admin title="Campanhas">
   <h1>Campanhas</h1>
   <p class="sub">Emails para a newsletter, já escritos e traduzidos. Cada subscritor recebe na sua língua e nunca recebe a mesma campanha duas vezes. Subscritores ativos: <strong>{active}</strong>.</p>
+  <p class="note">Podes agendar cada campanha para um dia e uma hora (hora de Lisboa). Sai para quem estiver subscrito nesse momento, normalmente nos minutos seguintes à hora marcada. Recebes uma notificação quando sair.</p>
   <Flash />
 
   {campaigns.map((c) => {
@@ -51,6 +65,32 @@ const preview = campaigns.find((c) => c.id === view);
           <span class:list={['muted']}>Enviar a {date(new Date(`${c.date}T09:00:00Z`))}{s ? ` · já enviada a ${s.n} (última vez ${date(s.last, true)})` : due ? ' · por enviar' : ''}</span>
         </div>
         <p style="margin:8px 0 0"><strong>Assunto:</strong> {c.subject[0]}</p>
+        {(() => {
+          const sc = sched[c.id];
+          const pending = sc && !sc.done_at;
+          return (
+            <div class="sched">
+              {pending ? (
+                <p class="sched__on">Agendada para <strong>{date(sc.send_at, true)}</strong>. Sai sozinha a essa hora.</p>
+              ) : sc?.done_at ? (
+                <p class="muted" style="margin:0">Agendamento cumprido a {date(sc.done_at, true)}. {sc.result}</p>
+              ) : null}
+              <form method="post" class="inline">
+                <input type="hidden" name="action" value="schedule" /><input type="hidden" name="id" value={c.id} />
+                <label class="muted" style="display:flex;gap:8px;align-items:center">{pending ? 'Mudar para' : 'Agendar para'}
+                  <input type="datetime-local" name="at" required value={pending ? toLisbonInput(new Date(sc.send_at)) : `${c.date}T10:00`} />
+                </label>
+                <button class="btn ghost">{pending ? 'Guardar' : 'Agendar envio'}</button>
+              </form>
+              {pending && (
+                <form method="post" class="inline">
+                  <input type="hidden" name="action" value="unschedule" /><input type="hidden" name="id" value={c.id} />
+                  <button class="btn ghost">Cancelar agendamento</button>
+                </form>
+              )}
+            </div>
+          );
+        })()}
         <div class="bar" style="margin:14px 0 0;flex-wrap:wrap">
           <a class="btn ghost" href={`?ver=${c.id}#ver`}>Ver o email</a>
           <form method="post" class="inline">
@@ -78,3 +118,9 @@ const preview = campaigns.find((c) => c.id === view);
     </section>
   )}
 </Admin>
+
+<style>
+  .sched { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .sched p { width: 100%; }
+  .sched__on { margin: 0; color: #1a7f37; }
+</style>

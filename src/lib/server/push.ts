@@ -12,6 +12,7 @@ export const KINDS = {
   stock: { label: 'Stock a acabar', hint: 'Quando uma peça fica com 1 unidade ou esgota depois de uma venda.', on: true },
   newsletter: { label: 'Nova subscrição da newsletter', hint: 'Quando alguém subscreve.', on: false },
   aviso: { label: 'Pedido de "Avisa-me quando voltar"', hint: 'Quando alguém pede aviso de uma peça esgotada.', on: false },
+  campanha: { label: 'Campanha agendada enviada', hint: 'Quando sai uma campanha da newsletter que estava agendada.', on: true },
 } as const;
 export type Kind = keyof typeof KINDS;
 export const defaultPrefs = () => Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v.on])) as Record<Kind, boolean>;

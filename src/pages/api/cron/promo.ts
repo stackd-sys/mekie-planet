@@ -19,6 +19,9 @@ export const GET: APIRoute = async ({ request }) => {
     ? request.headers.get('authorization') === `Bearer ${secret}`
     : (request.headers.get('user-agent') || '').startsWith('vercel-cron');
   if (!ok) return new Response('Recusado.', { status: 401 });
+  /* campanhas agendadas que ainda não saíram (se não houve visitas desde a hora marcada) */
+  const { maybeSendScheduled } = await import('../../../lib/server/campaigns');
+  await maybeSendScheduled();
   const today = new Date().toISOString().slice(0, 10);
   if (!changeDays().has(today) && !new URL(request.url).searchParams.has('forcar')) return new Response('Nada para mudar hoje.');
   const done = await rebuildSite('Mudança agendada (promoção, época ou blog)');

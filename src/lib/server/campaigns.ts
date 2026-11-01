@@ -7,6 +7,8 @@ import { packs } from '../../data/packs';
 import { layout, escapeHtml, sendBatch, sendMail } from './mail';
 import { href, amount, type Lang } from '../../i18n';
 import { useT } from '../../i18n/ui';
+import { db } from './db';
+import { pushNotify } from './push';
 
 type Text = [string, string, string];
 type Campaign = { id: string; date: string; label: string; subject: Text; title: Text; body: Text; button: Text };
@@ -134,4 +136,60 @@ export async function campaignStats(sql: any) {
   const rows = await sql<{ campaign: string; n: number; last: Date }[]>`
     select campaign, count(*)::int as n, max(sent_at) as last from campaign_sends group by campaign`;
   return Object.fromEntries(rows.map((r: { campaign: string; n: number; last: Date }) => [r.campaign, r]));
+}
+
+/* ---------- Agendamento ---------- */
+
+/** "2026-11-27T10:00" em hora de Lisboa para a data certa (trata a mudança de hora) */
+export function lisbonToDate(local: string) {
+  const guess = new Date(`${local}:00Z`);
+  if (Number.isNaN(guess.getTime())) return null;
+  const inLisbon = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/Lisbon' }));
+  const inUtc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (inLisbon.getTime() - inUtc.getTime()));
+}
+/** Data para o campo do formulário (hora de Lisboa) */
+export const toLisbonInput = (d: Date) =>
+  new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .format(d).replace(' ', 'T');
+
+export async function scheduleCampaign(sql: any, id: string, at: Date, by: string) {
+  await sql`insert into campaign_schedule (campaign, send_at, created_by) values (${id}, ${at}, ${by})
+    on conflict (campaign) do update set send_at = excluded.send_at, created_by = excluded.created_by, created_at = now(), done_at = null, result = ''`;
+}
+export async function cancelSchedule(sql: any, id: string) {
+  await sql`delete from campaign_schedule where campaign = ${id} and done_at is null`;
+}
+export async function schedules(sql: any) {
+  const rows = await sql<any[]>`select * from campaign_schedule`;
+  return Object.fromEntries(rows.map((r: any) => [r.campaign, r]));
+}
+
+/** Envia as campanhas cuja hora já chegou. Corre nas visitas ao site (no máximo de 5 em 5 minutos) e no agendador diário. */
+export async function maybeSendScheduled() {
+  try {
+    const sql = await db();
+    const [lock] = await sql<any[]>`
+      insert into settings (key, value) values ('campaigns_last', ${sql.json({ at: new Date().toISOString() })})
+      on conflict (key) do update set value = excluded.value
+      where (settings.value->>'at')::timestamptz < now() - interval '5 minutes'
+      returning key`;
+    if (!lock) return 0;
+    /* fica marcada antes de enviar, para duas visitas ao mesmo tempo não a enviarem duas vezes */
+    const due = await sql<any[]>`
+      update campaign_schedule set done_at = now()
+      where done_at is null and send_at <= now()
+      returning campaign`;
+    for (const d of due) {
+      const { sent, total } = await sendCampaign(sql, d.campaign);
+      const label = campaigns.find((c) => c.id === d.campaign)?.label ?? d.campaign;
+      const result = total === 0 ? 'Não havia subscritores por enviar.' : sent === total ? `Enviada a ${sent}.` : `Saíram ${sent} de ${total}.`;
+      await sql`update campaign_schedule set result = ${result} where campaign = ${d.campaign}`;
+      await pushNotify('campanha', `Campanha: ${label}`, result, '/admin/campanhas/');
+    }
+    return due.length;
+  } catch (e) {
+    console.error('[Mekie] Campanhas agendadas falharam:', (e as Error).message);
+    return 0;
+  }
 }
