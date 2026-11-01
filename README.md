@@ -105,6 +105,10 @@ Primeiro em modo de teste (chaves `sk_test_...`, cartão de teste `4242 4242 424
 
 Com um Postgres local: `DATABASE_URL=postgres://... ADMIN_EMAILS=eu@x.pt npm run build && node dist/server/entry.mjs`. Sem `RESEND_API_KEY`, o link de entrada aparece no terminal.
 
+## Checkout abandonado
+
+Quem chega à página de pagamento e não paga recebe, uma hora depois, um único email na sua língua, com as peças e o botão para concluir a mesma encomenda (o link da Stripe fica ativo 24 horas). Se a pessoa fizer outra encomenda entretanto, o email não sai. O envio corre sozinho, aproveitando as visitas ao site (no máximo de 10 em 10 minutos), e fica registado no histórico da encomenda no CRM. O código está em `src/lib/server/recovery.ts`.
+
 ## App do CRM e notificações
 
 O CRM instala-se como app, com o logótipo Mekie como ícone:

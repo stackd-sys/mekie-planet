@@ -44,5 +44,8 @@ export const POST: APIRoute = async ({ request, url }) => {
   } catch (e) {
     console.error('[Mekie] Estatística não gravada:', (e as Error).message);
   }
+  /* aproveita a visita para lembrar quem deixou o pagamento a meio (no máximo de 10 em 10 minutos) */
+  const { maybeRecoverCheckouts } = await import('../../../lib/server/recovery');
+  await maybeRecoverCheckouts();
   return ok();
 };

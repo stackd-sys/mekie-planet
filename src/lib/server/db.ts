@@ -66,6 +66,9 @@ alter table orders add column if not exists lang text not null default 'pt';
 /* packs da promoção: desconto e nome dos packs */
 alter table orders add column if not exists pack_discount numeric(10,2) not null default 0;
 alter table orders add column if not exists pack_label text not null default '';
+/* checkout abandonado: endereço da página de pagamento e quando saiu o email de lembrete */
+alter table orders add column if not exists stripe_url text not null default '';
+alter table orders add column if not exists recovery_sent_at timestamptz;
 create index if not exists orders_created on orders (created_at desc);
 create index if not exists orders_email on orders (email);
 

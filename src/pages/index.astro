@@ -4,6 +4,10 @@ import Carousel from '../components/Carousel.astro';
 import Img from '../components/Img.astro';
 import PromoBanner from '../components/PromoBanner.astro';
 import { promoActive } from '../data/promo';
+import HalloweenFx from '../components/HalloweenFx.astro';
+import { halloweenActive } from '../data/season';
+/* Halloween: a página fica igual, só com efeitos por cima (teias, aranha, morcegos, nevoeiro) */
+const hw = halloweenActive();
 import { langOf, href } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
@@ -42,9 +46,10 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
 
 ---
 <Base overlayHeader popup>
-  <section class="hero">
+  <section class:list={['hero', { 'hero--hw': hw }]}>
     <Img class="hero__img" src="/images/site/hero.webp" largeW={1536} sizes="100vw" alt={t('hero.alt')} width="1536" height="1024" fetchpriority="high" />
     <div class="hero__shade"></div>
+    {hw && <HalloweenFx />}
     <div class="hero__content">
       <h1 class="hero__title">{t('hero.title')}</h1>
       <a href={h('/loja/')} class="pill pill--light hero__cta">{t('hero.cta')}</a>
@@ -64,6 +69,7 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
   {bands.map((b, i) => (
     <>
       <a href={b.href} class="band">
+        {hw && <HalloweenFx variant="corner" />}
         {b.images.map((src, n) => (
           <div class="band__media"><Img src={src} sizes="(max-width: 700px) 100vw, 50vw" alt={b.alts[n]} width="1024" height="1536" loading="lazy" /></div>
         ))}
@@ -103,6 +109,7 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
     display: grid; justify-items: center; text-align: center; gap: 6px;
     padding: 0 var(--gutter);
     animation: heroIn 1.1s var(--ease) both .15s;
+    z-index: 2;
   }
   .hero__title {
     margin: 0;
@@ -113,6 +120,9 @@ const featured = products.filter((p, i) => products.findIndex((o) => family(o) =
   }
   .hero__cta { margin-top: 22px; min-height: 46px; padding: 0 32px; }
   @keyframes heroIn { from { opacity: 0; transform: translateY(14px); } }
+
+  /* Halloween: foto mais escura e fria */
+  .hero--hw :global(.hero__img) { filter: saturate(.55) contrast(1.12) brightness(.82) hue-rotate(-8deg); }
 
   .center { display: flex; justify-content: center; margin-top: 44px; }
 
