@@ -180,6 +180,8 @@ const dict = {
   'bf.volHint': ['Black November: leva 4 scrunchies e pagas só 3.', 'Black November: buy 3 scrunchies and get the 4th free.', 'Black November: llévate 4 scrunchies y paga solo 3.'],
   'bf.volLine': ['Scrunchies: leva 4, paga 3.', 'Scrunchies: buy 3, get 1 free.', 'Scrunchies: llévate 4, paga 3.'],
   'bf.volSee': ['Ver scrunchies', 'See scrunchies', 'Ver scrunchies'],
+  'bf.volTag': ['Leva 4, paga 3', 'Buy 3, get 1 free', 'Llévate 4, paga 3'],
+  'bf.volBox': ['Leva 4 scrunchies e pagas só 3. Podes misturar cores, incluindo o personalizado. O desconto aplica-se sozinho no carrinho.', 'Buy 3 scrunchies and get the 4th free. Mix any colours, the custom one included. The discount is applied automatically in the cart.', 'Llévate 4 scrunchies y paga solo 3. Puedes mezclar colores, también el personalizado. El descuento se aplica solo en la cesta.'],
   'bf.ends': ['Termina em', 'Ends in', 'Termina en'],
   'pk.pick.hoodie': ['Escolhe o hoodie', 'Pick your hoodie', 'Elige la hoodie'],
   'pk.pick.crewneck': ['Escolhe a crewneck', 'Pick your crewneck', 'Elige la crewneck'],

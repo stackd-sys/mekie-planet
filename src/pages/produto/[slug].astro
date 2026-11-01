@@ -48,11 +48,12 @@ const etaDays = p.customizable || (p.madeToOrderDays && !(p.stock && p.stock > 0
 const canNotify = !p.customizable && !p.madeToOrderDays && (soldOut || outSizes.length > 0);
 /* packs da promoção em que esta peça entra: "junta uma t-shirt e levas os dois por 95€" */
 const kind = kindOf(p);
+const volumeDeal = promoActive() && !soldOut && promo.volume.some((v) => v.kind === kind);
 const packHints = promoActive() && kind && !soldOut
   ? promo.packs.flatMap((pk) => {
     const other = pk.parts[0].includes(kind) ? pk.parts[1][0] : pk.parts[1].includes(kind) ? pk.parts[0][0] : null;
     return other ? [{ text: t('bf.packHint', { other: t(`bf.any.${other}` as never), price: amount(pk.price, lang) }), url: h(`/pack/${pk.id}/`) }] : [];
-  }).concat(promo.volume.some((v) => v.kind === kind) ? [{ text: t('bf.volHint'), url: h('/loja/scrunchies/') }] : [])
+  })
   : [];
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category, lang), { name: fullName(p), path: h(`/produto/${p.slug}/`) }];
@@ -97,6 +98,13 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         {off > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}
         {off > 0 && <span class="info__off">-{off}%</span>}
       </p>
+      {volumeDeal && (
+        <div class="bfbox">
+          <p class="bfbox__title">Black November · {t('bf.volTag')}</p>
+          <p>{t('bf.volBox')}</p>
+          <p class="bfbox__ends">{t('bf.ends')} <Countdown /></p>
+        </div>
+      )}
       {promoActive() && off > 0 && (
         <div class="bfbox">
           <p>{t('bf.back', { n: money(p.regularPrice, lang) })}</p>
@@ -496,6 +504,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 <style>
   .bfbox { margin: 0 0 14px; padding: 10px 14px; background: #e10600; color: #fff; font-size: 13px; line-height: 1.45; border-radius: 3px; }
   .bfbox p { margin: 0; }
+  .bfbox__title { font-weight: 700; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; margin-bottom: 2px !important; }
   .bfbox__ends { font-weight: 700; letter-spacing: .02em; }
   .packs-hint { list-style: none; margin: 18px 0 0; padding: 12px 14px; background: #111; color: #f5f5f4; border-left: 4px solid #e10600; font-size: 13px; line-height: 1.5; display: grid; gap: 4px; }
   .pdp {
