@@ -109,7 +109,7 @@ cart.subscribe((lines) => {
         <a href="${href(esc(l.href || localPath(`/produto/${l.slug}/`)))}"><img class="line__img" src="${href(esc(l.image))}" alt="" width="84" height="105" /></a>
         <div>
           <p class="line__name"><a href="${href(esc(l.href || localPath(`/produto/${l.slug}/`)))}">${esc(l.name)}</a></p>
-          <p class="line__meta">${esc(l.custom || l.color)}${l.size ? ` · ${tc('line.size', { s: esc(l.size) })}` : ''}${l.madeToOrderDays && l.qty > (l.stock ?? 0) ? `<br>${tc('line.made', { n: l.qty - (l.stock ?? 0), d: l.madeToOrderDays })}` : ''}</p>
+          <p class="line__meta">${esc(l.custom || l.color)}${l.size ? ` · ${tc('line.size', { s: esc(l.size) })}` : ''}${l.madeToOrderDays && l.qty > (l.stock ?? 0) ? `<br>${tc('line.made', { n: l.qty - (l.stock ?? 0), d: l.madeToOrderDays })}` : ''}${!l.madeToOrderDays && l.size && l.stock && l.stock <= 3 ? `<br><span class="line__left">${l.stock === 1 ? tc('size.left1', { s: esc(l.size) }) : tc('size.leftN', { n: l.stock, s: esc(l.size) })}</span>` : ''}</p>
           <div class="qty">
             <button type="button" data-qty="-1" aria-label="${tc('qty.less')}">−</button>
             <span aria-live="polite">${l.qty}</span>

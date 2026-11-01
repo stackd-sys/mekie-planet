@@ -1,0 +1,43 @@
+---
+/* Contagem decrescente até ao fim da promoção (data real de promo.ts, nunca recomeça).
+   "text": 29d 08h 12m 05s numa linha. "boxes": quatro caixas com dias, horas, minutos e segundos. */
+import { promo } from '../data/promo';
+import { langOf } from '../i18n';
+import { useT } from '../i18n/ui';
+interface Props { variant?: 'text' | 'boxes' }
+const { variant = 'text' } = Astro.props;
+const t = useT(langOf(Astro.url.pathname));
+const units = [t('bf.days'), t('bf.hours'), t('bf.mins'), t('bf.secs')];
+---
+{variant === 'boxes' ? (
+  <div class="cd-boxes" data-countdown={promo.end} data-style="boxes" role="timer" aria-label={t('bf.ends')}>
+    {units.map((u) => <span class="cd-box"><b data-cd>00</b><small>{u}</small></span>)}
+  </div>
+) : (
+  <span class="cd-text" data-countdown={promo.end} data-style="text" role="timer"></span>
+)}
+
+<script>
+  /* atualiza todas as contagens da página uma vez por segundo */
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const tick = () => {
+    document.querySelectorAll<HTMLElement>('[data-countdown]').forEach((el) => {
+      const left = Math.max(0, new Date(el.dataset.countdown!).getTime() - Date.now());
+      const s = Math.floor(left / 1000);
+      const parts = [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
+      if (el.dataset.style === 'boxes') el.querySelectorAll('[data-cd]').forEach((b, i) => (b.textContent = pad(parts[i])));
+      else el.textContent = `${parts[0]}d ${pad(parts[1])}h ${pad(parts[2])}m ${pad(parts[3])}s`;
+    });
+  };
+  tick();
+  setInterval(tick, 1000);
+</script>
+
+<style>
+  .cd-text { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cd-boxes { display: flex; gap: 8px; justify-content: center; }
+  .cd-box { display: grid; justify-items: center; min-width: 64px; padding: 10px 6px 8px; background: #e10600; color: #fff; border-radius: 4px; }
+  .cd-box b { font-family: var(--font-display); font-size: clamp(24px, 3.4vw, 34px); line-height: 1; font-variant-numeric: tabular-nums; }
+  .cd-box small { margin-top: 5px; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .9; }
+  @media (max-width: 420px) { .cd-box { min-width: 56px; } }
+</style>

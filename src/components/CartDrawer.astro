@@ -8,6 +8,8 @@ import { shop } from '../i18n/data';
 const lang = langOf(Astro.url.pathname);
 const t = useT(lang);
 const addOns = shop(lang).products.filter((p) => p.category === 'meias');
+import Countdown from './Countdown.astro';
+import { promoActive } from '../data/promo';
 ---
 <div class="drawer" data-cart hidden>
   <div class="drawer__backdrop" data-cart-close></div>
@@ -48,6 +50,7 @@ const addOns = shop(lang).products.filter((p) => p.category === 'meias');
     <footer class="drawer__foot" data-cart-foot>
       <div class="drawer__row"><span class="eyebrow">Subtotal</span><strong data-cart-subtotal>{money(0, lang)}</strong></div>
       <div class="drawer__row drawer__packs" data-cart-packs hidden><span data-cart-packs-label></span><strong data-cart-packs-value></strong></div>
+      {promoActive() && <p class="drawer__bf">{t('bf.name')} · {t('bf.ends').toLowerCase()} <Countdown /></p>}
       <p class="drawer__note">{t('cart.note', { n: amount(site.freeShippingFrom, lang) })}</p>
       <a href={href(lang, '/checkout/')} class="pill pill--accent pill--block">{t('cart.checkout')}</a>
       <ul class="drawer__pay" aria-label={t('payments')}>
@@ -58,6 +61,8 @@ const addOns = shop(lang).products.filter((p) => p.category === 'meias');
 </div>
 
 <style>
+  .drawer__bf { margin: 0 0 10px; padding: 8px 12px; background: #e10600; color: #fff; font-size: 12px; font-weight: 600; text-align: center; border-radius: 3px; }
+  :global(.line__left) { color: #e10600; font-weight: 600; }
   .drawer__packs { font-size: 13px; color: var(--ink); }
   .drawer__packs[hidden] { display: none; }
   .drawer { position: fixed; inset: 0; z-index: 110; }

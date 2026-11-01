@@ -5,6 +5,7 @@ import { langOf, toPt, href, langs, langName, amount } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
 import { promoActive } from '../data/promo';
+import Countdown from './Countdown.astro';
 import { halloweenActive } from '../data/season';
 const hw = halloweenActive();
 interface Props { overlay?: boolean }
@@ -30,11 +31,15 @@ const switcher = langs.map((l) => {
   const to = href(l, path);
   return { lang: l, href: l !== 'pt' && to === path ? href(l, '/') : to };
 });
-const announcement = [...(hw ? [t('hw.announce')] : []), ...(promoActive() ? [t('bf.announce')] : []), t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
+/* Black November: a barra fica vermelha e fixa na promoção, com a contagem até ao fim */
+const bf = promoActive() && !hw;
+const announcement = [...(hw ? [t('hw.announce')] : []), t('announce.last'), t('announce.free', { n: amount(site.freeShippingFrom, lang) }), t('announce.days', { n: site.deliveryDays })];
 ---
-<div class:list={['announce', { 'announce--hw': hw }]} role="region" aria-label={t('announce.label')}>
+<div class:list={['announce', { 'announce--hw': hw, 'announce--bf': bf }]} role="region" aria-label={t('announce.label')}>
   <div class="announce__track">
-    {announcement.map((text, i) => <p class:list={['announce__item eyebrow', { 'is-active': i === 0 }]}>{text}</p>)}
+    {bf ? (
+      <a href={href(lang, '/loja/')} class="announce__bf eyebrow"><span class="announce__long">{t('bf.announce')}</span><span class="announce__short">{t('bf.short')}</span><span>·</span><span>{t('bf.ends')} <Countdown /></span></a>
+    ) : announcement.map((text, i) => <p class:list={['announce__item eyebrow', { 'is-active': i === 0 }]}>{text}</p>)}
   </div>
 </div>
 
@@ -140,6 +145,10 @@ const announcement = [...(hw ? [t('hw.announce')] : []), ...(promoActive() ? [t(
     overflow: hidden;
   }
   .announce--hw { background: #ff7a1a; color: #120c06; }
+  .announce--bf { background: #e10600; }
+  .announce__bf { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 10.5px; padding: 0 12px; text-align: center; font-weight: 600; }
+  .announce__short { display: none; }
+  @media (max-width: 700px) { .announce__long { display: none; } .announce__short { display: inline; } }
   .announce__track { position: relative; height: 100%; }
   .announce__item {
     position: absolute; inset: 0;

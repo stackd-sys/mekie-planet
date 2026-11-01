@@ -1,6 +1,7 @@
 ---
 /* Banner da promoção (Black November) na página inicial: desconto e packs. Só aparece com a promoção ativa. */
 import Img from './Img.astro';
+import Countdown from './Countdown.astro';
 import { products } from '../data/products';
 import { promo, kindOf, type Kind } from '../data/promo';
 import { site } from '../data/site';
@@ -24,8 +25,11 @@ const packs = promo.packs.map((p) => {
   <div class="bf__inner container">
     <div class="bf__head">
       <p class="eyebrow bf__kicker">{t('bf.kicker')}</p>
-      <h2 id="bf-title" class="bf__title display">{t('bf.name')}</h2>
+      <h2 id="bf-title" class="bf__title display">{(() => { const w = t('bf.name').split(' '); return <>{w.slice(0, -1).join(' ')} <span class="bf__red">{w.at(-1)}</span></>; })()}</h2>
+      <span class="bf__sticker">-15%</span>
       <p class="bf__lead">{t('bf.lead')}</p>
+      <p class="bf__ends eyebrow">{t('bf.ends')}</p>
+      <Countdown variant="boxes" />
       <div class="bf__ctas">
         <a href={h('/loja/hoodies-crewnecks/')} class="pill pill--light">{t('bf.cta')}</a>
         <a href={h('/loja/t-shirts/')} class="pill bf__ghost">{t('bf.cta2')}</a>
@@ -42,6 +46,7 @@ const packs = promo.packs.map((p) => {
             </span>
             <span class="bf__name">{t(`pack.${p.id}` as never)}</span>
             <span class="bf__price">{amount(p.price, lang)}</span>
+            <span class="bf__save">-{amount(p.normal - p.price, lang)}</span>
             <span class="bf__was" set:html={t('bf.instead', { n: `<del>${amount(p.normal, lang)}</del>` })} />
             {p.price >= site.freeShippingFrom && <span class="bf__tag eyebrow">{t('bf.freeShip')}</span>}
           </a>
@@ -56,7 +61,12 @@ const packs = promo.packs.map((p) => {
   .bf { background: #111; color: #f5f5f4; padding: clamp(48px, 7vw, 96px) 0; }
   .bf__inner { display: grid; gap: clamp(28px, 4vw, 48px); }
   .bf__head { display: grid; justify-items: center; text-align: center; gap: 12px; }
-  .bf__kicker { margin: 0; font-size: 11px; color: #b9b9b4; }
+  .bf__kicker { margin: 0; font-size: 11px; color: #ff3b30; font-weight: 600; }
+  .bf__red { color: #e10600; }
+  .bf__sticker { display: inline-block; margin-top: -4px; padding: 6px 14px; background: #e10600; color: #fff; font-family: var(--font-display); font-size: clamp(20px, 2.6vw, 28px); font-weight: 600; transform: rotate(-3deg); border-radius: 3px; animation: bfPulse 1.6s ease-in-out infinite; }
+  .bf__ends { margin: 10px 0 0; font-size: 11px; color: #d8d8d4; }
+  @keyframes bfPulse { 0%, 100% { transform: rotate(-3deg) scale(1); } 50% { transform: rotate(-3deg) scale(1.07); } }
+  @media (prefers-reduced-motion: reduce) { .bf__sticker { animation: none; } }
   .bf__title { margin: 0; font-size: clamp(44px, 9vw, 120px); line-height: .95; text-transform: uppercase; letter-spacing: -.01em; }
   .bf__lead { margin: 4px 0 0; max-width: 560px; font-size: 16px; line-height: 1.55; color: #d8d8d4; }
   .bf__ctas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
@@ -64,13 +74,14 @@ const packs = promo.packs.map((p) => {
   .bf__ghost:hover { background: #f5f5f4; color: #111; }
   .bf__packs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .bf__pack { display: grid; justify-items: center; gap: 6px; padding: 22px 16px 20px; background: #1d1d1d; border: 1px solid #2c2c2c; text-align: center; height: 100%; position: relative; transition: border-color .2s; }
-  .bf__pack:hover { border-color: #6b6b67; }
+  .bf__pack:hover { border-color: #e10600; }
   .bf__imgs { position: relative; width: 100%; max-width: 230px; aspect-ratio: 1.6 / 1; margin-bottom: 10px; }
   .bf__imgs :global(.bf__img) { position: absolute; width: 50%; height: auto; aspect-ratio: 1; object-fit: contain; top: 0; background: #e9e8e4; border-radius: 4px; }
   .bf__imgs :global(.bf__img--a) { left: 6%; }
   .bf__imgs :global(.bf__img--b) { right: 6%; top: 20%; box-shadow: -6px 6px 18px rgba(0, 0, 0, .35); }
   .bf__name { font-size: 14px; font-weight: 600; }
-  .bf__price { font-family: var(--font-display); font-size: 26px; font-weight: 600; }
+  .bf__price { font-family: var(--font-display); font-size: 26px; font-weight: 600; color: #ff3b30; }
+  .bf__save { position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 700; padding: 4px 7px; background: #e10600; color: #fff; }
   .bf__was { font-size: 12px; color: #9d9d98; }
   .bf__tag { position: absolute; top: 10px; right: 10px; font-size: 9.5px; padding: 4px 7px; background: #f5f5f4; color: #111; }
   .bf__note { margin: 0; text-align: center; font-size: 12.5px; color: #9d9d98; }
