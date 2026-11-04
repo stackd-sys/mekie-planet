@@ -60,14 +60,39 @@ function rememberVisit() {
     localStorage.setItem(UTM_KEY, JSON.stringify({ ...utm, ...(ref ? { ref } : {}), landing: location.pathname, at: new Date().toISOString() }));
   } catch {}
 }
-/** Origem guardada (ou null), para juntar à encomenda */
+/* Etiquetas do link de entrada (utm_*, fbclid, gclid) levadas de página em página, no próprio endereço,
+   até ao checkout. Não guarda nada no aparelho, por isso funciona também para quem recusa os cookies:
+   a venda fica sempre com a origem certa. Só mexe no link no momento do clique (o Google não vê). */
+const CARRY = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'gbraid', 'wbraid'];
+const carried = () => {
+  const q = new URLSearchParams(location.search);
+  return CARRY.filter((k) => q.get(k)).map((k) => [k, q.get(k)!] as [string, string]);
+};
+function carryTags() {
+  if (!carried().length) return;
+  document.addEventListener('click', (e) => {
+    const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+    let u: URL;
+    try { u = new URL(a.href, location.href); } catch { return; }
+    if (u.origin !== location.origin || u.pathname.startsWith('/admin') || CARRY.some((k) => u.searchParams.has(k))) return;
+    for (const [k, v] of carried()) u.searchParams.set(k, v);
+    a.href = u.href;
+  }, true);
+}
+carryTags();
+
+/** Origem para juntar à encomenda: a guardada (com consentimento) ou, sem ela, a das etiquetas do endereço */
 export function visitSource() {
   try {
     const v = JSON.parse(localStorage.getItem(UTM_KEY) || 'null');
-    return v && getChoice()?.analytics && Date.now() - Date.parse(v.at) < 30 * 86400000 ? v : null;
-  } catch {
-    return null;
-  }
+    if (v && getChoice()?.analytics && Date.now() - Date.parse(v.at) < 30 * 86400000) return v;
+  } catch {}
+  const q = new URLSearchParams(location.search);
+  const utm: Record<string, string> = Object.fromEntries(['source', 'medium', 'campaign', 'content', 'term'].map((k) => [k, q.get(`utm_${k}`) || '']).filter(([, x]) => x));
+  if (!utm.source && q.get('fbclid')) Object.assign(utm, { source: 'facebook', medium: 'paid' });
+  if (!utm.source && (q.get('gclid') || q.get('gbraid') || q.get('wbraid'))) Object.assign(utm, { source: 'google', medium: 'cpc' });
+  return utm.source ? { ...utm, at: new Date().toISOString() } : null;
 }
 
 function apply(c: Choice) {

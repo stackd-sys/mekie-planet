@@ -6,8 +6,8 @@ import { euro, date } from '../../../lib/server/format';
 import { sourceName, mediumName } from '../../../lib/server/sources';
 
 /* Vendas por origem: de onde vieram as pessoas que compraram (anúncios, Instagram, newsletter...).
-   A origem vem dos links com etiqueta (utm_*) e fica guardada na encomenda. Quem recusou os cookies
-   de estatísticas aparece como "Direto ou sem cookies". */
+   A origem vem dos links com etiqueta (utm_*), que acompanham a pessoa de página em página até ao checkout,
+   e fica guardada na encomenda. */
 const sql = await db();
 const PERIODS = [7, 30, 90, 365];
 const days = PERIODS.includes(Number(Astro.url.searchParams.get('dias'))) ? Number(Astro.url.searchParams.get('dias')) : 30;
@@ -51,7 +51,7 @@ const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace
 
   <div class="grid kpis">
     <div class="card kpi"><p>Vendas pagas</p><strong>{euro(total)}</strong><small>{orders.length} {orders.length === 1 ? 'encomenda' : 'encomendas'}</small></div>
-    <div class="card kpi"><p>Com origem conhecida</p><strong>{pct(known, orders.length)}</strong><small>as restantes recusaram os cookies ou vieram diretas</small></div>
+    <div class="card kpi"><p>Com origem conhecida</p><strong>{pct(known, orders.length)}</strong><small>as restantes vieram diretas ou voltaram mais tarde sem cookies</small></div>
     <div class="card kpi"><p>Entradas no site</p><strong>{entries.reduce((n, e) => n + e.n, 0)}</strong><small>toda a gente, com ou sem cookies</small></div>
   </div>
 
@@ -65,7 +65,7 @@ const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace
         ))}</tbody>
       </table></div>
     ) : <p class="empty">Ainda sem visitas nem vendas neste período.</p>}
-    <p class="note" style="margin-bottom:0">A conversão compara encomendas com entradas da mesma origem. As entradas contam toda a gente; a origem da compra só fica guardada para quem aceita os cookies de estatísticas. Por isso as compras de quem recusou caem em "Direto ou sem cookies", e a conversão real dos anúncios é um pouco maior do que a que aparece.</p>
+    <p class="note" style="margin-bottom:0">A conversão compara encomendas com entradas da mesma origem. A origem fica sempre na compra feita na mesma visita, com ou sem cookies. Só quando a pessoa recusa os cookies, sai do site e volta mais tarde por outro caminho é que a compra cai em "Direto ou sem cookies".</p>
   </section>
 
   <section class="card" style="margin-top:14px">
