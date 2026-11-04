@@ -46,11 +46,6 @@ const codes = await sql<any[]>`
   left join code_uses u on u.code = d.code
   left join orders o on o.number = u.order_number
   group by d.code order by d.welcome desc, d.created_at desc`;
-const sources = await sql<any[]>`
-  select coalesce(utm->>'source', '(direto ou sem consentimento)') as source, coalesce(utm->>'campaign', '') as campaign,
-    count(*)::int as orders, coalesce(sum(total), 0) as revenue
-  from orders where status in ('paga','enviada','entregue') and created_at > now() - interval '90 days'
-  group by 1, 2 order by revenue desc limit 30`;
 const edit = codes.find((c) => c.code === (Astro.url.searchParams.get('editar') || '').toUpperCase());
 const d = (v: unknown) => (v ? new Date(v as string).toISOString().slice(0, 10) : '');
 ---
@@ -120,15 +115,7 @@ const d = (v: unknown) => (v ? new Date(v as string).toISOString().slice(0, 10) 
     </div>
   </section>
 
-  <h2>Vendas por origem (90 dias)</h2>
-  <div class="table">
-    {sources.length ? (
-      <table>
-        <thead><tr><th>Origem</th><th>Campanha</th><th class="num">Encomendas</th><th class="num">Vendas</th></tr></thead>
-        <tbody>{sources.map((s) => <tr><td>{s.source}</td><td>{s.campaign || '—'}</td><td class="num">{s.orders}</td><td class="num">{euro(s.revenue)}</td></tr>)}</tbody>
-      </table>
-    ) : <p class="empty">Ainda sem vendas pagas.</p>}
-  </div>
+  <p class="note" style="margin-top:14px">As vendas de cada link aparecem em <a href="/admin/origens/">Vendas por origem</a>, por origem, campanha e anúncio.</p>
 </Admin>
 
 <script>

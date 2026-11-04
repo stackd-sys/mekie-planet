@@ -41,16 +41,22 @@ let gaLoaded = false;
 let pixelLoaded = false;
 
 /* Origem da visita (utm_* dos links com etiqueta), para o CRM saber que campanha trouxe cada venda.
-   Só com consentimento de estatísticas. Fica a primeira origem durante 30 dias. */
+   Só com consentimento de estatísticas. Fica durante 30 dias. Um link com etiqueta (anúncio, newsletter,
+   influencer) substitui sempre o anterior: conta o último que trouxe a pessoa. Uma visita só com o site de
+   onde veio (sem etiqueta) só fica se não houver nenhuma guardada. */
 const UTM_KEY = 'mekie-utm';
 function rememberVisit() {
   try {
     const q = new URLSearchParams(location.search);
-    const utm = Object.fromEntries(['source', 'medium', 'campaign', 'content', 'term'].map((k) => [k, q.get(`utm_${k}`) || '']).filter(([, v]) => v));
+    const utm: Record<string, string> = Object.fromEntries(['source', 'medium', 'campaign', 'content', 'term'].map((k) => [k, q.get(`utm_${k}`) || '']).filter(([, v]) => v));
+    /* anúncios sem etiqueta: a Meta e o Google juntam o seu próprio código ao link */
+    if (!utm.source && q.get('fbclid')) Object.assign(utm, { source: 'facebook', medium: 'paid' });
+    if (!utm.source && (q.get('gclid') || q.get('gbraid') || q.get('wbraid'))) Object.assign(utm, { source: 'google', medium: 'cpc' });
     const ref = document.referrer && new URL(document.referrer).host !== location.host ? new URL(document.referrer).host : '';
     if (!Object.keys(utm).length && !ref) return;
     const prev = JSON.parse(localStorage.getItem(UTM_KEY) || 'null');
-    if (prev && Date.now() - Date.parse(prev.at) < 30 * 86400000) return;
+    const fresh = prev && Date.now() - Date.parse(prev.at) < 30 * 86400000;
+    if (fresh && !utm.source) return;
     localStorage.setItem(UTM_KEY, JSON.stringify({ ...utm, ...(ref ? { ref } : {}), landing: location.pathname, at: new Date().toISOString() }));
   } catch {}
 }

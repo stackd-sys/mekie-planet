@@ -100,6 +100,7 @@ const stripeTest = String(o.stripe_session).startsWith('cs_test_');
 const refundLeft = Math.round((Number(o.total) - Number(o.refunded)) * 100) / 100;
 const canRefund = hasStripe() && o.stripe_session && !testPayment(o) && ['paga', 'enviada', 'entregue', 'devolvida'].includes(o.status) && refundLeft > 0;
 const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest ? 'test/' : ''}search?query=${encodeURIComponent(o.number)}` : '';
+import { sourceName, mediumName } from '../../../../lib/server/sources';
 ---
 <Admin title={`Encomenda ${o.number}`}>
   <p class="no-print"><a href="/admin/encomendas/" class="muted">← Encomendas</a></p>
@@ -145,6 +146,13 @@ const stripeLink = o.stripe_session ? `https://dashboard.stripe.com/${stripeTest
         <dt>Telemóvel</dt><dd><a href={`tel:${o.phone}`}>{o.phone}</a></dd>
         {o.lang && o.lang !== 'pt' && <><dt>Língua</dt><dd>{o.lang === 'en' ? 'Inglês' : 'Espanhol'} <span class="muted">(os emails seguem nesta língua)</span></dd></>}
         {o.nif && <><dt>NIF</dt><dd>{o.nif}</dd></>}
+        <dt>Origem</dt><dd>{o.utm?.source || o.utm?.ref ? (
+          <>
+            <strong>{sourceName(o.utm.source || o.utm.ref)}</strong>{o.utm.medium && <span class="muted"> · {mediumName(o.utm.medium)}</span>}
+            {(o.utm.campaign || o.utm.content) && <><br /><span class="muted">{[o.utm.campaign && `Campanha: ${o.utm.campaign}`, o.utm.content && `Anúncio: ${o.utm.content}`, o.utm.term && `Conjunto: ${o.utm.term}`].filter(Boolean).join(' · ')}</span></>}
+            {o.utm.landing && <><br /><span class="muted">Entrou em {o.utm.landing}{o.utm.at && `, a ${date(o.utm.at, true)}`}</span></>}
+          </>
+        ) : <span class="muted">{o.source === 'site' ? 'Direto ou sem consentimento de cookies' : 'Criada no CRM'}</span>}</dd>
         {o.address ? (
           <><dt>Morada</dt><dd>{o.address.morada}<br />{o.address.codigo_postal} {o.address.localidade}<br />{o.address.pais}</dd></>
         ) : <><dt>Envio</dt><dd>Só cartões presente (por email)</dd></>}

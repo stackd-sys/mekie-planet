@@ -1,0 +1,101 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+import { sourceName, mediumName } from '../../../lib/server/sources';
+
+/* Vendas por origem: de onde vieram as pessoas que compraram (anúncios, Instagram, newsletter...).
+   A origem vem dos links com etiqueta (utm_*) e fica guardada na encomenda. Quem recusou os cookies
+   de estatísticas aparece como "Direto ou sem cookies". */
+const sql = await db();
+const PERIODS = [7, 30, 90, 365];
+const days = PERIODS.includes(Number(Astro.url.searchParams.get('dias'))) ? Number(Astro.url.searchParams.get('dias')) : 30;
+const since = `${days} days`;
+
+const orders = await sql<any[]>`
+  select number, total, created_at, utm, source from orders
+  where status in ('paga','enviada','entregue') and created_at > now() - ${since}::interval
+  order by created_at desc`;
+/* entradas no site (contagem anónima de toda a gente, com ou sem cookies) */
+const entries = await sql<any[]>`
+  select dim, sum(n)::int as n from stats
+  where metric = 'entrada' and day > (now() at time zone 'Europe/Lisbon')::date - ${days}::int group by dim`;
+
+const src = (o: any) => sourceName(o.utm?.source || o.utm?.ref);
+const bySource = new Map<string, { orders: number; revenue: number; entries: number }>();
+const add = (k: string) => bySource.get(k) ?? (bySource.set(k, { orders: 0, revenue: 0, entries: 0 }), bySource.get(k)!);
+for (const o of orders) { const r = add(src(o)); r.orders++; r.revenue += Number(o.total); }
+for (const e of entries) add(sourceName(e.dim === 'direto' ? 'direto' : e.dim)).entries += e.n;
+const sources = [...bySource.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue || b.entries - a.entries);
+
+const byAd = new Map<string, { source: string; medium: string; campaign: string; content: string; orders: number; revenue: number }>();
+for (const o of orders.filter((x) => x.utm?.campaign || x.utm?.content)) {
+  const key = [src(o), o.utm.medium, o.utm.campaign, o.utm.content].join('|');
+  const r = byAd.get(key) ?? { source: src(o), medium: mediumName(o.utm.medium), campaign: o.utm.campaign || '', content: o.utm.content || '', orders: 0, revenue: 0 };
+  r.orders++; r.revenue += Number(o.total); byAd.set(key, r);
+}
+const ads = [...byAd.values()].sort((a, b) => b.revenue - a.revenue);
+
+const total = orders.reduce((n, o) => n + Number(o.total), 0);
+const known = orders.filter((o) => o.utm?.source || o.utm?.ref).length;
+const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace('.', ',')}%` : '—');
+---
+<Admin title="Vendas por origem">
+  <h1>Vendas por origem</h1>
+  <p class="sub">De onde vieram as pessoas que compraram: anúncios, Instagram, Google, newsletter ou links de parcerias. Conta o último link com etiqueta em que a pessoa carregou nos 30 dias antes da compra.</p>
+
+  <nav class="bar" style="margin:0 0 14px">
+    {PERIODS.map((d) => <a href={`?dias=${d}`} class:list={['btn', 'small', { ghost: d !== days }]}>{d === 365 ? '12 meses' : `${d} dias`}</a>)}
+  </nav>
+
+  <div class="grid kpis">
+    <div class="card kpi"><p>Vendas pagas</p><strong>{euro(total)}</strong><small>{orders.length} {orders.length === 1 ? 'encomenda' : 'encomendas'}</small></div>
+    <div class="card kpi"><p>Com origem conhecida</p><strong>{pct(known, orders.length)}</strong><small>as restantes recusaram os cookies ou vieram diretas</small></div>
+    <div class="card kpi"><p>Entradas no site</p><strong>{entries.reduce((n, e) => n + e.n, 0)}</strong><small>toda a gente, com ou sem cookies</small></div>
+  </div>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Por origem</h2>
+    {sources.length ? (
+      <div class="table"><table>
+        <thead><tr><th>Origem</th><th class="num">Entradas</th><th class="num">Encomendas</th><th class="num">Vendas</th><th class="num">Valor médio</th><th class="num">Conversão</th></tr></thead>
+        <tbody>{sources.map((s) => (
+          <tr><td><strong>{s.name}</strong></td><td class="num">{s.entries || '—'}</td><td class="num">{s.orders}</td><td class="num">{euro(s.revenue)}</td><td class="num">{s.orders ? euro(s.revenue / s.orders) : '—'}</td><td class="num">{s.entries && s.orders ? pct(s.orders, s.entries) : '—'}</td></tr>
+        ))}</tbody>
+      </table></div>
+    ) : <p class="empty">Ainda sem visitas nem vendas neste período.</p>}
+    <p class="note" style="margin-bottom:0">A conversão compara encomendas com entradas da mesma origem. As entradas contam toda a gente; a origem da compra só fica guardada para quem aceita os cookies de estatísticas. Por isso as compras de quem recusou caem em "Direto ou sem cookies", e a conversão real dos anúncios é um pouco maior do que a que aparece.</p>
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Por campanha e anúncio</h2>
+    {ads.length ? (
+      <div class="table"><table>
+        <thead><tr><th>Origem</th><th>Tipo</th><th>Campanha</th><th>Anúncio</th><th class="num">Encomendas</th><th class="num">Vendas</th></tr></thead>
+        <tbody>{ads.map((a) => (
+          <tr><td>{a.source}</td><td class="muted">{a.medium || '—'}</td><td>{a.campaign || '—'}</td><td>{a.content || '—'}</td><td class="num">{a.orders}</td><td class="num">{euro(a.revenue)}</td></tr>
+        ))}</tbody>
+      </table></div>
+    ) : <p class="empty">Ainda sem vendas vindas de links com campanha (utm_campaign) neste período.</p>}
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Últimas vendas</h2>
+    {orders.length ? (
+      <div class="table"><table>
+        <thead><tr><th>Encomenda</th><th>Data</th><th>Origem</th><th>Campanha · anúncio</th><th class="num">Total</th></tr></thead>
+        <tbody>{orders.slice(0, 25).map((o) => (
+          <tr><td><a href={`/admin/encomendas/${o.number}/`}>{o.number}</a></td><td class="muted">{date(o.created_at, true)}</td><td>{src(o)}{o.utm?.medium && <span class="muted"> · {mediumName(o.utm.medium)}</span>}</td><td class="muted">{[o.utm?.campaign, o.utm?.content].filter(Boolean).join(' · ') || '—'}</td><td class="num">{euro(o.total)}</td></tr>
+        ))}</tbody>
+      </table></div>
+    ) : <p class="empty">Ainda sem vendas pagas neste período.</p>}
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Links para os anúncios da Meta</h2>
+    <p style="margin-top:0">No anúncio, em <strong>Parâmetros de URL</strong>, cola isto. A Meta preenche sozinha a rede (Facebook ou Instagram), a campanha, o conjunto e o anúncio:</p>
+    <input readonly value="utm_source={{site_source_name}}&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}" style="width:100%;font-family:monospace;font-size:12.5px" onclick="this.select()" />
+    <p class="note" style="margin-bottom:0">Para outros links (bio do Instagram, influencers, parcerias) usa o criador de links em <a href="/admin/codigos/">Códigos e links</a>.</p>
+  </section>
+</Admin>
