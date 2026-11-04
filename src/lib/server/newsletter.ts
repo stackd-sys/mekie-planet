@@ -1,4 +1,5 @@
 /* Email de boas-vindas da newsletter, com o código de desconto e o link para sair. */
+import { promoActive } from '../../data/promo';
 import { site } from '../../data/site';
 import { sendMail, layout, escapeHtml } from './mail';
 import { money, href } from '../../i18n';
@@ -9,7 +10,8 @@ export async function sendWelcome(sql: any, email: string) {
   if (!s) return false;
   const lang = asLang(s.lang);
   const t = serverT(lang);
-  const [c] = await sql`select code, kind, value from discount_codes where welcome = true and active = true limit 1`;
+  /* durante a promoção o email de boas-vindas não leva código: os descontos já estão nos preços */
+  const [c] = promoActive() ? [] : await sql`select code, kind, value from discount_codes where welcome = true and active = true limit 1`;
   const off = c ? (c.kind === 'percent' ? `${Number(c.value)}%` : money(Number(c.value), lang)) : '';
   const leave = `${site.url}/newsletter/sair/?t=${s.token}${lang === 'pt' ? '' : `&l=${lang}`}`;
   return sendMail(email, c ? t('m.welcomeSubject', { off }) : t('m.welcomeSubjectNoCode'), layout(t('m.welcomeTitle'),

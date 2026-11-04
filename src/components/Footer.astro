@@ -11,6 +11,7 @@ const { topCategories, childCategories } = shop(lang);
 const legalPages = legalFor(lang);
 const year = new Date().getFullYear();
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
+import { promoActive } from '../data/promo';
 ---
 <section class="perks" aria-label={t('perks')}>
   <div class="perks__inner container">
@@ -24,7 +25,7 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
   <div class="footer__grid container">
     <div class="footer__col footer__news" id="newsletter" data-newsletter-box>
       <p class="footer__title eyebrow">{t('news.title')}</p>
-      <p class="footer__text eyebrow" data-before set:html={t('news.text', { n: site.welcomeDiscount })} />
+      <p class="footer__text eyebrow" data-before set:html={promoActive() ? t('news.bfText') : t('news.text', { n: site.welcomeDiscount })} />
       <form class="newsletter-form" data-newsletter="footer" novalidate>
         <label class="sr-only" for="footer-email">Email</label>
         <input class="field" id="footer-email" type="email" name="email" placeholder="Email" required autocomplete="email" />
@@ -38,7 +39,7 @@ const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Go
         <p class="newsletter-form__msg" role="alert" data-msg hidden></p>
       </form>
       <div class="footer__done" data-success hidden>
-        <p class="footer__text eyebrow"><span data-success-title>{t('news.done')}</span> <span data-success-sub>{t('news.code', { n: site.welcomeDiscount })}</span></p>
+        <p class="footer__text eyebrow"><span data-success-title>{t('news.done')}</span> <span data-success-sub>{promoActive() ? '' : t('news.code', { n: site.welcomeDiscount })}</span></p>
         <p class="footer__code" data-code-wrap><code>{site.welcomeCode}</code></p>
       </div>
     </div>

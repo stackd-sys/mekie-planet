@@ -162,9 +162,11 @@ const SUCCESS: Record<Outcome, { title: string; sub: string; code: boolean }> = 
   used: { title: tc('news.used'), sub: tc('news.usedSub'), code: false },
 };
 
+/* durante a promoção não há código de boas-vindas: os descontos já estão nos preços */
+const promoOn = document.documentElement.dataset.promo === '1';
 function showSuccess(form: HTMLFormElement, outcome: Outcome = 'new') {
   const box = form.closest<HTMLElement>('[data-newsletter-box]') ?? form;
-  const text = SUCCESS[outcome];
+  const text = promoOn ? { title: SUCCESS[outcome].title, sub: tc('news.bfSub'), code: false } : SUCCESS[outcome];
   box.querySelectorAll<HTMLElement>('[data-success-title]').forEach((el) => (el.textContent = text.title));
   box.querySelectorAll<HTMLElement>('[data-success-sub]').forEach((el) => (el.textContent = text.sub));
   box.querySelectorAll<HTMLElement>('[data-code-wrap]').forEach((el) => (el.hidden = !text.code));
