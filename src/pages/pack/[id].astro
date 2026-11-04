@@ -93,6 +93,7 @@ const others = packs().filter((p) => p.id !== pack.id);
 <script>
   import { cart } from '../../scripts/cart';
   import { openCart } from '../../scripts/ui';
+  import { track } from '../../scripts/consent';
 
   const root = document.querySelector<HTMLElement>('[data-pack]')!;
   const steps = JSON.parse(root.dataset.pack!) as any[][];
@@ -138,6 +139,8 @@ const others = packs().filter((p) => p.id !== pack.id);
       const { sizes, regular, ...info } = o;
       cart.add({ ...info, ...(size ? { size } : {}) }, 1);
     }
+    /* Pixel da Meta e Google Analytics: as duas peças, com o número de cada produto (o mesmo do catálogo) */
+    track('add_to_cart', lines.map(({ o, size }) => ({ id: o.id, name: `${o.name} ${o.color}`, price: o.price, variant: size })));
     btn.textContent = root.dataset.added!;
     setTimeout(() => (btn.textContent = root.dataset.add!), 1600);
     openCart();
