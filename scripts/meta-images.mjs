@@ -41,7 +41,7 @@ const packs = {
   'hoodie-tshirt': ['hoodie-cogumelos-black-1', 'tshirt-black-mushrooms-1'],
   'crewneck-tshirt': ['sweat-mekie-black-1', 'tshirt-khaki-mushrooms-1'],
   'hoodie-cap': ['hoodie-cogumelos-yellow-1', 'cap-black-1'],
-  'tshirt-cap': ['tshirt-black-mushrooms-1', 'cap-brown-1'],
+  'tshirt-cap': ['tshirt-black-mushrooms-1', 'cap-navy-1'],
 };
 for (const [id, [a, b]] of Object.entries(packs)) {
   const size = 1080, piece = 600;
