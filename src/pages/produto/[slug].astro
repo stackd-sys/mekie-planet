@@ -57,10 +57,10 @@ const packHints = promoActive() && kind && !soldOut
   : [];
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category, lang), { name: fullName(p), path: h(`/produto/${p.slug}/`) }];
-/* Personalizados: que fio e que zonas se pintam (scrunchie: corpo e rebordo; malas: mala, alça e anel) */
+/* Personalizados: que fio e que zonas se pintam (scrunchie: corpo e rebordo; malas: mala com a alça, e anel) */
 const yarns = p.yarn === 'merino' ? merinoColors : yarnColors;
 const parts = p.customParts ?? ['main', 'edge'];
-const partLabel = { main: t('p.main'), edge: t('p.edge'), body: t('p.bagBody'), handle: t('p.bagHandle'), ring: t('p.bagRing') };
+const partLabel = { main: t('p.main'), edge: t('p.edge'), body: t('p.bagBody'), ring: t('p.bagRing') };
 const isBag = p.category === 'malas';
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${trYarn(c.name, lang)}` : trYarn(c.name, lang));
 const reviewCount = (n: number) => (n === 1 ? t('p.review1') : t('p.reviews', { n }));

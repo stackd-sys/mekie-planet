@@ -25,7 +25,7 @@ export type ProductDetails = {
   care?: string[];
 };
 
-export type CustomPart = 'main' | 'edge' | 'body' | 'handle' | 'ring';
+export type CustomPart = 'main' | 'edge' | 'body' | 'ring';
 
 export type Product = {
   id: number;
@@ -49,7 +49,7 @@ export type Product = {
   customizable?: boolean;
   /** Fio das cores à escolha: algodão (scrunchie) ou merino (malas). */
   yarn?: 'algodao' | 'merino';
-  /** Zonas que o cliente pinta, pela ordem do mapa (base, canal verde, canal azul). */
+  /** Zonas que o cliente pinta, pela ordem do mapa (base, canal verde, canal azul). A alça das malas é da cor da mala. */
   customParts?: CustomPart[];
   /** Mapa da pré-visualização: sombra (vermelho), 2.ª zona (verde), 3.ª zona (azul) e recorte (alfa). */
   customMap?: string;
@@ -323,7 +323,7 @@ const bagM: ProductDetails = {
 };
 const custom = (d: ProductDetails): ProductDetails => ({
   ...d,
-  features: ['Feita à mão em crochet, por encomenda', 'Escolhes a cor da mala, da alça e do anel', ...d.features.slice(1)],
+  features: ['Feita à mão em crochet, por encomenda', 'Escolhes a cor da mala e a cor do anel', ...d.features.slice(1)],
 });
 
 const socks: ProductDetails = {
@@ -745,9 +745,9 @@ export const products: Product[] = [
     madeToOrderDays: 10,
     customizable: true,
     yarn: 'merino',
-    customParts: ['body', 'handle', 'ring'],
+    customParts: ['body', 'ring'],
     customMap: '/images/products/mala-s-mapa.webp',
-    customDefaults: ['#3a86c8', '#3a86c8', '#e6b33c'],
+    customDefaults: ['#3a86c8', '#e6b33c'],
     images: [img('mala-s-personalizada-1'), img('mala-s-cores-1'), img('mala-s-verde-1')],
     details: custom(bagS),
     description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',
@@ -764,9 +764,9 @@ export const products: Product[] = [
     madeToOrderDays: 10,
     customizable: true,
     yarn: 'merino',
-    customParts: ['body', 'handle', 'ring'],
+    customParts: ['body', 'ring'],
     customMap: '/images/products/mala-m-mapa.webp',
-    customDefaults: ['#6f5a93', '#6f5a93', '#f0bfcc'],
+    customDefaults: ['#6f5a93', '#f0bfcc'],
     images: [img('mala-m-personalizada-1'), img('mala-m-cores-1'), img('mala-m-rosa-1')],
     details: custom(bagM),
     description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',

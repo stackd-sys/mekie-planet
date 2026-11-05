@@ -153,21 +153,21 @@ export const categorySeo: Record<string, Entry> = {
       h: 'Malas de crochet feitas à mão',
       p: [
         'Cada mala Mekie é feita à mão, em crochet, com fio Katia Merino Aran (52% lã merino superwash e 48% acrílico). Há dois tamanhos: a S, uma mala de mão pequena com 16 cm de base, 10 cm de corpo e alça de 26 cm, e a M, para levar ao ombro, com 24 cm de base, 15 cm de corpo e alça de 46 cm.',
-        'Podes levar uma das que já estão feitas ou criar a tua: escolhes a cor da mala, da alça e do anel e vês logo como fica. Como são feitas uma a uma, por encomenda, não há duas exatamente iguais.',
+        'Podes levar uma das que já estão feitas ou criar a tua: escolhes a cor da mala, que é também a da alça, e a cor do anel, e vês logo como fica. Como são feitas uma a uma, por encomenda, não há duas exatamente iguais.',
       ],
     },
     en: {
       h: 'Handmade crochet bags',
       p: [
         'Every Mekie bag is crocheted by hand with Katia Merino Aran yarn (52% superwash merino wool and 48% acrylic). There are two sizes: the S, a small handbag with a 16 cm base, 10 cm body and 26 cm handle, and the M, to wear on your shoulder, with a 24 cm base, 15 cm body and 46 cm handle.',
-        'Take one that is ready or make your own: pick the colour of the bag, the handle and the ring and see right away how it looks. Since they are made one by one, to order, no two are exactly the same.',
+        'Take one that is ready or make your own: pick the colour of the bag, which is also the handle colour, and the colour of the ring, and see right away how it looks. Since they are made one by one, to order, no two are exactly the same.',
       ],
     },
     es: {
       h: 'Bolsos de ganchillo hechos a mano',
       p: [
         'Cada bolso Mekie se hace a mano, en ganchillo, con hilo Katia Merino Aran (52% lana merino superwash y 48% acrílico). Hay dos tamaños: el S, un bolso de mano pequeño con 16 cm de base, 10 cm de cuerpo y asa de 26 cm, y el M, para llevar al hombro, con 24 cm de base, 15 cm de cuerpo y asa de 46 cm.',
-        'Puedes llevarte uno de los que ya están hechos o crear el tuyo: eliges el color del bolso, del asa y de la anilla y ves al momento cómo queda. Como se hacen uno a uno, por encargo, no hay dos exactamente iguales.',
+        'Puedes llevarte uno de los que ya están hechos o crear el tuyo: eliges el color del bolso, que es también el del asa, y el color de la anilla, y ves al momento cómo queda. Como se hacen uno a uno, por encargo, no hay dos exactamente iguales.',
       ],
     },
   },

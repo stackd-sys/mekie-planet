@@ -85,7 +85,7 @@ const texts: Tr = {
   'Feito à mão em crochet': ['Handmade in crochet', 'Hecho a mano en ganchillo'],
   'Feita à mão em crochet': ['Handmade in crochet', 'Hecho a mano en ganchillo'],
   'Feita à mão em crochet, por encomenda': ['Handmade in crochet, made to order', 'Hecho a mano en ganchillo, por encargo'],
-  'Escolhes a cor da mala, da alça e do anel': ['You choose the colour of the bag, the handle and the ring', 'Eliges el color del bolso, del asa y de la anilla'],
+  'Escolhes a cor da mala e a cor do anel': ['You choose the colour of the bag and the colour of the ring', 'Eliges el color del bolso y el color de la anilla'],
   'Mala de mão pequena': ['Small handbag', 'Bolso de mano pequeño'],
   'Mala de ombro, com a alça mais comprida': ['Shoulder bag, with a longer handle', 'Bolso de hombro, con el asa más larga'],
   'Base: 16 cm': ['Base: 16 cm', 'Base: 16 cm'],
