@@ -1,4 +1,4 @@
-import { applyOverrides } from '../lib/server/overrides';
+import { applyOverrides, openOrdersWith } from '../lib/server/overrides';
 import { promo, promoActive, promoPrice, kindOf } from './promo';
 
 export type Category = {
@@ -25,6 +25,8 @@ export type ProductDetails = {
   care?: string[];
 };
 
+export type CustomPart = 'main' | 'edge' | 'body' | 'handle' | 'ring';
+
 export type Product = {
   id: number;
   slug: string;
@@ -43,8 +45,18 @@ export type Product = {
   sizeNotes?: Record<string, string>;
   /** Feito por encomenda quando não há stock: prazo de entrega em dias úteis. */
   madeToOrderDays?: number;
-  /** O cliente escolhe as cores (scrunchie personalizado). */
+  /** O cliente escolhe as cores (scrunchie e malas personalizadas). */
   customizable?: boolean;
+  /** Fio das cores à escolha: algodão (scrunchie) ou merino (malas). */
+  yarn?: 'algodao' | 'merino';
+  /** Zonas que o cliente pinta, pela ordem do mapa (base, canal verde, canal azul). */
+  customParts?: CustomPart[];
+  /** Mapa da pré-visualização: sombra (vermelho), 2.ª zona (verde), 3.ª zona (azul) e recorte (alfa). */
+  customMap?: string;
+  /** Cores da pré-visualização antes de escolher (hex, pela ordem das zonas). */
+  customDefaults?: string[];
+  /** Peça pronta: endereço da versão personalizada ("Queres outras cores?"). */
+  customSlug?: string;
   images: string[];
   badge?: string;
   /** desconto da promoção em curso, em % (mostrado na etiqueta em vez da conta exata) */
@@ -93,6 +105,11 @@ export const categories: Category[] = [
     slug: 'tote-bag', name: 'Tote Bag', parent: 'acessorios', image: '/images/products/tote-planetas-black-1.webp',
     seoTitle: 'Tote bags de algodão orgânico bordadas',
     intro: 'Tote bags de algodão orgânico com os desenhos Mekie bordados: planetas e cogumelos.',
+  },
+  {
+    slug: 'malas', name: 'Malas', parent: 'acessorios', image: '/images/products/mala-s-verde-1.webp',
+    seoTitle: 'Malas de crochet feitas à mão',
+    intro: 'Malas de crochet feitas à mão por nós. Leva uma das que já estão feitas ou escolhe as cores da tua.',
   },
 ];
 
@@ -245,6 +262,69 @@ const scrunchieDourado: ProductDetails = {
   features: ['Feito à mão em crochet'],
   composition: ['98% algodão, 2% fibra metalizada'],
 };
+
+/* Fio Katia Merino Aran: as cores que dá para escolher nas malas personalizadas */
+export const merinoColors = [
+  { code: '03', name: 'Cru', hex: '#ebe7e0' },
+  { code: '', name: 'Vermelho vivo', hex: '#e3243b' },
+  { code: '05', name: 'Preto', hex: '#2b2a33' },
+  { code: '10', name: 'Bege', hex: '#cab7a4' },
+  { code: '11', name: 'Pérola', hex: '#d8cfc8' },
+  { code: '12', name: 'Cinza pérola', hex: '#b5a9a8' },
+  { code: '14', name: 'Cinza escuro', hex: '#555459' },
+  { code: '23', name: 'Bordeaux', hex: '#7d2640' },
+  { code: '37', name: 'Caramelo', hex: '#905636' },
+  { code: '41', name: 'Ocre', hex: '#c78f2f' },
+  { code: '44', name: 'Petróleo', hex: '#1f5a63' },
+  { code: '46', name: 'Chocolate', hex: '#5e4740' },
+  { code: '', name: 'Castanho', hex: '#806459' },
+  { code: '50', name: 'Laranja telha', hex: '#ce4635' },
+  { code: '51', name: 'Vermelho', hex: '#991423' },
+  { code: '53', name: 'Rosa claro', hex: '#d9c0c2' },
+  { code: '54', name: 'Rosa velho', hex: '#a46b7d' },
+  { code: '', name: 'Rosa bebé', hex: '#f0bfcc' },
+  { code: '56', name: 'Azul petróleo', hex: '#2f6b7d' },
+  { code: '65', name: 'Verde acinzentado', hex: '#5c8b84' },
+  { code: '68', name: 'Azul bebé', hex: '#a8c8e6' },
+  { code: '69', name: 'Cinza', hex: '#767174' },
+  { code: '70', name: 'Verde azeitona', hex: '#5c5733' },
+  { code: '', name: 'Camelo', hex: '#b39383' },
+  { code: '80', name: 'Amarelo', hex: '#e6b33c' },
+  { code: '82', name: 'Verde garrafa', hex: '#18534c' },
+  { code: '87', name: 'Amarelo lima', hex: '#c9b93a' },
+  { code: '91', name: 'Verde menta', hex: '#b7c8c0' },
+  { code: '', name: 'Azul royal', hex: '#1e4081' },
+  { code: '101', name: 'Laranja', hex: '#d67146' },
+  { code: '102', name: 'Roxo', hex: '#6f5a93' },
+  { code: '103', name: 'Verde água', hex: '#45a58f' },
+  { code: '105', name: 'Fúcsia', hex: '#a03f84' },
+  { code: '106', name: 'Areia', hex: '#d6cbb2' },
+  { code: '107', name: 'Morango', hex: '#d63048' },
+  { code: '108', name: 'Grafite', hex: '#4a4b50' },
+  { code: '109', name: 'Verde lima', hex: '#78c040' },
+  { code: '110', name: 'Tijolo', hex: '#8e4a40' },
+  { code: '111', name: 'Malva', hex: '#8a6a85' },
+  { code: '112', name: 'Rosa pó', hex: '#ecd2cc' },
+  { code: '113', name: 'Azul', hex: '#3a86c8' },
+  { code: '', name: 'Azul acinzentado', hex: '#6b9499' },
+  { code: '', name: 'Verde salva', hex: '#a9bf8c' },
+  { code: '', name: 'Mostarda', hex: '#d2b74f' },
+  { code: '', name: 'Salmão', hex: '#e2875a' },
+];
+
+const bagYarn = ['52% lã merino superwash, 48% acrílico', 'Fio Katia Merino Aran'];
+const bagS: ProductDetails = {
+  features: ['Feita à mão em crochet', 'Mala de mão pequena', 'Base: 16 cm', 'Corpo: 10 cm', 'Alça: 26 cm'],
+  composition: bagYarn,
+};
+const bagM: ProductDetails = {
+  features: ['Feita à mão em crochet', 'Mala de ombro, com a alça mais comprida', 'Base: 24 cm', 'Corpo: 15 cm', 'Alça: 46 cm'],
+  composition: bagYarn,
+};
+const custom = (d: ProductDetails): ProductDetails => ({
+  ...d,
+  features: ['Feita à mão em crochet, por encomenda', 'Escolhes a cor da mala, da alça e do anel', ...d.features.slice(1)],
+});
 
 const socks: ProductDetails = {
   features: [
@@ -561,6 +641,10 @@ export const products: Product[] = [
     stock: 0,
     madeToOrderDays: 10,
     customizable: true,
+    yarn: 'algodao',
+    customParts: ['main', 'edge'],
+    customMap: '/images/products/scrunchie-personalizado-mapa.webp',
+    customDefaults: ['#de5378', '#d8c0cc'],
     images: [img('scrunchie-personalizado-1'), img('scrunchie-rosa-1'), img('scrunchie-dourado-1')],
     details: scrunchieCustom,
     description: 'Escolhe as tuas cores e nós fazemos o scrunchie à mão.',
@@ -619,10 +703,85 @@ export const products: Product[] = [
     description: '',
     details: toteDetails,
   },
+  {
+    id: 9015,
+    slug: 'mala-crochet-s-verde',
+    name: 'Mala de Crochet S',
+    category: 'malas',
+    color: 'Verde',
+    regularPrice: 25,
+    price: 25,
+    stock: 1,
+    madeToOrderDays: 10,
+    customSlug: 'mala-crochet-s-personalizada',
+    images: [img('mala-s-verde-1'), look('mala-s-verde-crewneck')],
+    details: bagS,
+    description: '',
+  },
+  {
+    id: 9016,
+    slug: 'mala-crochet-m-rosa',
+    name: 'Mala de Crochet M',
+    category: 'malas',
+    color: 'Rosa',
+    regularPrice: 35,
+    price: 35,
+    stock: 1,
+    madeToOrderDays: 10,
+    customSlug: 'mala-crochet-m-personalizada',
+    images: [img('mala-m-rosa-1'), look('mala-m-rosa-tshirt')],
+    details: bagM,
+    description: '',
+  },
+  {
+    id: 9017,
+    slug: 'mala-crochet-s-personalizada',
+    name: 'Mala de Crochet S Personalizada',
+    category: 'malas',
+    color: 'Cores à tua escolha',
+    regularPrice: 25,
+    price: 25,
+    stock: 0,
+    madeToOrderDays: 10,
+    customizable: true,
+    yarn: 'merino',
+    customParts: ['body', 'handle', 'ring'],
+    customMap: '/images/products/mala-s-mapa.webp',
+    customDefaults: ['#3a86c8', '#3a86c8', '#e6b33c'],
+    images: [img('mala-s-personalizada-1'), img('mala-s-cores-1'), img('mala-s-verde-1')],
+    details: custom(bagS),
+    description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',
+  },
+  {
+    id: 9018,
+    slug: 'mala-crochet-m-personalizada',
+    name: 'Mala de Crochet M Personalizada',
+    category: 'malas',
+    color: 'Cores à tua escolha',
+    regularPrice: 35,
+    price: 35,
+    stock: 0,
+    madeToOrderDays: 10,
+    customizable: true,
+    yarn: 'merino',
+    customParts: ['body', 'handle', 'ring'],
+    customMap: '/images/products/mala-m-mapa.webp',
+    customDefaults: ['#6f5a93', '#6f5a93', '#f0bfcc'],
+    images: [img('mala-m-personalizada-1'), img('mala-m-cores-1'), img('mala-m-rosa-1')],
+    details: custom(bagM),
+    description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',
+  },
 ];
 
 /* Preço e stock atuais, geridos no CRM (quando há base de dados). Sem base de dados ficam os valores acima. */
 await applyOverrides(products);
+/* Malas: são feitas à mão, uma a uma. A cada 5 encomendas personalizadas por fazer (pagas e ainda não enviadas),
+   o prazo de todas as malas cresce 7 dias úteis. O site volta a ser gerado quando se passa um destes limites. */
+export const bagQueue = { every: 5, days: 7, open: 0, extra: 0 };
+bagQueue.open = await openOrdersWith(products.filter((p) => p.category === 'malas' && p.customizable).map((p) => p.id));
+bagQueue.extra = Math.floor(bagQueue.open / bagQueue.every) * bagQueue.days;
+for (const p of products) if (p.category === 'malas' && p.madeToOrderDays) p.madeToOrderDays += bagQueue.extra;
+
 /* promoção em curso: o preço do CRM passa a ser o preço riscado */
 const promoOn = promoActive();
 for (const p of products) {
@@ -652,7 +811,7 @@ export const fullName = (p: Product) => (p.customizable ? p.name : `${p.name} ${
 
 /** Peso aproximado de cada peça (g), para calcular os portes. Convém pesar e acertar. */
 const gramsByCategory: Record<string, number> = {
-  'hoodies-crewnecks': 700, 't-shirts': 250, caps: 150, 'bucket-hat': 120, meias: 80, scrunchies: 50, 'tote-bag': 180,
+  'hoodies-crewnecks': 700, 't-shirts': 250, caps: 150, 'bucket-hat': 120, meias: 80, scrunchies: 50, 'tote-bag': 180, malas: 250,
 };
 export const weightOf = (p: Product) => gramsByCategory[p.category] ?? 300;
 

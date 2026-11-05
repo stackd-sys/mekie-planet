@@ -21,3 +21,17 @@ export async function applyOverrides(list: Target[]) {
     console.warn('[Mekie] Sem stock do CRM, uso os valores do código:', (e as Error).message);
   }
 }
+
+/** Encomendas pagas e ainda não enviadas com alguma destas peças (ex.: malas personalizadas por fazer). */
+export async function openOrdersWith(ids: number[]) {
+  if (!hasDb() || !ids.length) return 0;
+  try {
+    const [r] = await sql()<{ n: number }[]>`
+      select count(*)::int as n from orders
+      where status = 'paga' and exists (select 1 from jsonb_array_elements(lines) l where l->>'id' = any(${ids.map(String)}))`;
+    return r?.n ?? 0;
+  } catch (e) {
+    console.warn('[Mekie] Sem contagem de encomendas por fazer:', (e as Error).message);
+    return 0;
+  }
+}

@@ -19,6 +19,10 @@ const names: Tr = {
   'Scrunchie Personalizado': ['Custom Scrunchie', 'Scrunchie Personalizado'],
   'Tote Bag Planetas': ['Planets Tote Bag', 'Tote Bag Planetas'],
   'Tote Bag Cogumelos': ['Mushroom Tote Bag', 'Tote Bag Setas'],
+  'Mala de Crochet S': ['Crochet Bag S', 'Bolso de Ganchillo S'],
+  'Mala de Crochet M': ['Crochet Bag M', 'Bolso de Ganchillo M'],
+  'Mala de Crochet S Personalizada': ['Custom Crochet Bag S', 'Bolso de Ganchillo S Personalizado'],
+  'Mala de Crochet M Personalizada': ['Custom Crochet Bag M', 'Bolso de Ganchillo M Personalizado'],
   'Cartão Presente': ['Gift Card', 'Tarjeta Regalo'],
 };
 
@@ -35,6 +39,7 @@ const colors: Tr = {
   'Branco e preto': ['Black and white', 'Blanco y negro'],
   Rosa: ['Pink', 'Rosa'],
   Dourado: ['Gold', 'Dorado'],
+  Verde: ['Green', 'Verde'],
   'Cores à tua escolha': ['Colours of your choice', 'Colores a tu elección'],
 };
 
@@ -78,6 +83,20 @@ const texts: Tr = {
   '60% nylon, 22% algodão, 18% elastano': ['60% nylon, 22% cotton, 18% elastane', '60% nailon, 22% algodón, 18% elastano'],
   'Lavar do avesso ajuda a preservar a estampa e as cores por mais tempo': ['Washing them inside out keeps the print and colours looking good for longer', 'Lavar del revés ayuda a conservar el estampado y los colores durante más tiempo'],
   'Feito à mão em crochet': ['Handmade in crochet', 'Hecho a mano en ganchillo'],
+  'Feita à mão em crochet': ['Handmade in crochet', 'Hecho a mano en ganchillo'],
+  'Feita à mão em crochet, por encomenda': ['Handmade in crochet, made to order', 'Hecho a mano en ganchillo, por encargo'],
+  'Escolhes a cor da mala, da alça e do anel': ['You choose the colour of the bag, the handle and the ring', 'Eliges el color del bolso, del asa y de la anilla'],
+  'Mala de mão pequena': ['Small handbag', 'Bolso de mano pequeño'],
+  'Mala de ombro, com a alça mais comprida': ['Shoulder bag, with a longer handle', 'Bolso de hombro, con el asa más larga'],
+  'Base: 16 cm': ['Base: 16 cm', 'Base: 16 cm'],
+  'Corpo: 10 cm': ['Body: 10 cm', 'Cuerpo: 10 cm'],
+  'Alça: 26 cm': ['Handle: 26 cm', 'Asa: 26 cm'],
+  'Base: 24 cm': ['Base: 24 cm', 'Base: 24 cm'],
+  'Corpo: 15 cm': ['Body: 15 cm', 'Cuerpo: 15 cm'],
+  'Alça: 46 cm': ['Handle: 46 cm', 'Asa: 46 cm'],
+  '52% lã merino superwash, 48% acrílico': ['52% superwash merino wool, 48% acrylic', '52% lana merino superwash, 48% acrílico'],
+  'Fio Katia Merino Aran': ['Katia Merino Aran yarn', 'Hilo Katia Merino Aran'],
+  'Escolhe as tuas cores e nós fazemos a mala à mão.': ['Pick your colours and we make the bag by hand.', 'Elige tus colores y te hacemos el bolso a mano.'],
   '59% nylon, 41% poliéster': ['59% nylon, 41% polyester', '59% nailon, 41% poliéster'],
   '98% algodão, 2% fibra metalizada': ['98% cotton, 2% metallic fibre', '98% algodón, 2% fibra metalizada'],
   'Escolhe as tuas cores e nós fazemos o scrunchie à mão.': ['Pick your colours and we make the scrunchie by hand.', 'Elige tus colores y te hacemos el scrunchie a mano.'],
@@ -122,6 +141,10 @@ const categoryTr: Record<string, Record<'en' | 'es', Pick<Category, 'name' | 'se
     en: { name: 'Scrunchies', seoTitle: 'Handmade crochet scrunchies', intro: 'Crochet scrunchies we make by hand. Pick a ready-made one or choose the colours of yours.' },
     es: { name: 'Scrunchies', seoTitle: 'Scrunchies de ganchillo hechos a mano', intro: 'Scrunchies de ganchillo hechos a mano por nosotros. Elige uno de los que ya están hechos o personaliza los colores del tuyo.' },
   },
+  malas: {
+    en: { name: 'Bags', seoTitle: 'Handmade crochet bags', intro: 'Crochet bags we make by hand. Take one that is ready or choose the colours of yours.' },
+    es: { name: 'Bolsos', seoTitle: 'Bolsos de ganchillo hechos a mano', intro: 'Bolsos de ganchillo hechos a mano por nosotros. Llévate uno de los que ya están hechos o elige los colores del tuyo.' },
+  },
   'tote-bag': {
     en: { name: 'Tote Bag', seoTitle: 'Embroidered organic cotton tote bags', intro: 'Organic cotton tote bags with Mekie designs embroidered: planets and mushrooms.' },
     es: { name: 'Tote Bag', seoTitle: 'Tote bags bordadas de algodón orgánico', intro: 'Tote bags de algodón orgánico con los diseños Mekie bordados: planetas y setas.' },
@@ -150,6 +173,15 @@ const yarn: Tr = {
   Preto: ['Black', 'Negro'], Pêssego: ['Peach', 'Melocotón'], Laranja: ['Orange', 'Naranja'], Terracota: ['Terracotta', 'Terracota'],
   Coral: ['Coral', 'Coral'], Vermelho: ['Red', 'Rojo'], Bordeaux: ['Burgundy', 'Burdeos'], 'Lilás claro': ['Light lilac', 'Lila claro'],
   Lilás: ['Lilac', 'Lila'], Roxo: ['Purple', 'Morado'], 'Amarelo palha': ['Straw yellow', 'Amarillo paja'], Lima: ['Lime', 'Lima'], Verde: ['Green', 'Verde'],
+  /* fio das malas (Katia Merino Aran) */
+  'Vermelho vivo': ['Bright red', 'Rojo vivo'], Bege: ['Beige', 'Beige'], Pérola: ['Pearl', 'Perla'], 'Cinza pérola': ['Pearl grey', 'Gris perla'],
+  Caramelo: ['Caramel', 'Caramelo'], Ocre: ['Ochre', 'Ocre'], Petróleo: ['Petrol', 'Petróleo'], Castanho: ['Brown', 'Marrón'],
+  'Laranja telha': ['Brick orange', 'Naranja teja'], 'Rosa bebé': ['Baby pink', 'Rosa bebé'], 'Verde acinzentado': ['Grey green', 'Verde grisáceo'],
+  'Azul bebé': ['Baby blue', 'Azul bebé'], Cinza: ['Grey', 'Gris'], 'Verde azeitona': ['Olive green', 'Verde oliva'], Camelo: ['Camel', 'Camel'],
+  Amarelo: ['Yellow', 'Amarillo'], 'Verde garrafa': ['Bottle green', 'Verde botella'], 'Amarelo lima': ['Lime yellow', 'Amarillo lima'],
+  'Azul royal': ['Royal blue', 'Azul real'], Fúcsia: ['Fuchsia', 'Fucsia'], Areia: ['Sand', 'Arena'], Morango: ['Strawberry', 'Fresa'],
+  Grafite: ['Graphite', 'Grafito'], 'Verde lima': ['Lime green', 'Verde lima'], Tijolo: ['Brick', 'Ladrillo'], Azul: ['Blue', 'Azul'],
+  'Verde salva': ['Sage green', 'Verde salvia'], Salmão: ['Salmon', 'Salmón'],
 };
 
 const pick = (table: Tr, pt: string, lang: Lang) => (lang === 'pt' ? pt : table[pt]?.[lang === 'en' ? 0 : 1] ?? pt);

@@ -8,6 +8,7 @@ import { giftCatalog, giftCard, customGiftValue, giftTitleFromPt } from '../../d
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';
 import { rebuildSite } from './deploy';
+import { touchesBagQueue, syncBagQueue } from './bagqueue';
 import { money, amount, href, type Lang } from '../../i18n';
 import { serverT, asLang, mailDate } from '../../i18n/server';
 import { lineName, destinationsFor } from '../../i18n/data';
@@ -400,9 +401,11 @@ const STOCK_OUT = ['paga', 'enviada', 'entregue'];
 export async function setStatus(number: string, status: string, by: string, extra: { tracking?: string; notify?: boolean } = {}) {
   const sql = await db();
   let stockChanged = false;
+  let before = '';
   const o = await sql.begin(async (tx: any) => {
     const [cur] = await tx`select * from orders where number = ${number} for update`;
     if (!cur) throw new Error('Encomenda não encontrada');
+    before = cur.status;
     const tracking = extra.tracking !== undefined ? clean(extra.tracking, 40).toUpperCase() : cur.tracking;
     const [o] = await tx`
       update orders set status = ${status}, tracking = ${tracking},
@@ -450,6 +453,8 @@ export async function setStatus(number: string, status: string, by: string, extr
     }
   }
 
+  /* malas personalizadas: entrou ou saiu uma da lista por fazer, o prazo pode mudar */
+  if (before !== status && (before === 'paga' || status === 'paga') && touchesBagQueue(o.lines)) await syncBagQueue();
   if (status === 'enviada' && extra.notify) {
     if (await sendShipped(o)) await sql`insert into order_events (order_id, text, by) values (${o.id}, 'Email de envio enviado ao cliente', ${by})`;
   }

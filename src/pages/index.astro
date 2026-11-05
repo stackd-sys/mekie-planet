@@ -42,7 +42,7 @@ const bands = [
   },
 ];
 /* Um produto de cada modelo: um cap, umas meias, um scrunchie, uma t-shirt e um hoodie de cada bordado */
-const family = (p: (typeof products)[number]) => (['caps', 'meias', 'scrunchies', 'tote-bag'].includes(p.category) ? p.category : p.name);
+const family = (p: (typeof products)[number]) => (['caps', 'meias', 'scrunchies', 'tote-bag', 'malas'].includes(p.category) ? p.category : p.name);
 /* de cada modelo mostra-se uma cor com stock, se houver */
 const picks = products.filter((p, i) => products.findIndex((o) => family(o) === family(p)) === i)
   .map((p) => products.find((o) => family(o) === family(p) && !isSoldOut(o)) ?? p);

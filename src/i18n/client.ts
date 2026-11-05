@@ -32,6 +32,7 @@ const dict = {
   'size.left1': ['Só resta 1 unidade em {s}', 'Only 1 left in {s}', 'Solo queda 1 unidad en {s}'],
   'size.leftN': ['Só restam {n} unidades em {s}', 'Only {n} left in {s}', 'Solo quedan {n} unidades en {s}'],
   'custom': ['Corpo {main}, rebordo {edge}', 'Main {main}, edging {edge}', 'Cuerpo {main}, borde {edge}'],
+  'customBag': ['Mala {body}, alça {handle}, anel {ring}', 'Bag {body}, handle {handle}, ring {ring}', 'Bolso {body}, asa {handle}, anilla {ring}'],
   'notify.error': ['Não conseguimos guardar o pedido. Tenta outra vez daqui a pouco.', "We couldn't save your request. Please try again in a moment.", 'No hemos podido guardar tu petición. Inténtalo de nuevo en un rato.'],
   'notify.exists': ['Já tínhamos o teu pedido{size}. Avisamos-te em {email}.', 'We already had your request{size}. We will email you at {email}.', 'Ya teníamos tu petición{size}. Te avisaremos en {email}.'],
   'notify.existsSize': [' para o {s}', ' for {s}', ' para la {s}'],

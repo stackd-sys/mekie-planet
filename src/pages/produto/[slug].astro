@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Carousel from '../../components/Carousel.astro';
 import Img from '../../components/Img.astro';
-import { products as ptProducts, discount, fullName, cartInfo, totalStock, isSoldOut, yarnColors, weightOf } from '../../data/products';
+import { products as ptProducts, discount, fullName, cartInfo, totalStock, isSoldOut, yarnColors, merinoColors, weightOf, bagQueue } from '../../data/products';
 import { site } from '../../data/site';
 import { shipping, shippingCost } from '../../data/shipping';
 import { langOf, href, money, amount } from '../../i18n';
@@ -57,6 +57,11 @@ const packHints = promoActive() && kind && !soldOut
   : [];
 const payments = ['MB WAY', 'Multibanco', 'Visa', 'Mastercard', 'Apple Pay', 'Google Pay'];
 const trail = [...categoryTrail(p.category, lang), { name: fullName(p), path: h(`/produto/${p.slug}/`) }];
+/* Personalizados: que fio e que zonas se pintam (scrunchie: corpo e rebordo; malas: mala, alça e anel) */
+const yarns = p.yarn === 'merino' ? merinoColors : yarnColors;
+const parts = p.customParts ?? ['main', 'edge'];
+const partLabel = { main: t('p.main'), edge: t('p.edge'), body: t('p.bagBody'), handle: t('p.bagHandle'), ring: t('p.bagRing') };
+const isBag = p.category === 'malas';
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${trYarn(c.name, lang)}` : trYarn(c.name, lang));
 const reviewCount = (n: number) => (n === 1 ? t('p.review1') : t('p.reviews', { n }));
 /* Pré-visualização do scrunchie: folhos à volta de um aro */
@@ -115,12 +120,14 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       <p class="info__tax">{freeShip ? t('p.taxFree') : t('p.tax')}</p>
       {p.customizable ? (
         <div class="info__order">
-          <p set:html={t('p.customOrder', { n: p.madeToOrderDays! })} />
+          <p set:html={t(isBag ? 'p.customOrderBag' : 'p.customOrder', { n: p.madeToOrderDays! })} />
+          {isBag && bagQueue.extra > 0 && <p class="info__queue">{t('p.bagQueue', { n: bagQueue.extra })}</p>}
         </div>
       ) : p.madeToOrderDays ? (
         <div class="info__order">
           <p><strong>{p.stock === 1 ? t('p.ready1') : t('p.readyN', { n: p.stock ?? 0 })}</strong> {t('p.thenOrder', { n: p.madeToOrderDays })}</p>
-          <a href={h('/produto/scrunchie-personalizado/')} class="link-underline">{t('p.otherColors')}</a>
+          {isBag && bagQueue.extra > 0 && <p class="info__queue">{t('p.bagQueue', { n: bagQueue.extra })}</p>}
+          <a href={h(`/produto/${p.customSlug ?? 'scrunchie-personalizado'}/`)} class="link-underline">{t(isBag ? 'p.otherColorsBag' : 'p.otherColors')}</a>
         </div>
       ) : soldOut ? (
         <p class="info__stock info__stock--out">{t('soldout')}</p>
@@ -143,14 +150,14 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         {p.customizable && (
           <div class="custom">
             <figure class="custom__preview">
-              <canvas width="640" height="640" data-preview data-map="/images/products/scrunchie-personalizado-mapa.webp" role="img" aria-label={t('p.preview')}></canvas>
+              <canvas width="640" height="640" data-preview data-map={p.customMap ?? '/images/products/scrunchie-personalizado-mapa.webp'} data-parts={JSON.stringify(parts)} data-defaults={JSON.stringify(p.customDefaults ?? ['#de5378', '#d8c0cc'])} role="img" aria-label={t('p.preview')}></canvas>
               <figcaption>{t('p.previewCap')}</figcaption>
             </figure>
-            {[['main', t('p.main')], ['edge', t('p.edge')]].map(([name, label]) => (
+            {parts.map((name) => [name, partLabel[name]]).map(([name, label]) => (
               <fieldset class="opt">
                 <legend class="opt__label">{label}: <span data-pick-label={name}>{t('p.pickColor')}</span></legend>
                 <div class="yarns">
-                  {yarnColors.map((c) => (
+                  {yarns.map((c) => (
                     <label class="yarn" title={yarnLabel(c)}>
                       <input type="radio" name={name} value={yarnLabel(c)} data-hex={c.hex} />
                       <span style={`--c:${c.hex}`}><span class="sr-only">{yarnLabel(c)}</span></span>
@@ -159,7 +166,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
                 </div>
               </fieldset>
             ))}
-            <p class="custom__note">{t('p.yarnNote')}</p>
+            <p class="custom__note">{p.yarn === 'merino' ? t('p.yarnNoteMerino') : t('p.yarnNote')}</p>
           </div>
         )}
         {p.sizes ? (
@@ -184,7 +191,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           <p class="opt__label">{t('p.size')}: <span>{t('p.oneSize')}</span></p>
         )}
 
-        <p class="buy__error" role="alert" hidden>{p.customizable ? t('p.needColors') : t('p.needSize')}</p>
+        <p class="buy__error" role="alert" hidden>{p.customizable ? (parts.length === 3 ? t('p.needColors3') : t('p.needColors')) : t('p.needSize')}</p>
         <button type="submit" class="pill pill--accent pill--block buy__btn" data-buy-btn disabled={soldOut}>
           {soldOut ? t('soldout') : t('add')}
         </button>
@@ -397,8 +404,11 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
     /* Scrunchie personalizado: pinta a fotografia com as cores escolhidas.
        O mapa guarda a sombra do crochet (vermelho), a zona do rebordo (verde) e o recorte (alfa). */
-    const picked: Record<string, string> = { main: '#de5378', edge: '#d8c0cc' };
     const canvas = form.querySelector<HTMLCanvasElement>('[data-preview]');
+    /* zonas pela ordem do mapa: a 1.ª é a base, a 2.ª está no canal verde e a 3.ª no azul */
+    const parts: string[] = canvas ? JSON.parse(canvas.dataset.parts!) : [];
+    const defaults: string[] = canvas ? JSON.parse(canvas.dataset.defaults!) : [];
+    const picked: Record<string, string> = Object.fromEntries(parts.map((n, i) => [n, defaults[i] ?? defaults[0]]));
     let mapData: ImageData | null = null;
     const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
     const paint = () => {
@@ -406,12 +416,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       const ctx = canvas.getContext('2d')!;
       const out = ctx.createImageData(mapData.width, mapData.height);
       const src = mapData.data, dst = out.data;
-      const [mr, mg, mb] = hex(picked.main), [er, eg, eb] = hex(picked.edge);
+      const a = hex(picked[parts[0]]), b = hex(picked[parts[1]]), c = hex(picked[parts[2] ?? parts[0]]);
       for (let i = 0; i < src.length; i += 4) {
-        const shade = src[i] / 128, w = src[i + 1] / 255;
-        dst[i] = (mr + (er - mr) * w) * shade;
-        dst[i + 1] = (mg + (eg - mg) * w) * shade;
-        dst[i + 2] = (mb + (eb - mb) * w) * shade;
+        const shade = src[i] / 128, g = src[i + 1] / 255, bl = parts[2] ? src[i + 2] / 255 : 0;
+        for (let k = 0; k < 3; k++) dst[i + k] = (a[k] * (1 - g - bl) + b[k] * g + c[k] * bl) * shade;
         dst[i + 3] = src[i + 3];
       }
       ctx.putImageData(out, 0, 0);
@@ -440,7 +448,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
     form.addEventListener('change', (e) => {
       const t = e.target as HTMLInputElement;
-      if (t.name === 'main' || t.name === 'edge') {
+      if (parts.includes(t.name)) {
         error.hidden = true;
         const label = form.querySelector<HTMLElement>(`[data-pick-label=${t.name}]`);
         if (label) label.textContent = t.value;
@@ -468,10 +476,9 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     const add = () => {
       const data = new FormData(form);
       const size = (data.get('size') as string | null) ?? undefined;
-      const main = data.get('main') as string | null;
-      const edge = data.get('edge') as string | null;
-      const isCustom = !!form.querySelector('input[name=main]');
-      if (isCustom && (!main || !edge)) {
+      const chosen = Object.fromEntries(parts.map((n) => [n, (data.get(n) as string | null) ?? '']));
+      const isCustom = parts.length > 0;
+      if (isCustom && parts.some((n) => !chosen[n])) {
         error.hidden = false;
         form.querySelector('.custom')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
@@ -482,7 +489,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         return;
       }
       const { sizeNotes, ...info } = product;
-      cart.add({ ...info, size, ...(isCustom ? { custom: tc('custom', { main: main!, edge: edge! }) } : {}) }, 1);
+      cart.add({ ...info, size, ...(isCustom ? { custom: parts.includes('ring') ? tc('customBag', chosen) : tc('custom', chosen) } : {}) }, 1);
       trackEvent('add_to_cart', [item(size)]);
       btn.textContent = tc('added');
       setTimeout(() => (btn.textContent = tc('add')), 1600);
@@ -558,6 +565,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   .size span:hover { border-color: var(--ink); }
   .custom { margin-bottom: 8px; }
   .custom__preview { margin: 0 0 18px; }
+  .info__queue { margin: 6px 0 0; font-weight: 600; }
   .custom__preview canvas { display: block; width: min(260px, 70vw); height: auto; aspect-ratio: 1; }
   .custom__preview figcaption { margin-top: 6px; font-size: 11.5px; color: var(--ink-soft); }
   .yarns { display: flex; flex-wrap: wrap; gap: 7px; }

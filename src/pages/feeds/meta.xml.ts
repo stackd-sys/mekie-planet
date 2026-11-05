@@ -26,6 +26,7 @@ const googleCategory: Record<string, string> = {
   meias: 'Apparel & Accessories > Clothing > Underwear & Socks > Socks',
   scrunchies: 'Apparel & Accessories > Clothing Accessories > Hair Accessories',
   'tote-bag': 'Apparel & Accessories > Handbags, Wallets & Cases > Handbags',
+  malas: 'Apparel & Accessories > Handbags, Wallets & Cases > Handbags',
 };
 const trail = (p: Product) => {
   const c = categories.find((x) => x.slug === p.category);

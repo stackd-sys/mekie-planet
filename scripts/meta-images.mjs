@@ -14,7 +14,7 @@ fs.mkdirSync(path.join(out, 'products'), { recursive: true });
 fs.mkdirSync(path.join(out, 'lookbook'), { recursive: true });
 fs.mkdirSync(path.join(out, 'packs'), { recursive: true });
 
-const list = (dir) => fs.readdirSync(pub('images', dir)).filter((f) => f.endsWith('.webp') && !f.endsWith('-sm.webp') && !f.startsWith('cartao-presente'));
+const list = (dir) => fs.readdirSync(pub('images', dir)).filter((f) => f.endsWith('.webp') && !f.endsWith('-sm.webp') && !f.startsWith('cartao-presente') && !f.endsWith('-mapa.webp'));
 
 /* peça recortada: centrada num quadrado claro, com margem */
 async function cutout(src, size = 1080, pad = 0.07) {
