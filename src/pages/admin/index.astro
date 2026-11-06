@@ -4,7 +4,7 @@ import Admin from '../../layouts/Admin.astro';
 import Status from '../../components/admin/Status.astro';
 import { db } from '../../lib/server/db';
 import { euro, date } from '../../lib/server/format';
-import { products } from '../../data/products';
+import { allProducts as products } from '../../data/products';
 import { hasMail } from '../../lib/server/mail';
 import { hasDeployHook } from '../../lib/server/deploy';
 import { hasGa, gaReport, rows, range } from '../../lib/server/google';

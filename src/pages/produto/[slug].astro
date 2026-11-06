@@ -62,6 +62,13 @@ const yarns = p.yarn === 'merino' ? merinoColors : yarnColors;
 const parts = p.customParts ?? ['main', 'edge'];
 const partLabel = { main: t('p.main'), edge: t('p.edge'), body: t('p.bagBody'), ring: t('p.bagRing') };
 const isBag = p.category === 'malas';
+/* mala personalizada: cada tamanho é um produto com o seu preço, escolhido nesta página */
+const sizeOpts = (p.sizeOptions ?? []).map((id) => S.allProducts.find((o) => o.id === id)!).filter(Boolean);
+const priceOpts = sizeOpts.length ? sizeOpts : [p];
+const optOf = (o: typeof p) => ({
+  id: o.id, size: o.sizes?.[0] ?? '', map: o.customMap,
+  product: { ...cartInfo(o), href: h(`/produto/${p.slug}/${o.id === p.id ? '' : `?tamanho=${o.sizes?.[0]}`}`) },
+});
 const yarnLabel = (c: (typeof yarnColors)[number]) => (c.code ? `${c.code} ${trYarn(c.name, lang)}` : trYarn(c.name, lang));
 const reviewCount = (n: number) => (n === 1 ? t('p.review1') : t('p.reviews', { n }));
 /* Pré-visualização do scrunchie: folhos à volta de um aro */
@@ -98,11 +105,16 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
           <span>{reviewCount(rating.count)}</span>
         </a>
       )}
-      <p class="price info__price">
-        {off > 0 && <del><span class="sr-only">{t('price.was')}</span>{money(p.regularPrice, lang)}</del>}
-        {off > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}
-        {off > 0 && <span class="info__off">-{off}%</span>}
-      </p>
+      {priceOpts.map((o) => {
+        const of = discount(o);
+        return (
+          <p class="price info__price" data-price-for={o.id} hidden={o.id !== p.id}>
+            {of > 0 && <del><span class="sr-only">{t('price.was')}</span>{money(o.regularPrice, lang)}</del>}
+            {of > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(o.price, lang)}</ins> : <span>{money(o.price, lang)}</span>}
+            {of > 0 && <span class="info__off">-{of}%</span>}
+          </p>
+        );
+      })}
       {volumeDeal && (
         <div class="bfbox">
           <p class="bfbox__title">Black November · {t('bf.volTag')}</p>
@@ -112,7 +124,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       )}
       {promoActive() && off > 0 && (
         <div class="bfbox">
-          <p>{t('bf.back', { n: money(p.regularPrice, lang) })}</p>
+          {priceOpts.map((o) => <p data-price-for={o.id} hidden={o.id !== p.id}>{t('bf.back', { n: money(o.regularPrice, lang) })}</p>)}
           <p class="bfbox__ends">{t('bf.ends')} <Countdown /></p>
         </div>
       )}
@@ -147,6 +159,20 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       </div>}
 
       <form class="buy" data-buy data-product={JSON.stringify(cartData)} novalidate>
+        {sizeOpts.length > 1 && (
+          <fieldset class="opt">
+            <legend class="opt__label">{t('p.size')}: <span data-bagsize-label>{p.sizes?.[0]}</span></legend>
+            <div class="sizes">
+              {sizeOpts.map((o) => (
+                <label class="size">
+                  <input type="radio" name="bagsize" value={o.sizes?.[0]} checked={o.id === p.id} data-opt={JSON.stringify(optOf(o))} />
+                  <span>{t('p.bagSize', { s: o.sizes?.[0] ?? '' })} · {money(o.price, lang)}</span>
+                </label>
+              ))}
+            </div>
+            {sizeOpts.map((o) => <p class="size-note" data-bagsize-note={o.sizes?.[0]} hidden={o.id !== p.id}>{t(o.sizes?.[0] === 'M' ? 'p.bagM' : 'p.bagS')}</p>)}
+          </fieldset>
+        )}
         {p.customizable && (
           <div class="custom">
             <figure class="custom__preview">
@@ -169,7 +195,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
             <p class="custom__note">{p.yarn === 'merino' ? t('p.yarnNoteMerino') : t('p.yarnNote')}</p>
           </div>
         )}
-        {p.sizes ? (
+        {p.sizes && !sizeOpts.length ? (
           <fieldset class="opt">
             <legend class="opt__label">{t('p.size')}: <span data-size-label>{t('p.pickSize')}</span></legend>
             <div class="sizes">
@@ -295,7 +321,10 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     <img src={p.images[0].replace('.webp', '-sm.webp')} alt="" width="44" height="55" />
     <div class="sticky-buy__txt">
       <p>{p.name}</p>
-      <p class="price">{off > 0 && <del>{money(p.regularPrice, lang)}</del>}{off > 0 ? <ins>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}</p>
+      {priceOpts.map((o) => {
+        const of = discount(o);
+        return <p class="price" data-price-for={o.id} hidden={o.id !== p.id}>{of > 0 && <del>{money(o.regularPrice, lang)}</del>}{of > 0 ? <ins>{money(o.price, lang)}</ins> : <span>{money(o.price, lang)}</span>}</p>;
+      })}
     </div>
     <button type="button" class="pill pill--accent" data-sticky-btn disabled={soldOut}>{soldOut ? t('soldout') : t('add.short')}</button>
   </div>
@@ -400,7 +429,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   /* Compra */
   const form = document.querySelector<HTMLFormElement>('[data-buy]');
   if (form) {
-    const product = JSON.parse(form.dataset.product!);
+    let product = JSON.parse(form.dataset.product!);
 
     /* Scrunchie personalizado: pinta a fotografia com as cores escolhidas.
        O mapa guarda a sombra do crochet (vermelho), a zona do rebordo (verde) e o recorte (alfa). */
@@ -424,7 +453,8 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
       }
       ctx.putImageData(out, 0, 0);
     };
-    if (canvas) {
+    const loadMap = (src: string) => {
+      if (!canvas) return;
       const map = new Image();
       map.onload = () => {
         const tmp = document.createElement('canvas');
@@ -435,8 +465,23 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
         mapData = tctx.getImageData(0, 0, tmp.width, tmp.height);
         paint();
       };
-      map.src = canvas.dataset.map!;
-    }
+      map.src = src;
+    };
+    if (canvas) loadMap(canvas.dataset.map!);
+
+    /* mala personalizada: trocar de tamanho troca o produto, o preço, as medidas e a pré-visualização */
+    const pickBagSize = (input: HTMLInputElement) => {
+      const opt = JSON.parse(input.dataset.opt!);
+      product = opt.product;
+      document.querySelectorAll<HTMLElement>('[data-price-for]').forEach((el) => (el.hidden = el.dataset.priceFor !== String(opt.id)));
+      form.querySelectorAll<HTMLElement>('[data-bagsize-note]').forEach((el) => (el.hidden = el.dataset.bagsizeNote !== opt.size));
+      const label = form.querySelector<HTMLElement>('[data-bagsize-label]');
+      if (label) label.textContent = opt.size;
+      if (opt.map) loadMap(opt.map);
+    };
+    const wanted = new URLSearchParams(location.search).get('tamanho');
+    const start = wanted && form.querySelector<HTMLInputElement>(`input[name=bagsize][value="${CSS.escape(wanted)}"]`);
+    if (start) { start.checked = true; pickBagSize(start); }
     const item = (size?: string) => ({ id: product.id, name: product.customizable ? product.name : `${product.name} ${product.color}`, price: product.price, variant: size });
     const viewed = () => trackEvent('view_item', [item()]);
     if (consentSettled()) viewed();
@@ -448,6 +493,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
     form.addEventListener('change', (e) => {
       const t = e.target as HTMLInputElement;
+      if (t.name === 'bagsize') pickBagSize(t);
       if (parts.includes(t.name)) {
         error.hidden = true;
         const label = form.querySelector<HTMLElement>(`[data-pick-label=${t.name}]`);
@@ -475,7 +521,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
 
     const add = () => {
       const data = new FormData(form);
-      const size = (data.get('size') as string | null) ?? undefined;
+      const size = ((data.get('size') ?? data.get('bagsize')) as string | null) ?? undefined;
       const chosen = Object.fromEntries(parts.map((n) => [n, (data.get(n) as string | null) ?? '']));
       const isCustom = parts.length > 0;
       if (isCustom && parts.some((n) => !chosen[n])) {

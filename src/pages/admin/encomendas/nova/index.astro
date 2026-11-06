@@ -3,7 +3,7 @@ export const prerender = false;
 /* Venda feita fora do site (Instagram, feira, em mão): fica registada e tira do stock */
 import Admin from '../../../../layouts/Admin.astro';
 import Flash from '../../../../components/admin/Flash.astro';
-import { products } from '../../../../data/products';
+import { allProducts as products } from '../../../../data/products';
 import { destinations } from '../../../../data/shipping';
 import { postForm, done, str, num } from '../../../../lib/server/admin';
 import { createOrder, setStatus } from '../../../../lib/server/orders';

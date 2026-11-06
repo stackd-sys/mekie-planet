@@ -12,14 +12,16 @@ import { giftCard, giftValidity, giftCatalog, giftTitle, giftImage } from '../da
 import { shipping, destinations, type Zone } from '../data/shipping';
 
 export function shop(lang: Lang) {
-  const products = data.products.map((p) => trProduct(p, lang));
+  const allProducts = data.allProducts.map((p) => trProduct(p, lang));
+  const products = allProducts.filter((p) => !p.hidden);
   const categories = data.categories.map((c) => trCategory(c, lang));
   const collections = data.collections.map((c) => trCollection(c, lang));
-  const byId = new Map(products.map((p) => [p.id, p]));
+  const byId = new Map(allProducts.map((p) => [p.id, p]));
   const local = (list: data.Product[]) => list.map((p) => byId.get(p.id)!);
   const childCategories = (slug: string) => categories.filter((c) => c.parent === slug);
   return {
     products,
+    allProducts,
     categories,
     collections,
     topCategories: categories.filter((c) => !c.parent),

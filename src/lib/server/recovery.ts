@@ -5,7 +5,7 @@ import { db } from './db';
 import { sendMail, layout, escapeHtml } from './mail';
 import type { OrderLine } from './orders';
 import { serverT, asLang } from '../../i18n/server';
-import { products, totalStock, isSoldOut, type Product } from '../../data/products';
+import { allProducts as products, totalStock, isSoldOut, type Product } from '../../data/products';
 import { giftCatalog, giftImage, giftTitleFromPt } from '../../data/giftcard';
 import { site } from '../../data/site';
 import { promoActive } from '../../data/promo';
@@ -19,7 +19,7 @@ const small = (img: string) => abs(img.replace(/\.webp$/, '-sm.webp'));
 function related(lines: OrderLine[]) {
   const inOrder = new Set(lines.map((l) => l.id));
   const mine = products.filter((p) => inOrder.has(p.id));
-  const free = (p: Product) => !inOrder.has(p.id) && !isSoldOut(p) && (totalStock(p) ?? 1) > 0;
+  const free = (p: Product) => !p.hidden && !inOrder.has(p.id) && !isSoldOut(p) && (totalStock(p) ?? 1) > 0;
   const score = (p: Product) =>
     (mine.some((m) => m.collection && m.collection === p.collection) ? 4 : 0) +
     (mine.some((m) => m.category === p.category) ? 2 : 0) +

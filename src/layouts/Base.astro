@@ -11,7 +11,7 @@ import HalloweenPage from '../components/HalloweenPage.astro';
 import { halloweenActive } from '../data/season';
 import CookieBanner from '../components/CookieBanner.astro';
 import { site } from '../data/site';
-import { cartInfo } from '../data/products';
+import { cartInfo, pagePath } from '../data/products';
 import { organizationLd, websiteLd } from '../data/seo';
 import { promoActive } from '../data/promo';
 import { langOf, toPt, href, langs, htmlLang, ogLocale } from '../i18n';
@@ -32,7 +32,7 @@ const lang = langOf(Astro.url.pathname);
 const hwPage = halloweenActive();
 const t = useT(lang);
 /* Preço, stock e nomes atuais (na língua da página), para o carrinho guardado no browser se manter certo */
-const catalog = Object.fromEntries([...shop(lang).products.map((p) => [p.id, { ...cartInfo(p), href: href(lang, `/produto/${p.slug}/`) }]), ...giftCatalogFor(lang).map((g) => [g.id, { ...g, href: href(lang, g.href) }])]);
+const catalog = Object.fromEntries([...shop(lang).allProducts.map((p) => [p.id, { ...cartInfo(p), href: href(lang, pagePath(p)) }]), ...giftCatalogFor(lang).map((g) => [g.id, { ...g, href: href(lang, g.href) }])]);
 const {
   title,
   description = t('meta.desc'),

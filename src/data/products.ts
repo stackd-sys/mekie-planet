@@ -57,6 +57,10 @@ export type Product = {
   customDefaults?: string[];
   /** Peça pronta: endereço da versão personalizada ("Queres outras cores?"). */
   customSlug?: string;
+  /** Tamanhos escolhidos na mesma página, cada um com o seu produto e preço (ids, pela ordem). */
+  sizeOptions?: number[];
+  /** Não aparece nas listagens nem tem página própria. */
+  hidden?: boolean;
   images: string[];
   badge?: string;
   /** desconto da promoção em curso, em % (mostrado na etiqueta em vez da conta exata) */
@@ -107,7 +111,7 @@ export const categories: Category[] = [
     intro: 'Tote bags de algodão orgânico com os desenhos Mekie bordados: planetas e cogumelos.',
   },
   {
-    slug: 'malas', name: 'Malas', parent: 'acessorios', image: '/images/products/mala-s-verde-1.webp',
+    slug: 'malas', name: 'Malas', parent: 'acessorios', image: '/images/products/mala-s-verde-v3-1.webp',
     seoTitle: 'Malas de crochet feitas à mão',
     intro: 'Malas de crochet feitas à mão por nós. Leva uma das que já estão feitas ou escolhe as cores à tua maneira.',
   },
@@ -313,18 +317,32 @@ export const merinoColors = [
 ];
 
 const bagYarn = ['52% lã merino superwash, 48% acrílico', 'Fio Katia Merino Aran'];
+const bagCare = [
+  'Lavar à mão, em água morna',
+  'Secar na horizontal, sem pendurar nem usar molas, para a malha não ceder',
+  'Não utilizar máquina de secar',
+];
 const bagS: ProductDetails = {
-  features: ['Feita à mão em crochet', 'Mala de mão pequena', 'Base: 16 cm', 'Corpo: 10 cm', 'Alça: 26 cm'],
+  features: ['Feita à mão em crochet', 'Mala pequena, para levar na mão ou no pulso', 'Base: 16 cm', 'Corpo: 10 cm', 'Alça: 26 cm'],
   composition: bagYarn,
+  care: bagCare,
 };
 const bagM: ProductDetails = {
-  features: ['Feita à mão em crochet', 'Mala de ombro, com a alça mais comprida', 'Base: 24 cm', 'Corpo: 15 cm', 'Alça: 46 cm'],
+  features: ['Feita à mão em crochet', 'Mala de ombro, com a alça comprida para levar ao ombro', 'Base: 24 cm', 'Corpo: 15 cm', 'Alça: 46 cm'],
   composition: bagYarn,
+  care: bagCare,
 };
-const custom = (d: ProductDetails): ProductDetails => ({
-  ...d,
-  features: ['Feita à mão em crochet, por encomenda', 'Escolhes a cor da mala e a cor do anel', ...d.features.slice(1)],
-});
+/* personalizada: uma só página, com os dois tamanhos (a M é um produto escondido, com o seu preço) */
+const bagCustom: ProductDetails = {
+  features: [
+    'Feita à mão em crochet, por encomenda',
+    'Escolhes o tamanho, a cor da mala e a cor do anel',
+    'Mala S: base 16 cm, corpo 10 cm e alça 26 cm, para levar na mão ou no pulso',
+    'Mala M: base 24 cm, corpo 15 cm e alça 46 cm, para levar ao ombro',
+  ],
+  composition: bagYarn,
+  care: bagCare,
+};
 
 const socks: ProductDetails = {
   features: [
@@ -336,7 +354,8 @@ const socks: ProductDetails = {
   care: ['Lavar do avesso ajuda a preservar a estampa e as cores por mais tempo'],
 };
 
-export const products: Product[] = [
+/** Todos os produtos, também os escondidos (que só se compram a partir da página de outro, como a mala personalizada M). */
+export const allProducts: Product[] = [
   {
     id: 3572,
     slug: 'hoodie-amarelo-pastel-cogumelos',
@@ -713,8 +732,8 @@ export const products: Product[] = [
     price: 25,
     stock: 1,
     madeToOrderDays: 10,
-    customSlug: 'mala-crochet-s-personalizada',
-    images: [img('mala-s-verde-1'), look('mala-s-verde-crewneck')],
+    customSlug: 'mala-crochet-personalizada',
+    images: [img('mala-s-verde-v3-1'), img('mala-s-medidas-1')],
     details: bagS,
     description: '',
   },
@@ -728,67 +747,81 @@ export const products: Product[] = [
     price: 35,
     stock: 1,
     madeToOrderDays: 10,
-    customSlug: 'mala-crochet-m-personalizada',
-    images: [img('mala-m-rosa-v2-1'), look('mala-m-rosa-ombro')],
+    customSlug: 'mala-crochet-personalizada',
+    images: [img('mala-m-rosa-v3-1'), img('mala-m-medidas-1')],
     details: bagM,
     description: '',
   },
   {
     id: 9017,
-    slug: 'mala-crochet-s-personalizada',
-    name: 'Mala de Crochet S Personalizada',
+    slug: 'mala-crochet-personalizada',
+    name: 'Mala de Crochet Personalizada',
     category: 'malas',
     color: 'Cores à tua escolha',
     regularPrice: 25,
     price: 25,
+    sizes: ['S'],
     stock: 0,
     madeToOrderDays: 10,
     customizable: true,
     yarn: 'merino',
     customParts: ['body', 'ring'],
-    customMap: '/images/products/mala-s-mapa-v2.webp',
+    customMap: '/images/products/mala-s-mapa-v3.webp',
     customDefaults: ['#3a86c8', '#e6b33c'],
-    images: [img('mala-s-personalizada-v2-1'), img('mala-s-cores-v2-1'), img('mala-s-verde-1')],
-    details: custom(bagS),
-    description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',
+    sizeOptions: [9017, 9018],
+    images: [look('malas-cores'), img('mala-s-medidas-1'), img('mala-m-medidas-1')],
+    details: bagCustom,
+    description: 'Escolhe o tamanho e as cores e nós fazemos a mala à mão.',
   },
   {
     id: 9018,
     slug: 'mala-crochet-m-personalizada',
-    name: 'Mala de Crochet M Personalizada',
+    name: 'Mala de Crochet Personalizada',
     category: 'malas',
     color: 'Cores à tua escolha',
     regularPrice: 35,
     price: 35,
+    sizes: ['M'],
     stock: 0,
     madeToOrderDays: 10,
     customizable: true,
     yarn: 'merino',
     customParts: ['body', 'ring'],
-    customMap: '/images/products/mala-m-mapa-v2.webp',
-    customDefaults: ['#6f5a93', '#f0bfcc'],
-    images: [img('mala-m-personalizada-v2-1'), img('mala-m-cores-v2-1'), img('mala-m-rosa-v2-1')],
-    details: custom(bagM),
-    description: 'Escolhe as tuas cores e nós fazemos a mala à mão.',
+    customMap: '/images/products/mala-m-mapa-v3.webp',
+    customDefaults: ['#3a86c8', '#e6b33c'],
+    hidden: true,
+    images: [look('malas-cores'), img('mala-m-medidas-1'), img('mala-s-medidas-1')],
+    details: bagCustom,
+    description: 'Escolhe o tamanho e as cores e nós fazemos a mala à mão.',
   },
 ];
 
 /* Preço e stock atuais, geridos no CRM (quando há base de dados). Sem base de dados ficam os valores acima. */
-await applyOverrides(products);
+await applyOverrides(allProducts);
 /* Malas: são feitas à mão, uma a uma. A cada 5 encomendas personalizadas por fazer (pagas e ainda não enviadas),
    o prazo de todas as malas cresce 7 dias úteis. O site volta a ser gerado quando se passa um destes limites. */
 export const bagQueue = { every: 5, days: 7, open: 0, extra: 0 };
-bagQueue.open = await openOrdersWith(products.filter((p) => p.category === 'malas' && p.customizable).map((p) => p.id));
+bagQueue.open = await openOrdersWith(allProducts.filter((p) => p.category === 'malas' && p.customizable).map((p) => p.id));
 bagQueue.extra = Math.floor(bagQueue.open / bagQueue.every) * bagQueue.days;
-for (const p of products) if (p.category === 'malas' && p.madeToOrderDays) p.madeToOrderDays += bagQueue.extra;
+for (const p of allProducts) if (p.category === 'malas' && p.madeToOrderDays) p.madeToOrderDays += bagQueue.extra;
 
 /* promoção em curso: o preço do CRM passa a ser o preço riscado */
 const promoOn = promoActive();
-for (const p of products) {
+for (const p of allProducts) {
   p.regularPrice = p.price;
   p.price = promoPrice(p.category, p.price, promoOn);
   if (p.price < p.regularPrice) p.promoPct = promo.discounts[p.category];
 }
+
+/** Produtos à venda nas listagens, nos feeds e com página própria. */
+export const products = allProducts.filter((p) => !p.hidden);
+
+/** Endereço da página do produto (o escondido abre a página do produto onde se escolhe, com o tamanho já marcado). */
+export const pagePath = (p: Pick<Product, 'id' | 'slug' | 'hidden' | 'sizes'>) => {
+  if (!p.hidden) return `/produto/${p.slug}/`;
+  const parent = allProducts.find((o) => o.sizeOptions?.includes(p.id));
+  return parent ? `/produto/${parent.slug}/?tamanho=${p.sizes?.[0] ?? ''}` : '/loja/';
+};
 
 export const getCategory = (slug: string) => categories.find((c) => c.slug === slug);
 export const getCollection = (slug: string) => collections.find((c) => c.slug === slug);

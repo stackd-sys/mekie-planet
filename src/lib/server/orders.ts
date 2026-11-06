@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 import { db } from './db';
 import { sendMail, layout, escapeHtml } from './mail';
 import { euro, trackingUrl } from './format';
-import { products, weightOf } from '../../data/products';
+import { allProducts as products, weightOf } from '../../data/products';
 import { giftCatalog, giftCard, customGiftValue, giftTitleFromPt } from '../../data/giftcard';
 import { destinations, shippingCost, type Zone } from '../../data/shipping';
 import { site } from '../../data/site';

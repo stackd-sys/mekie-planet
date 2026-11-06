@@ -1,6 +1,6 @@
 /* Esquema da base de dados do CRM. É criado sozinho no primeiro pedido, por isso não há passos manuais. */
 import { sql } from './sql';
-import { products } from '../../data/products';
+import { allProducts as products } from '../../data/products';
 import { site } from '../../data/site';
 
 const SCHEMA = /* sql */ `
