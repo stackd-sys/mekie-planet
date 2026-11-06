@@ -9,7 +9,7 @@ import HalloweenFx from '../components/HalloweenFx.astro';
 import { halloweenActive } from '../data/season';
 /* Halloween: a página fica igual, só com efeitos por cima (teias, aranha, morcegos, nevoeiro) */
 const hw = halloweenActive();
-import { langOf, href } from '../i18n';
+import { langOf, href, amount } from '../i18n';
 import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
 const lang = langOf(Astro.url.pathname);
@@ -54,8 +54,14 @@ const rank = (p: (typeof products)[number]) => {
   const k = kindOf(p);
   return k && volumeKinds.includes(k) ? 1 : 2;
 };
-const featured = picks.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).map((x) => x.p);
+/* novidades à frente de tudo no carrossel */
+const rankNew = (p: (typeof products)[number]) => (p.badge && !isSoldOut(p) ? -1 : rank(p));
+const featured = picks.map((p, i) => ({ p, i })).sort((a, b) => rankNew(a.p) - rankNew(b.p) || a.i - b.i).map((x) => x.p);
 
+/* Novidade: as malas de crochet, com destaque logo a seguir à promoção */
+const bags = products.filter((p) => p.category === 'malas' && p.badge);
+const bagFrom = bags.length ? Math.min(...bags.map((p) => p.price)) : 0;
+const bagCustom = bags.find((p) => p.customizable);
 ---
 <Base overlayHeader popup>
   <section class:list={['hero', { 'hero--hw': hw }]}>
@@ -69,6 +75,24 @@ const featured = picks.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank
   </section>
 
   {promoActive() && <PromoBanner />}
+
+  {bags.length > 0 && (
+    <section class="novo">
+      <a href={h('/loja/malas/')} class="novo__media" tabindex="-1" aria-hidden="true">
+        <Img src="/images/products/mala-personalizada-1.webp" sizes="(max-width: 800px) 90vw, 45vw" alt="" width="1200" height="1200" loading="lazy" />
+      </a>
+      <div class="novo__text">
+        <p class="novo__tag eyebrow">{t('new.kicker')}</p>
+        <h2 class="novo__title display">{t('new.title')}</h2>
+        <p>{t('new.text')}</p>
+        <p class="novo__price">{t('new.from', { n: amount(bagFrom, lang) })}</p>
+        <div class="novo__cta">
+          <a href={h('/loja/malas/')} class="pill pill--accent">{t('new.see')}</a>
+          {bagCustom && <a href={h(`/produto/${bagCustom.slug}/`)} class="pill">{t('new.make')}</a>}
+        </div>
+      </div>
+    </section>
+  )}
 
   <section class="section browse">
     <div class="container">
@@ -137,6 +161,25 @@ const featured = picks.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank
   .hero--hw :global(.hero__img) { filter: saturate(.55) contrast(1.12) brightness(.82) hue-rotate(-8deg); }
 
   .center { display: flex; justify-content: center; margin-top: 44px; }
+
+  /* Novidade */
+  .novo {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center;
+    gap: clamp(20px, 4vw, 64px); max-width: 1200px; margin: clamp(36px, 6vw, 72px) auto 0;
+    padding: clamp(24px, 4vw, 48px) var(--gutter); background: #f3ecdf;
+  }
+  .novo__media { display: block; }
+  .novo__media :global(img) { width: 100%; height: auto; display: block; }
+  .novo__text { display: grid; gap: 12px; justify-items: start; font-size: 15px; line-height: 1.55; }
+  .novo__text p { margin: 0; }
+  .novo__tag { background: var(--ink); color: var(--bg); padding: 5px 10px; font-size: 11px; }
+  .novo__title { margin: 0; font-size: clamp(30px, 4vw, 52px); line-height: 1.02; text-transform: uppercase; }
+  .novo__price { font-weight: 600; }
+  .novo__cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  @media (max-width: 800px) {
+    .novo { grid-template-columns: 1fr; text-align: left; }
+    .novo__media { max-width: 440px; margin: 0 auto; }
+  }
 
   .band { position: relative; display: grid; grid-template-columns: 1fr 1fr; color: #fff; overflow: hidden; }
   .band__media { aspect-ratio: 4 / 5; max-height: 92vh; width: 100%; overflow: hidden; }
