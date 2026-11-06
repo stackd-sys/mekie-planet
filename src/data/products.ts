@@ -109,7 +109,7 @@ export const categories: Category[] = [
   {
     slug: 'malas', name: 'Malas', parent: 'acessorios', image: '/images/products/mala-s-verde-1.webp',
     seoTitle: 'Malas de crochet feitas à mão',
-    intro: 'Malas de crochet feitas à mão por nós. Leva uma das que já estão feitas ou escolhe as cores da tua.',
+    intro: 'Malas de crochet feitas à mão por nós. Leva uma das que já estão feitas ou escolhe as cores à tua maneira.',
   },
 ];
 

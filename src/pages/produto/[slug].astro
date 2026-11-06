@@ -187,7 +187,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
             <p class="size-note" data-size-note hidden></p>
             <a href={h('/contactos/')} class="opt__help link-underline">{t('p.sizeHelp')}</a>
           </fieldset>
-        ) : (
+        ) : !isBag && (
           <p class="opt__label">{t('p.size')}: <span>{t('p.oneSize')}</span></p>
         )}
 
@@ -253,7 +253,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
             )}
             <ul>
               <li>{t('p.color')}: {p.color}</li>
-              <li>{t('p.sizes')}: {p.sizes ? p.sizes.join(', ') : t('p.oneSizeLower')}</li>
+              {!isBag && <li>{t('p.sizes')}: {p.sizes ? p.sizes.join(', ') : t('p.oneSizeLower')}</li>}
             </ul>
           </div>
         </details>

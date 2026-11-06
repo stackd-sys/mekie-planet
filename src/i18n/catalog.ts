@@ -142,8 +142,8 @@ const categoryTr: Record<string, Record<'en' | 'es', Pick<Category, 'name' | 'se
     es: { name: 'Scrunchies', seoTitle: 'Scrunchies de ganchillo hechos a mano', intro: 'Scrunchies de ganchillo hechos a mano por nosotros. Elige uno de los que ya están hechos o personaliza los colores del tuyo.' },
   },
   malas: {
-    en: { name: 'Bags', seoTitle: 'Handmade crochet bags', intro: 'Crochet bags we make by hand. Take one that is ready or choose the colours of yours.' },
-    es: { name: 'Bolsos', seoTitle: 'Bolsos de ganchillo hechos a mano', intro: 'Bolsos de ganchillo hechos a mano por nosotros. Llévate uno de los que ya están hechos o elige los colores del tuyo.' },
+    en: { name: 'Bags', seoTitle: 'Handmade crochet bags', intro: 'Crochet bags we make by hand. Take one that is ready or choose the colours your way.' },
+    es: { name: 'Bolsos', seoTitle: 'Bolsos de ganchillo hechos a mano', intro: 'Bolsos de ganchillo hechos a mano por nosotros. Llévate uno de los que ya están hechos o elige los colores a tu manera.' },
   },
   'tote-bag': {
     en: { name: 'Tote Bag', seoTitle: 'Embroidered organic cotton tote bags', intro: 'Organic cotton tote bags with Mekie designs embroidered: planets and mushrooms.' },
