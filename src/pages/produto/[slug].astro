@@ -98,6 +98,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
     </div>
 
     <div class="info">
+      {p.badge && <p class="info__badge eyebrow">{p.badge}</p>}
       <h1 class="info__title">{p.name}</h1>
       {rating && (
         <a href="#opinioes" class="info__rating">
@@ -611,6 +612,7 @@ const isCutout = (src: string) => src.includes('/products/') && /-1\.webp$/.test
   .size span:hover { border-color: var(--ink); }
   .custom { margin-bottom: 8px; }
   .custom__preview { margin: 0 0 18px; }
+  .info__badge { display: inline-block; margin: 0 0 10px; padding: 4px 9px; background: var(--ink); color: var(--bg); font-size: 10.5px; }
   .info__queue { margin: 6px 0 0; font-weight: 600; }
   .custom__preview canvas { display: block; width: min(260px, 70vw); height: auto; aspect-ratio: 1; }
   .custom__preview figcaption { margin-top: 6px; font-size: 11.5px; color: var(--ink-soft); }

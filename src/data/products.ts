@@ -725,6 +725,7 @@ export const allProducts: Product[] = [
   {
     id: 9015,
     slug: 'mala-crochet-s-verde',
+    badge: 'Novidade',
     name: 'Mala de Crochet S',
     category: 'malas',
     color: 'Verde',
@@ -740,6 +741,7 @@ export const allProducts: Product[] = [
   {
     id: 9016,
     slug: 'mala-crochet-m-rosa',
+    badge: 'Novidade',
     name: 'Mala de Crochet M',
     category: 'malas',
     color: 'Rosa',
@@ -755,6 +757,7 @@ export const allProducts: Product[] = [
   {
     id: 9017,
     slug: 'mala-crochet-personalizada',
+    badge: 'Novidade',
     name: 'Mala de Crochet Personalizada',
     category: 'malas',
     color: 'Cores à tua escolha',
@@ -769,13 +772,14 @@ export const allProducts: Product[] = [
     customMap: '/images/products/mala-s-mapa-v3.webp',
     customDefaults: ['#3a86c8', '#e6b33c'],
     sizeOptions: [9017, 9018],
-    images: [look('malas-cores'), img('mala-s-medidas-1'), img('mala-m-medidas-1')],
+    images: [img('mala-personalizada-1')],
     details: bagCustom,
     description: 'Escolhe o tamanho e as cores e nós fazemos a mala à mão.',
   },
   {
     id: 9018,
     slug: 'mala-crochet-m-personalizada',
+    badge: 'Novidade',
     name: 'Mala de Crochet Personalizada',
     category: 'malas',
     color: 'Cores à tua escolha',
@@ -790,7 +794,7 @@ export const allProducts: Product[] = [
     customMap: '/images/products/mala-m-mapa-v3.webp',
     customDefaults: ['#3a86c8', '#e6b33c'],
     hidden: true,
-    images: [look('malas-cores'), img('mala-m-medidas-1'), img('mala-s-medidas-1')],
+    images: [img('mala-personalizada-1')],
     details: bagCustom,
     description: 'Escolhe o tamanho e as cores e nós fazemos a mala à mão.',
   },

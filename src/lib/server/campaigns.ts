@@ -21,9 +21,9 @@ export const campaigns: Campaign[] = [
     subject: ['Black November: -15% o mês inteiro', 'Black November: 15% off all month', 'Black November: -15% todo el mes'],
     title: ['Começou a Black November', 'Black November is on', 'Ha empezado la Black November'],
     body: [
-      'Durante todo o mês de novembro tens -15% em hoodies, t-shirts e crewnecks e -10% nas malas de crochet. E se juntares duas peças num pack, poupas ainda mais. O preço do pack aplica-se sozinho no carrinho.',
-      'All through November you get 15% off hoodies, T-shirts and crewnecks and 10% off crochet bags. Put two pieces together in a bundle and you save even more. The bundle price is applied automatically in the cart.',
-      'Durante todo noviembre tienes -15% en hoodies, camisetas y crewnecks y -10% en los bolsos de ganchillo. Y si juntas dos prendas en un pack, ahorras todavía más. El precio del pack se aplica solo en la cesta.',
+      'Durante todo o mês de novembro tens -15% em hoodies, t-shirts e crewnecks. E se juntares duas peças num pack, poupas ainda mais. O preço do pack aplica-se sozinho no carrinho.',
+      'All through November you get 15% off hoodies, T-shirts and crewnecks. Put two pieces together in a bundle and you save even more. The bundle price is applied automatically in the cart.',
+      'Durante todo noviembre tienes -15% en hoodies, camisetas y crewnecks. Y si juntas dos prendas en un pack, ahorras todavía más. El precio del pack se aplica solo en la cesta.',
     ],
     button: ['Ver a Black November', 'Shop Black November', 'Ver la Black November'],
   },
