@@ -23,6 +23,9 @@ const cartData = JSON.stringify({ ...cartInfo(p), href: url });
 const rating = ratingOf(p);
 const total = totalStock(p);
 const soldOut = isSoldOut(p);
+/* vários tamanhos com preços diferentes (mala personalizada): mostra o intervalo, do mais barato ao mais caro */
+const optPrices = (p.sizeOptions ?? []).map((id) => shop(lang).allProducts.find((o) => o.id === id)?.price).filter((v): v is number => v !== undefined);
+const range = optPrices.length > 1 && Math.min(...optPrices) !== Math.max(...optPrices) ? [Math.min(...optPrices), Math.max(...optPrices)] : null;
 const sizes = '(max-width: 700px) 50vw, 25vw';
 /* recortes de produto (fundo transparente) ficam inteiros; fotos ocupam o cartão */
 const cutout = /\/products\/.+-1\.webp$/.test(p.images[0]);
@@ -62,10 +65,12 @@ const altCutout = alt ? /\/products\/.+\.webp$/.test(alt) && !/lookbook/.test(al
   </div>
   <div class="card__body">
     <h3 class="card__title"><a href={url}>{p.name}</a></h3>
-    <p class="price">
+    {range ? (
+      <p class="price"><span>{t('card.range', { a: money(range[0], lang), b: money(range[1], lang) })}</span></p>
+    ) : <p class="price">
       {off > 0 && <del><span class="sr-only">{t('price.was')}</span>{money(p.regularPrice, lang)}</del>}
       {off > 0 ? <ins><span class="sr-only">{t('price.now')}</span>{money(p.price, lang)}</ins> : <span>{money(p.price, lang)}</span>}
-    </p>
+    </p>}
     {volume && <p class="card__vol eyebrow">Black November · {t('bf.volTag')}</p>}
     {rating && <p class="card__rating"><Stars rating={rating.value} size={11} /><span>({rating.count})</span></p>}
     <p class="card__meta eyebrow">{colors > 1 ? t('card.colors', { n: colors }) : p.color}</p>

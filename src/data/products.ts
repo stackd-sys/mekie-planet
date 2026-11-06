@@ -323,12 +323,12 @@ const bagCare = [
   'Não utilizar máquina de secar',
 ];
 const bagS: ProductDetails = {
-  features: ['Feita à mão em crochet', 'Mala pequena, para levar na mão ou no pulso', 'Base: 16 cm', 'Corpo: 10 cm', 'Alça: 26 cm'],
+  features: ['Feita à mão em crochet', 'Mala pequena, para levar na mão ou no pulso', 'Cabe o básico: telemóvel, carteira e aquele gloss', 'Base: 16 cm', 'Corpo: 10 cm', 'Alça: 26 cm'],
   composition: bagYarn,
   care: bagCare,
 };
 const bagM: ProductDetails = {
-  features: ['Feita à mão em crochet', 'Mala de ombro, com a alça comprida para levar ao ombro', 'Base: 24 cm', 'Corpo: 15 cm', 'Alça: 46 cm'],
+  features: ['Feita à mão em crochet', 'Mala de ombro, com a alça comprida para levar ao ombro', 'Cabe o básico: telemóvel, carteira e aquele gloss, e mais uns extras', 'Base: 24 cm', 'Corpo: 15 cm', 'Alça: 46 cm'],
   composition: bagYarn,
   care: bagCare,
 };
@@ -337,8 +337,8 @@ const bagCustom: ProductDetails = {
   features: [
     'Feita à mão em crochet, por encomenda',
     'Escolhes o tamanho, a cor da mala e a cor do anel',
-    'Mala S: base 16 cm, corpo 10 cm e alça 26 cm, para levar na mão ou no pulso',
-    'Mala M: base 24 cm, corpo 15 cm e alça 46 cm, para levar ao ombro',
+    'Mala S: base 16 cm, corpo 10 cm e alça 26 cm, para levar na mão ou no pulso. Cabe o básico: telemóvel, carteira e aquele gloss',
+    'Mala M: base 24 cm, corpo 15 cm e alça 46 cm, para levar ao ombro. Cabe o básico e mais uns extras',
   ],
   composition: bagYarn,
   care: bagCare,
