@@ -19,7 +19,7 @@ export const promo = {
   start: '2026-11-01T00:00:00Z',
   end: '2026-12-01T00:00:00Z',
   /** desconto em % por categoria, arredondado ao euro para baixo */
-  discounts: { 'hoodies-crewnecks': 15, 't-shirts': 15 } as Record<string, number>,
+  discounts: { 'hoodies-crewnecks': 15, 't-shirts': 15, malas: 10 } as Record<string, number>,
   /** do pack mais vantajoso para a Mekie para o menos: é por esta ordem que se juntam as peças */
   packs: [
     { id: 'hoodie-tshirt', parts: [['hoodie'], ['tshirt']], price: 95 },

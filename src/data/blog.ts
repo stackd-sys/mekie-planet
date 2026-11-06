@@ -120,6 +120,7 @@ const posts: Post[] = [
           '-15% em todos os <a href="/loja/hoodies-crewnecks/">hoodies e crewnecks</a> e em todas as <a href="/loja/t-shirts/">t-shirts</a>.',
           'Packs de duas peças: Hoodie + T-shirt por 95€, Crewneck + T-shirt por 90€, Hoodie + Cap por 80€ e T-shirt + Cap por 65€.',
           '<a href="/loja/scrunchies/">Scrunchies</a>: leva 4, paga 3.',
+          '-10% nas <a href="/loja/malas/">malas de crochet</a>, também nas personalizadas.',
         ],
       },
       'Não precisas de código. Os descontos aparecem no preço e os packs aplicam-se sozinhos no carrinho. Todos os packs passam os 65€, por isso o envio em Portugal é grátis.',
@@ -199,7 +200,7 @@ const posts: Post[] = [
   {
     slug: 'black-friday-2026-roupa-bordada',
     title: 'Black Friday 2026: um mês de descontos na Mekie',
-    description: 'Este ano a Black Friday da Mekie dura o mês de novembro todo: -15% em hoodies, t-shirts e crewnecks, packs com até 22% de desconto e scrunchies leva 4, paga 3.',
+    description: 'Este ano a Black Friday da Mekie dura o mês de novembro todo: -15% em hoodies, t-shirts e crewnecks, packs com até 22% de desconto, -10% nas malas de crochet e scrunchies leva 4, paga 3.',
     date: '2026-11-01',
     image: '/images/lookbook/group-crop.webp',
     imageAlt: 'Grupo de amigos com hoodies e t-shirts Mekie',
@@ -231,6 +232,8 @@ const posts: Post[] = [
       'Todos os packs passam os 65€, por isso o envio para Portugal fica por nossa conta.',
       { h: 'Scrunchies: leva 4, paga 3' },
       'Os <a href="/loja/scrunchies/">scrunchies de crochet</a> são feitos à mão por nós, um a um. Em novembro, em cada 4 scrunchies, um é oferecido. Podes misturar cores e incluir o personalizado, em que escolhes as duas cores do fio.',
+      { h: 'Malas de crochet: -10%' },
+      'As <a href="/loja/malas/">malas de crochet</a> também são feitas à mão por nós. Em novembro têm -10%: a S fica a 22€ e a M a 31€. Podes levar uma das que já estão feitas ou escolher a cor da mala e a cor do anel na personalizada.',
       { h: 'Aproveita para as prendas de Natal' },
       'Novembro é a altura certa para tratar das prendas. Os preços estão mais baixos, há mais tamanhos disponíveis e não tens a correria de dezembro. Algumas ideias:',
       {
