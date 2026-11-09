@@ -2,7 +2,7 @@
 export const prerender = false;
 import Admin from '../../../layouts/Admin.astro';
 import { db } from '../../../lib/server/db';
-import { euro } from '../../../lib/server/format';
+import { euro, date } from '../../../lib/server/format';
 import { hasGa, gaReport, rows, range } from '../../../lib/server/google';
 import MetaReport from '../../../components/admin/MetaReport.astro';
 import WorldMap from '../../../components/admin/WorldMap.astro';
@@ -61,6 +61,29 @@ const st = await sql<any[]>`select metric, dim, consent, sum(n)::int as n from s
 const sumBy = (metric: string, f: (r: any) => boolean = () => true) => st.filter((r) => r.metric === metric && f(r)).reduce((a, r) => a + r.n, 0);
 const topOf = (metric: string, k = 10) => Object.entries(st.filter((r) => r.metric === metric).reduce((a: Record<string, number>, r) => ((a[r.dim] = (a[r.dim] ?? 0) + r.n), a), {}))
   .sort((a, b) => b[1] - a[1]).slice(0, k) as [string, number][];
+/* checkouts abandonados: quem chegou à página de pagamento e não pagou, e se recebeu o email de recuperação */
+const abandoned = secao === 'visitas' ? await sql<any[]>`
+  select o.number, o.created_at, o.name, o.email, o.total, o.status, o.recovery_sent_at, o.stripe_url <> '' as has_link,
+    exists (select 1 from order_events e where e.order_id = o.id and e.text like 'Email de checkout abandonado%') as mail_ok,
+    exists (select 1 from orders n where n.email = o.email and n.created_at > o.created_at and n.status in ('paga','enviada','entregue')) as bought_later
+  from orders o
+  where o.source = 'site' and o.stripe_session <> '' and o.created_at > now() - ${days + ' days'}::interval
+    and ((o.status in ('pendente','cancelada') and o.paid_at is null) or o.recovery_sent_at is not null)
+  order by o.created_at desc limit 60` : [];
+const PAID = ['paga', 'enviada', 'entregue'];
+const recovered = abandoned.filter((o) => o.recovery_sent_at && PAID.includes(o.status));
+const lost = abandoned.filter((o) => !PAID.includes(o.status));
+const recState = (o: any) => {
+  if (o.recovery_sent_at && PAID.includes(o.status)) return ['Pagou depois do email', 'ok'];
+  if (o.recovery_sent_at) return o.mail_ok ? [`Email enviado a ${date(o.recovery_sent_at, true)}`, 'info'] : ['O email falhou ao sair', 'warn'];
+  if (o.bought_later) return ['Voltou e comprou noutra encomenda', 'ok'];
+  if (!o.has_link) return ['Sem email: encomenda de antes da recuperação', 'done'];
+  const due = new Date(new Date(o.created_at).getTime() + 3600_000);
+  if (due.getTime() > Date.now()) return [`O email sai depois das ${date(due, true).split(' ').pop()}`, 'info'];
+  if (Date.now() - new Date(o.created_at).getTime() > 20 * 3600_000) return ['Não enviado: passou o prazo de 20 horas', 'warn'];
+  return ['O email sai nos próximos minutos', 'info'];
+};
+
 const own = {
   entries: sumBy('entrada'), pages: sumBy('pagina'),
   consent: { sim: sumBy('entrada', (r) => r.consent === 'sim'), nao: sumBy('entrada', (r) => r.consent === 'nao'), sem: sumBy('entrada', (r) => r.consent === 'sem') },
@@ -108,6 +131,25 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
           <p class="note">Aparelho: {own.devices.map(([k, v]) => `${k} ${pct(v, own.entries)}`).join(' · ')}</p>
         </section>
       </div>
+      <section class="card" style="margin-top:14px">
+        <h2 style="margin-top:0">Checkouts abandonados</h2>
+        <p class="note" style="margin-top:0">Quem preenche o checkout e chega à página de pagamento sem pagar recebe um email, uma vez, 1 hora depois, com o link para acabar a compra. Quem só põe peças no carrinho não deixa email, por isso não dá para avisar.</p>
+        <div class="grid kpis">
+          <div class="card kpi"><p>Puseram no carrinho</p><strong>{n(own.ev('add_to_cart'))}</strong><small>sem email, não dá para avisar</small></div>
+          <div class="card kpi"><p>Deixaram o pagamento a meio</p><strong>{abandoned.length}</strong><small>{euro(abandoned.reduce((t, o) => t + Number(o.total), 0))} em carrinhos</small></div>
+          <div class="card kpi"><p>Receberam o email</p><strong>{abandoned.filter((o) => o.recovery_sent_at && o.mail_ok).length}</strong><small>email de checkout abandonado</small></div>
+          <div class="card kpi"><p>Pagaram depois do email</p><strong>{recovered.length}</strong><small>{euro(recovered.reduce((t, o) => t + Number(o.total), 0))} recuperados</small></div>
+        </div>
+        {abandoned.length ? (
+          <div class="table" style="margin-top:12px"><table>
+            <thead><tr><th>Encomenda</th><th>Data</th><th>Cliente</th><th class="num">Total</th><th>Email de recuperação</th></tr></thead>
+            <tbody>{abandoned.map((o) => { const [txt, tone] = recState(o); return (
+              <tr><td><a href={`/admin/encomendas/${o.number}/`}>{o.number}</a></td><td class="muted">{date(o.created_at, true)}</td><td>{o.name}<br /><span class="muted">{o.email}</span></td><td class="num">{euro(o.total)}</td><td><span class={`badge ${tone}`}>{txt}</span></td></tr>
+            ); })}</tbody>
+          </table></div>
+        ) : <p class="empty">Ninguém deixou o pagamento a meio neste período.</p>}
+        {lost.length > 0 && <p class="note" style="margin-bottom:0">Os que não pagaram continuam em <a href="/admin/encomendas/?estado=pendente">Encomendas, a aguardar pagamento</a>. Se quiserem, podem escrever-lhes à mão.</p>}
+      </section>
       <section class="card" style="margin-top:14px">
         <h2 style="margin-top:0">Páginas mais vistas</h2>
         <table><tbody>{own.pagesTop.map(([k, v]) => <tr><td><a href={k} target="_blank">{k}</a></td><td class="num">{n(v)}</td></tr>)}</tbody></table>

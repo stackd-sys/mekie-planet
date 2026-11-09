@@ -29,7 +29,7 @@ const status = Astro.url.searchParams.get('estado') || '';
 const q = (Astro.url.searchParams.get('q') || '').trim();
 const like = `%${q}%`;
 const orders = await sql<any[]>`
-  select number, created_at, name, email, total, status, lines, tracking, address
+  select number, created_at, name, email, total, status, lines, tracking, address, recovery_sent_at
   from orders
   where (${status} = '' or status = ${status})
     and (${q} = '' or number ilike ${like} or email ilike ${like} or name ilike ${like})
@@ -72,7 +72,7 @@ const pieces = (lines: any[]) => lines.reduce((n, l) => n + l.qty, 0);
               <td>{o.address ? o.address.pais : <span class="muted">Digital</span>}</td>
               <td class="num">{pieces(o.lines)}</td>
               <td class="num">{euro(o.total)}</td>
-              <td><Status status={o.status} />{o.tracking && <><br /><span class="muted">{o.tracking}</span></>}</td>
+              <td><Status status={o.status} />{o.tracking && <><br /><span class="muted">{o.tracking}</span></>}{o.recovery_sent_at && <><br /><span class="muted">Email de recuperação a {date(o.recovery_sent_at, true)}</span></>}</td>
             </tr>
           ))}
         </tbody>
