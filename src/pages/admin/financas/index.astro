@@ -1,0 +1,268 @@
+---
+export const prerender = false;
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { euro, date } from '../../../lib/server/format';
+import { postForm, done, str, num } from '../../../lib/server/admin';
+
+/* Finanças: as vendas entram sozinhas (encomendas do site e as registadas à mão no CRM);
+   as despesas e outras receitas registam-se aqui. Valores sem IVA (isenção do art. 53.º). */
+const sql = await db();
+
+const EXPENSES = [
+  'Materiais e fio', 'Produção e bordados', 'Embalagens', 'Portes de envio', 'Publicidade',
+  'Comissões de pagamento', 'Site e ferramentas', 'Feiras e eventos', 'Fotografia e conteúdo', 'Outros',
+];
+const INCOMES = ['Outras vendas', 'Outras receitas'];
+const SOURCES: Record<string, string> = { site: 'Site (online)', manual: 'Instagram e mensagens', feira: 'Feiras e eventos', loja: 'Em mão' };
+const sourceName = (s: string) => SOURCES[s] ?? s;
+const isOnline = (s: string) => s === 'site';
+/* comissão da Stripe por pagamento no site, quando não registam o valor certo: cerca de 1,5% + 0,25€ */
+const fee = (v: number) => Math.round((v * 0.015 + 0.25) * 100) / 100;
+
+const f = await postForm(Astro);
+if (f) {
+  const action = str(f, 'action');
+  if (action === 'add') {
+    const kind = str(f, 'kind') === 'receita' ? 'receita' : 'despesa';
+    const day = str(f, 'day', 10);
+    const amount = num(f, 'amount');
+    const category = str(f, 'category', 60);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return done(Astro, 'Escolhe a data.', undefined, true);
+    if (amount === null || !Number.isFinite(amount) || amount <= 0) return done(Astro, 'Escreve um valor maior que zero, por exemplo 12,50.', undefined, true);
+    if (!(kind === 'despesa' ? EXPENSES : INCOMES).includes(category)) return done(Astro, 'Escolhe a categoria.', undefined, true);
+    await sql`insert into finance_entries (kind, day, category, description, amount, created_by)
+      values (${kind}, ${day}, ${category}, ${str(f, 'description', 200)}, ${Math.round(amount * 100) / 100}, ${Astro.locals.admin || ''})`;
+    return done(Astro, `${kind === 'despesa' ? 'Despesa' : 'Receita'} de ${euro(amount)} registada.`);
+  }
+  if (action === 'delete') {
+    await sql`delete from finance_entries where id = ${Number(str(f, 'id', 12)) || 0}`;
+    return done(Astro, 'Apagado.');
+  }
+}
+
+/* período: um mês ou o ano inteiro */
+const now = new Date();
+const lisbon = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Lisbon' }));
+const year = Number(Astro.url.searchParams.get('ano')) || lisbon.getFullYear();
+const monthParam = Astro.url.searchParams.get('mes');
+const month = monthParam === 'ano' ? 0 : Number(monthParam) || (year === lisbon.getFullYear() ? lisbon.getMonth() + 1 : 0);
+const pad = (n: number) => String(n).padStart(2, '0');
+const from = month ? `${year}-${pad(month)}-01` : `${year}-01-01`;
+const to = month ? (month === 12 ? `${year + 1}-01-01` : `${year}-${pad(month + 1)}-01`) : `${year + 1}-01-01`;
+const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const periodName = month ? `${MONTHS[month - 1]} de ${year}` : `${year}`;
+
+/* vendas: encomendas pagas (pela data do pagamento), já sem o que foi reembolsado */
+const SALE = "status in ('paga','enviada','entregue','devolvida') and coalesce(paid_at, created_at) is not null";
+const orders = await sql<any[]>`
+  select number, source, coalesce(paid_at, created_at) as day, name, total, shipping, refunded, status
+  from orders
+  where ${sql.unsafe(SALE)} and (coalesce(paid_at, created_at) at time zone 'Europe/Lisbon')::date >= ${from}::date
+    and (coalesce(paid_at, created_at) at time zone 'Europe/Lisbon')::date < ${to}::date
+  order by day`;
+const entries = await sql<any[]>`
+  select * from finance_entries where day >= ${from}::date and day < ${to}::date order by day desc, id desc`;
+
+const net = (o: any) => Number(o.total) - Number(o.refunded);
+const bySource = new Map<string, { n: number; value: number; shipping: number }>();
+for (const o of orders) {
+  const r = bySource.get(o.source) ?? { n: 0, value: 0, shipping: 0 };
+  r.n++; r.value += net(o); r.shipping += Number(o.shipping);
+  bySource.set(o.source, r);
+}
+const online = orders.filter((o) => isOnline(o.source)).reduce((t, o) => t + net(o), 0);
+const offline = orders.filter((o) => !isOnline(o.source)).reduce((t, o) => t + net(o), 0);
+const otherIncome = entries.filter((e) => e.kind === 'receita').reduce((t, e) => t + Number(e.amount), 0);
+const expenses = entries.filter((e) => e.kind === 'despesa');
+/* comissões estimadas, só quando não há comissões registadas à mão neste período */
+const hasRealFees = expenses.some((e) => e.category === 'Comissões de pagamento');
+const estFees = hasRealFees ? 0 : orders.filter((o) => isOnline(o.source) && net(o) > 0).reduce((t, o) => t + fee(Number(o.total)), 0);
+const expByCat = new Map<string, number>();
+for (const e of expenses) expByCat.set(e.category, (expByCat.get(e.category) ?? 0) + Number(e.amount));
+if (estFees) expByCat.set('Comissões de pagamento (estimativa)', estFees);
+const totalIncome = online + offline + otherIncome;
+const totalExpenses = [...expByCat.values()].reduce((t, v) => t + v, 0);
+const result = totalIncome - totalExpenses;
+
+/* resumo do ano, mês a mês */
+const yearSales = await sql<any[]>`
+  select extract(month from (coalesce(paid_at, created_at) at time zone 'Europe/Lisbon'))::int as m,
+    sum(total - refunded) filter (where source = 'site') as online,
+    sum(total - refunded) filter (where source <> 'site') as offline,
+    sum(case when source = 'site' and total > refunded then total * 0.015 + 0.25 else 0 end) as fees
+  from orders
+  where ${sql.unsafe(SALE)} and extract(year from (coalesce(paid_at, created_at) at time zone 'Europe/Lisbon')) = ${year}
+  group by 1`;
+const yearEntries = await sql<any[]>`
+  select extract(month from day)::int as m, kind, sum(amount) as v, bool_or(category = 'Comissões de pagamento') as real_fees
+  from finance_entries where extract(year from day) = ${year} group by 1, 2`;
+const months = MONTHS.map((name, i) => {
+  const s = yearSales.find((r) => r.m === i + 1);
+  const inc = yearEntries.find((r) => r.m === i + 1 && r.kind === 'receita');
+  const exp = yearEntries.find((r) => r.m === i + 1 && r.kind === 'despesa');
+  const income = Number(s?.online ?? 0) + Number(s?.offline ?? 0) + Number(inc?.v ?? 0);
+  const out = Number(exp?.v ?? 0) + (exp?.real_fees ? 0 : Number(s?.fees ?? 0));
+  return { m: i + 1, name, online: Number(s?.online ?? 0), offline: Number(s?.offline ?? 0), income, out, result: income - out };
+});
+const yearTotal = months.reduce((t, r) => ({ income: t.income + r.income, out: t.out + r.out, result: t.result + r.result }), { income: 0, out: 0, result: 0 });
+const maxBar = Math.max(1, ...months.map((r) => Math.max(r.income, r.out)));
+
+/* exportar para o contabilista: tudo o que entrou e saiu no período */
+if (Astro.url.searchParams.get('csv')) {
+  const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const money = (v: number) => v.toFixed(2).replace('.', ',');
+  const lines = [
+    ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor (€)'].map(q).join(';'),
+    ...orders.map((o) => [date(o.day), 'Receita', `Venda: ${sourceName(o.source)}`, `Encomenda ${o.number} · ${o.name}${Number(o.refunded) ? ` (reembolsado ${money(Number(o.refunded))})` : ''}`, money(net(o))].map(q).join(';')),
+    ...entries.map((e) => [date(e.day), e.kind === 'despesa' ? 'Despesa' : 'Receita', e.category, e.description, money((e.kind === 'despesa' ? -1 : 1) * Number(e.amount))].map(q).join(';')),
+    ...(estFees ? [[`${periodName}`, 'Despesa', 'Comissões de pagamento (estimativa)', 'Estimativa: 1,5% + 0,25€ por pagamento no site', money(-estFees)].map(q).join(';')] : []),
+  ];
+  return new Response('﻿' + lines.join('\r\n'), {
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="mekie-financas-${year}${month ? `-${pad(month)}` : ''}.csv"` },
+  });
+}
+
+const today = lisbon.toISOString().slice(0, 10);
+const defaultDay = month && (year !== lisbon.getFullYear() || month !== lisbon.getMonth() + 1) ? `${year}-${pad(month)}-01` : today;
+const link = (y: number, m: number | 'ano') => `?ano=${y}&mes=${m}`;
+const prev = month ? (month === 1 ? link(year - 1, 12) : link(year, month - 1)) : link(year - 1, 'ano');
+const next = month ? (month === 12 ? link(year + 1, 1) : link(year, month + 1)) : link(year + 1, 'ano');
+---
+<Admin title="Finanças">
+  <h1>Finanças</h1>
+  <p class="sub">O que entra e o que sai. As vendas do site e as que registam em <a href="/admin/encomendas/nova/">Nova encomenda</a> (Instagram, feiras, em mão) entram sozinhas. As despesas e outras receitas registam-se aqui em baixo.</p>
+  <Flash />
+
+  <nav class="bar" style="margin:0 0 14px;flex-wrap:wrap">
+    <a class="btn ghost small" href={prev}>←</a>
+    <strong style="min-width:150px;text-align:center">{periodName[0].toUpperCase() + periodName.slice(1)}</strong>
+    <a class="btn ghost small" href={next}>→</a>
+    {month ? <a class="btn ghost small" href={link(year, 'ano')}>Ver o ano todo</a> : <a class="btn ghost small" href={link(year, lisbon.getFullYear() === year ? lisbon.getMonth() + 1 : 1)}>Ver um mês</a>}
+    <a class="btn ghost small" href={`${month ? link(year, month) : link(year, 'ano')}&csv=1`}>Exportar para Excel (CSV)</a>
+  </nav>
+
+  <div class="grid kpis">
+    <div class="card kpi"><p>Receitas</p><strong>{euro(totalIncome)}</strong><small>online {euro(online)} · offline {euro(offline)}{otherIncome ? ` · outras ${euro(otherIncome)}` : ''}</small></div>
+    <div class="card kpi"><p>Despesas</p><strong>{euro(totalExpenses)}</strong><small>{expenses.length} {expenses.length === 1 ? 'registo' : 'registos'}{estFees ? ' + comissões estimadas' : ''}</small></div>
+    <div class="card kpi"><p>Resultado</p><strong style={result < 0 ? 'color:#b42318' : 'color:#1a7f37'}>{euro(result)}</strong><small>receitas menos despesas</small></div>
+    <div class="card kpi"><p>Vendas</p><strong>{orders.length}</strong><small>{orders.length ? `valor médio ${euro((online + offline) / orders.length)}` : 'neste período'}</small></div>
+  </div>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Registar despesa ou receita</h2>
+    <form method="post" class="fin-form">
+      <input type="hidden" name="action" value="add" />
+      <label>Tipo
+        <select name="kind" data-kind>
+          <option value="despesa">Despesa</option>
+          <option value="receita">Receita</option>
+        </select>
+      </label>
+      <label>Data<input type="date" name="day" value={defaultDay} required /></label>
+      <label>Categoria
+        <select name="category" required data-cats>
+          <optgroup label="Despesa" data-for="despesa">{EXPENSES.map((c) => <option>{c}</option>)}</optgroup>
+          <optgroup label="Receita" data-for="receita" disabled hidden>{INCOMES.map((c) => <option>{c}</option>)}</optgroup>
+        </select>
+      </label>
+      <label class="fin-form__wide">Descrição<input name="description" maxlength="200" placeholder="Ex.: 10 novelos Katia Merino Aran, fatura 123" /></label>
+      <label>Valor (€)<input name="amount" inputmode="decimal" required placeholder="0,00" style="width:110px" /></label>
+      <button class="btn">Registar</button>
+    </form>
+    <p class="note" style="margin-bottom:0">As vendas não se registam aqui: as do site entram sozinhas e as offline registam-se em <a href="/admin/encomendas/nova/">Nova encomenda</a>, para contarem também no stock e nos clientes.</p>
+  </section>
+
+  <div class="grid two" style="margin-top:14px">
+    <section class="card">
+      <h2 style="margin-top:0">Receitas</h2>
+      <table><tbody>
+        {[...bySource.entries()].sort((a, b) => b[1].value - a[1].value).map(([s, r]) => (
+          <tr><td>{sourceName(s)}<br /><span class="muted">{r.n} {r.n === 1 ? 'venda' : 'vendas'}{r.shipping ? ` · ${euro(r.shipping)} de portes cobrados` : ''}</span></td><td class="num">{euro(r.value)}</td></tr>
+        ))}
+        {entries.filter((e) => e.kind === 'receita').length > 0 && <tr><td>Outras receitas</td><td class="num">{euro(otherIncome)}</td></tr>}
+        {!orders.length && !otherIncome && <tr><td class="muted" colspan="2">Sem receitas neste período.</td></tr>}
+        <tr><td><strong>Total</strong></td><td class="num"><strong>{euro(totalIncome)}</strong></td></tr>
+      </tbody></table>
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0">Despesas por categoria</h2>
+      <table><tbody>
+        {[...expByCat.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => (
+          <tr><td>{c}</td><td class="num">{euro(v)}</td><td class="num muted">{totalExpenses ? `${Math.round((v / totalExpenses) * 100)}%` : ''}</td></tr>
+        ))}
+        {!expByCat.size && <tr><td class="muted" colspan="3">Sem despesas registadas neste período.</td></tr>}
+        <tr><td><strong>Total</strong></td><td class="num"><strong>{euro(totalExpenses)}</strong></td><td></td></tr>
+      </tbody></table>
+      {estFees > 0 && <p class="note" style="margin-bottom:0">As comissões da Stripe são uma estimativa (1,5% + 0,25€ por pagamento). Se registarem o valor certo em "Comissões de pagamento", a estimativa deixa de contar nesse mês. O valor certo está no painel da Stripe, em Saldos.</p>}
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Registos de {periodName}</h2>
+    {entries.length ? (
+      <div class="table"><table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th class="num">Valor</th><th></th></tr></thead>
+        <tbody>{entries.map((e) => (
+          <tr>
+            <td class="muted">{date(e.day)}</td>
+            <td>{e.kind === 'despesa' ? 'Despesa' : 'Receita'}</td>
+            <td>{e.category}</td>
+            <td>{e.description || <span class="muted">—</span>}</td>
+            <td class="num" style={e.kind === 'despesa' ? 'color:#b42318' : 'color:#1a7f37'}>{e.kind === 'despesa' ? '-' : '+'}{euro(Number(e.amount))}</td>
+            <td><form method="post" class="inline" onsubmit="return confirm('Apagar este registo?')"><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={e.id} /><button class="btn ghost small">Apagar</button></form></td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    ) : <p class="empty">Ainda não há despesas nem receitas registadas neste período.</p>}
+  </section>
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">{year}, mês a mês</h2>
+    <div class="table"><table>
+      <thead><tr><th>Mês</th><th class="num">Online</th><th class="num">Offline</th><th class="num">Receitas</th><th class="num">Despesas</th><th class="num">Resultado</th><th style="width:28%"></th></tr></thead>
+      <tbody>{months.map((r) => (
+        <tr class:list={{ 'fin-on': r.m === month }}>
+          <td><a href={link(year, r.m)} style="text-transform:capitalize">{r.name}</a></td>
+          <td class="num">{r.online ? euro(r.online) : '—'}</td>
+          <td class="num">{r.offline ? euro(r.offline) : '—'}</td>
+          <td class="num">{r.income ? euro(r.income) : '—'}</td>
+          <td class="num">{r.out ? euro(r.out) : '—'}</td>
+          <td class="num" style={r.result < 0 ? 'color:#b42318' : r.result > 0 ? 'color:#1a7f37' : ''}>{r.income || r.out ? euro(r.result) : '—'}</td>
+          <td><div class="fin-bars"><span style={`width:${(r.income / maxBar) * 100}%`} class="in"></span><span style={`width:${(r.out / maxBar) * 100}%`} class="out"></span></div></td>
+        </tr>
+      ))}
+        <tr><td><strong>Total</strong></td><td></td><td></td><td class="num"><strong>{euro(yearTotal.income)}</strong></td><td class="num"><strong>{euro(yearTotal.out)}</strong></td><td class="num"><strong>{euro(yearTotal.result)}</strong></td><td></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note" style="margin-bottom:0"><span class="fin-key in"></span> receitas <span class="fin-key out"></span> despesas. As vendas contam no dia em que foram pagas e já sem os reembolsos. Valores sem IVA (isenção do art. 53.º).</p>
+  </section>
+</Admin>
+
+<script>
+  /* a categoria acompanha o tipo (despesa ou receita) */
+  const kind = document.querySelector<HTMLSelectElement>('[data-kind]');
+  const cats = document.querySelector<HTMLSelectElement>('[data-cats]');
+  kind?.addEventListener('change', () => {
+    cats!.querySelectorAll<HTMLOptGroupElement>('optgroup').forEach((g) => {
+      const on = g.dataset.for === kind.value;
+      g.disabled = !on; g.hidden = !on;
+    });
+    cats!.value = cats!.querySelector<HTMLOptionElement>(`optgroup[data-for="${kind.value}"] option`)!.value;
+  });
+</script>
+
+<style>
+  .fin-form { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: end; }
+  .fin-form label { display: grid; gap: 4px; font-size: 12.5px; color: #555; }
+  .fin-form__wide { flex: 1 1 240px; }
+  .fin-form__wide input { width: 100%; }
+  .fin-bars { display: grid; gap: 3px; }
+  .fin-bars span { display: block; height: 6px; border-radius: 3px; min-width: 0; }
+  .fin-bars .in, .fin-key.in { background: #1a7f37; }
+  .fin-bars .out, .fin-key.out { background: #d0465a; }
+  .fin-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; }
+  .fin-key:first-child { margin-left: 0; }
+  tr.fin-on td { background: #f6f3ec; }
+</style>

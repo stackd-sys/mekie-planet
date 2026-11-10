@@ -75,6 +75,18 @@ create table if not exists campaign_schedule (
   done_at timestamptz,
   result text not null default ''
 );
+/* finanças: despesas e receitas registadas à mão (as vendas vêm das encomendas) */
+create table if not exists finance_entries (
+  id serial primary key,
+  kind text not null default 'despesa',
+  day date not null,
+  category text not null default '',
+  description text not null default '',
+  amount numeric(10,2) not null,
+  created_by text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists finance_entries_day on finance_entries (day);
 /* campanhas da newsletter: quem já recebeu cada uma (para nunca sair duas vezes) */
 create table if not exists campaign_sends (
   campaign text not null,
