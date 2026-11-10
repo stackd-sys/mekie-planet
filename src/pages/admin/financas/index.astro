@@ -5,13 +5,16 @@ import Flash from '../../../components/admin/Flash.astro';
 import { db } from '../../../lib/server/db';
 import { euro, date } from '../../../lib/server/format';
 import { postForm, done, str, num } from '../../../lib/server/admin';
+import { adSpendByMonth } from '../../../lib/server/adspend';
+import { hasMeta } from '../../../lib/server/meta';
+import { hasGa } from '../../../lib/server/google';
 
 /* Finanças: as vendas entram sozinhas (encomendas do site e as registadas à mão no CRM);
    as despesas e outras receitas registam-se aqui. Valores sem IVA (isenção do art. 53.º). */
 const sql = await db();
 
 const EXPENSES = [
-  'Materiais e fio', 'Produção e bordados', 'Embalagens', 'Portes de envio', 'Publicidade',
+  'Materiais e fio', 'Compra de peças (stock)', 'Produção e bordados', 'Embalagens', 'Portes de envio', 'Outra publicidade',
   'Comissões de pagamento', 'Site e ferramentas', 'Feiras e eventos', 'Fotografia e conteúdo', 'Outros',
 ];
 const INCOMES = ['Outras vendas', 'Outras receitas'];
@@ -82,6 +85,13 @@ const estFees = hasRealFees ? 0 : orders.filter((o) => isOnline(o.source) && net
 const expByCat = new Map<string, number>();
 for (const e of expenses) expByCat.set(e.category, (expByCat.get(e.category) ?? 0) + Number(e.amount));
 if (estFees) expByCat.set('Comissões de pagamento (estimativa)', estFees);
+/* anúncios da Meta e do Google: entram sozinhos, pelo que as contas de anúncios dizem que foi gasto */
+const ads = await adSpendByMonth(year);
+const inPeriod = (m: Record<number, number> | null) => (m ? (month ? m[month] ?? 0 : Object.values(m).reduce((t, v) => t + v, 0)) : 0);
+const metaSpend = Math.round(inPeriod(ads.meta) * 100) / 100;
+const googleSpend = Math.round(inPeriod(ads.google) * 100) / 100;
+if (metaSpend) expByCat.set('Anúncios Meta (automático)', metaSpend);
+if (googleSpend) expByCat.set('Anúncios Google (automático)', googleSpend);
 const totalIncome = online + offline + otherIncome;
 const totalExpenses = [...expByCat.values()].reduce((t, v) => t + v, 0);
 const result = totalIncome - totalExpenses;
@@ -103,7 +113,7 @@ const months = MONTHS.map((name, i) => {
   const inc = yearEntries.find((r) => r.m === i + 1 && r.kind === 'receita');
   const exp = yearEntries.find((r) => r.m === i + 1 && r.kind === 'despesa');
   const income = Number(s?.online ?? 0) + Number(s?.offline ?? 0) + Number(inc?.v ?? 0);
-  const out = Number(exp?.v ?? 0) + (exp?.real_fees ? 0 : Number(s?.fees ?? 0));
+  const out = Number(exp?.v ?? 0) + (exp?.real_fees ? 0 : Number(s?.fees ?? 0)) + (ads.meta?.[i + 1] ?? 0) + (ads.google?.[i + 1] ?? 0);
   return { m: i + 1, name, online: Number(s?.online ?? 0), offline: Number(s?.offline ?? 0), income, out, result: income - out };
 });
 const yearTotal = months.reduce((t, r) => ({ income: t.income + r.income, out: t.out + r.out, result: t.result + r.result }), { income: 0, out: 0, result: 0 });
@@ -118,6 +128,8 @@ if (Astro.url.searchParams.get('csv')) {
     ...orders.map((o) => [date(o.day), 'Receita', `Venda: ${sourceName(o.source)}`, `Encomenda ${o.number} · ${o.name}${Number(o.refunded) ? ` (reembolsado ${money(Number(o.refunded))})` : ''}`, money(net(o))].map(q).join(';')),
     ...entries.map((e) => [date(e.day), e.kind === 'despesa' ? 'Despesa' : 'Receita', e.category, e.description, money((e.kind === 'despesa' ? -1 : 1) * Number(e.amount))].map(q).join(';')),
     ...(estFees ? [[`${periodName}`, 'Despesa', 'Comissões de pagamento (estimativa)', 'Estimativa: 1,5% + 0,25€ por pagamento no site', money(-estFees)].map(q).join(';')] : []),
+    ...(metaSpend ? [[`${periodName}`, 'Despesa', 'Anúncios Meta', 'Gasto na conta de anúncios da Meta (Facebook e Instagram)', money(-metaSpend)].map(q).join(';')] : []),
+    ...(googleSpend ? [[`${periodName}`, 'Despesa', 'Anúncios Google', 'Gasto nas campanhas do Google Ads', money(-googleSpend)].map(q).join(';')] : []),
   ];
   return new Response('﻿' + lines.join('\r\n'), {
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="mekie-financas-${year}${month ? `-${pad(month)}` : ''}.csv"` },
@@ -195,6 +207,8 @@ const next = month ? (month === 12 ? link(year + 1, 1) : link(year, month + 1)) 
         {!expByCat.size && <tr><td class="muted" colspan="3">Sem despesas registadas neste período.</td></tr>}
         <tr><td><strong>Total</strong></td><td class="num"><strong>{euro(totalExpenses)}</strong></td><td></td></tr>
       </tbody></table>
+      <p class="note">Os anúncios entram sozinhos: Meta {hasMeta() ? (ads.meta ? 'ligada' : 'com erro') : 'por ligar'} · Google Ads {hasGa() ? (ads.google ? 'ligado, pelo Google Analytics' : 'com erro') : 'por ligar'}. Não os registem à mão, para não contarem duas vezes. Usem "Outra publicidade" para o resto (influencers, flyers, patrocínios).</p>
+      {ads.errors.map((e) => <p class="msg err" style="margin:6px 0 0">{e}</p>)}
       {estFees > 0 && <p class="note" style="margin-bottom:0">As comissões da Stripe são uma estimativa (1,5% + 0,25€ por pagamento). Se registarem o valor certo em "Comissões de pagamento", a estimativa deixa de contar nesse mês. O valor certo está no painel da Stripe, em Saldos.</p>}
     </section>
   </div>

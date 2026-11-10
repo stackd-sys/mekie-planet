@@ -214,3 +214,16 @@ export async function metaInstagram(days: number) {
 export async function metaCampaigns(days: number) {
   return (await metaAds(days)).campaigns;
 }
+
+/** Gasto em anúncios por mês de um ano (para as Finanças): { 1: 12.5, 2: 0, ... } */
+export async function metaSpendByMonth(year: number) {
+  const until = day(new Date(Math.min(Date.now(), Date.UTC(year, 11, 31))));
+  return cached(`spend:${year}:${until}`, async () => {
+    const rows = await graphAll(`${account()}/insights`, {
+      fields: 'spend', time_range: JSON.stringify({ since: `${year}-01-01`, until }), time_increment: 'monthly', limit: '20',
+    });
+    const out: Record<number, number> = {};
+    for (const r of rows) out[Number(String(r.date_start).slice(5, 7))] = (out[Number(String(r.date_start).slice(5, 7))] ?? 0) + Number(r.spend || 0);
+    return out;
+  });
+}
