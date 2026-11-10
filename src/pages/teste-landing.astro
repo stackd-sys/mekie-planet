@@ -1,0 +1,84 @@
+---
+/* TESTE: landing animada (arara de verão). Página à parte, fora do menu e do Google. Para apagar: este ficheiro
+   e a pasta src/components/teste-landing/. GSAP, ScrollTrigger, Flip e Lenis vêm da CDN, só nesta página. */
+import '@fontsource-variable/inter';
+import '@fontsource/syne/600.css';
+import '@fontsource/syne/700.css';
+import '../components/teste-landing/landing.css';
+import { pieces } from '../components/teste-landing/data';
+import { money } from '../i18n';
+
+const view = pieces.map((p) => ({ ...p, priceText: money(p.price, 'pt'), regularText: p.regular > p.price ? money(p.regular, 'pt') : '' }));
+
+/* cabides em SVG (o gancho fica no ponto 100,0, que é o eixo do balanço) */
+const hook = '<path d="M100 34 V22 c0 -6 10 -7 10 -14 a10 10 0 0 0 -20 0" fill="none" stroke="#8d8d8d" stroke-width="3.5" stroke-linecap="round"/>';
+const HANGERS = {
+  shirt: `${hook}<path d="M100 34 L22 66 c-7 3 -5 9 2 9 H176 c7 0 9 -6 2 -9 Z" fill="none" stroke="#b88a5c" stroke-width="7" stroke-linejoin="round"/>`,
+  clips: `${hook}<path d="M100 34 L40 52 H160 Z" fill="none" stroke="#b88a5c" stroke-width="6" stroke-linejoin="round"/><rect x="48" y="50" width="12" height="22" rx="2" fill="#6f6f6f"/><rect x="140" y="50" width="12" height="22" rx="2" fill="#6f6f6f"/>`,
+  hook: `${hook}<path d="M100 34 V62 c0 6 -8 8 -8 14" fill="none" stroke="#8d8d8d" stroke-width="3.5" stroke-linecap="round"/>`,
+};
+---
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Verão Mekie · teste</title>
+  <link rel="icon" href="/images/site/favicon-96.png" type="image/png" />
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+  <script is:inline src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+</head>
+<body class="lp">
+  <a class="lp-bag" href="/checkout/" data-bag aria-label="Ver o saco">Saco <span data-bag-count>0</span></a>
+
+  <header class="lp-hero">
+    <img class="lp-hero__logo" src="/images/site/logo.png" alt="Mekie" width="240" height="80" data-hero />
+    <h1 class="lp-hero__title" data-hero>Verão Mekie</h1>
+    <p class="lp-hero__sub" data-hero>Peças bordadas e feitas à mão para os dias compridos. Escolhe a tua na arara.</p>
+    <p class="lp-hint" aria-hidden="true"><span>Desliza</span><i></i></p>
+  </header>
+
+  <section class="lp-rack" aria-label="Arara com as peças de verão" data-rack>
+    <div class="lp-rack__rail" aria-hidden="true"></div>
+    <ul class="lp-rack__track" data-track>
+      {view.map((p, i) => (
+        <li class:list={['lp-item', `lp-item--${p.hanger}`]}>
+          <button class="lp-piece" type="button" data-piece={i} aria-haspopup="dialog" aria-label={`${p.name} ${p.color}, ${p.priceText}. Ver detalhes`}>
+            <span class="lp-piece__lift">
+              <span class="lp-piece__swing" data-swing>
+                <svg class="lp-hanger" viewBox="0 0 200 80" aria-hidden="true" set:html={HANGERS[p.hanger]} />
+                <span class="lp-piece__media" data-media style={`--top:${(p.top * 100).toFixed(2)}%`}>
+                  <img src={p.image} alt={`${p.name} ${p.color}`} width="1200" height="1200" loading={i < 3 ? 'eager' : 'lazy'} decoding="async" />
+                </span>
+              </span>
+            </span>
+            <span class="lp-piece__label"><strong>{p.name}</strong><span>{p.color} · {p.regularText && <del>{p.regularText}</del>} {p.priceText}</span></span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="lp-end">
+    <p class="lp-end__line">Feito à mão, bordado com calma e pensado para durar muitos verões.</p>
+    <a class="lp-end__btn" href="/loja/">Ver loja</a>
+  </section>
+
+  <div class="lp-zoom" data-zoom hidden>
+    <div class="lp-zoom__backdrop" data-backdrop></div>
+    <div class="lp-zoom__stage" data-stage></div>
+    <aside class="lp-zoom__panel" role="dialog" aria-modal="true" aria-labelledby="lp-zoom-title" data-panel>
+      <button class="lp-zoom__close" type="button" data-close aria-label="Fechar">×</button>
+      <div data-panel-body></div>
+    </aside>
+  </div>
+
+  <script type="application/json" id="lp-pieces" set:html={JSON.stringify(view)} />
+  <script>
+    import '../components/teste-landing/landing';
+  </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+/* Landing de teste (arara de verão). Tudo começa por .lp para não tocar nos estilos da loja. */
+.lp {
+  --bg: #f5f5f4;
+  --sand: #f3ecdf;
+  --peach: #fbe3d1;
+  --ink: #1f1f1f;
+  --ink-soft: #5c5c5c;
+  --line: #dcdcda;
+  --display: 'Syne', 'Inter Variable', sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter Variable', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* saco */
+.lp-bag {
+  position: fixed; top: 18px; right: 18px; z-index: 30;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 999px; background: var(--ink); color: #fff;
+  font-size: 12px; letter-spacing: .12em; text-transform: uppercase; text-decoration: none;
+}
+.lp-bag span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 11px; letter-spacing: 0; }
+.lp-bag.is-bump { animation: lpBump .45s ease; }
+@keyframes lpBump { 40% { transform: scale(1.12); } }
+
+/* 1. hero */
+.lp-hero {
+  min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 18px;
+  padding: 80px 24px; text-align: center; position: relative;
+  background: radial-gradient(120% 80% at 50% 0%, var(--peach) 0%, var(--sand) 45%, var(--bg) 100%);
+}
+.lp-hero__logo { width: clamp(150px, 22vw, 240px); height: auto; }
+.lp-hero__title {
+  margin: 0; font-family: var(--display); font-weight: 700; text-transform: uppercase;
+  font-size: clamp(46px, 9vw, 128px); line-height: .92; letter-spacing: -.02em;
+}
+.lp-hero__sub { margin: 0; max-width: 34ch; font-size: clamp(15px, 1.4vw, 18px); line-height: 1.5; color: var(--ink-soft); }
+.lp-hint {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); margin: 0;
+  display: grid; justify-items: center; gap: 10px; font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--ink-soft);
+}
+.lp-hint i { display: block; width: 1px; height: 46px; background: linear-gradient(var(--ink), transparent); transform-origin: top; animation: lpHint 1.8s ease-in-out infinite; }
+@keyframes lpHint { 0% { transform: scaleY(0); opacity: 1; } 60% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+
+/* 2. arara */
+.lp-rack { position: relative; height: 100vh; overflow: hidden; background: var(--sand); }
+.lp-rack__rail {
+  position: absolute; left: 0; right: 0; top: 14vh; height: 10px; z-index: 2;
+  background: linear-gradient(#e9e9e9, #a9a9a9 45%, #6b6b6b);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .12);
+}
+.lp-rack__track {
+  list-style: none; margin: 0; padding: 0 12vw 0 10vw;
+  display: flex; gap: clamp(28px, 4vw, 64px); align-items: flex-start;
+  position: absolute; top: calc(14vh + 2px); left: 0; height: 86vh;
+  will-change: transform;
+}
+.lp-item { flex: 0 0 auto; width: clamp(250px, min(30vw, 60vh), 480px); position: relative; z-index: 3; }
+.lp-piece {
+  all: unset; display: grid; justify-items: center; width: 100%; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-piece:focus-visible .lp-piece__media { outline: 2px solid var(--ink); outline-offset: 6px; border-radius: 4px; }
+.lp-piece__lift { display: block; width: 100%; transition: transform .45s cubic-bezier(.2, .7, .2, 1); }
+.lp-piece:hover .lp-piece__lift, .lp-piece:focus-visible .lp-piece__lift { transform: translateY(-10px); }
+.lp-piece__swing { display: block; width: 100%; transform-origin: 50% 0; will-change: transform; }
+.lp-hanger { display: block; width: 62%; margin: -4px auto 0; height: auto; overflow: visible; position: relative; z-index: 2; }
+.lp-piece__media { display: block; width: 100%; aspect-ratio: 1; position: relative; }
+.lp-piece__media img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 18px 18px rgba(0, 0, 0, .14)); }
+/* encaixe no cabide: --top é a margem transparente da foto; o cabide ocupa 24,8% da largura da peça.
+   A t-shirt veste o cabide, os chapéus ficam nas molas e as malas no gancho. */
+.lp-item--shirt .lp-piece__media { margin-top: calc(-7.5% - var(--top)); }
+.lp-item--clips .lp-piece__media { margin-top: calc(-3.6% - var(--top)); }
+.lp-item--hook .lp-piece__media { margin-top: calc(-3% - var(--top)); }
+.lp-piece__label {
+  display: grid; gap: 3px; margin-top: 6px; text-align: center; font-size: 13px;
+  opacity: .0; transform: translateY(6px); transition: opacity .3s, transform .3s;
+}
+.lp-piece__label strong { font-weight: 600; letter-spacing: .02em; }
+.lp-piece__label span { color: var(--ink-soft); }
+.lp-piece__label del { margin-right: 4px; }
+.lp-piece:hover .lp-piece__label, .lp-piece:focus-visible .lp-piece__label { opacity: 1; transform: none; }
+
+/* com a peça aberta, o resto da página desfoca (também nos browsers sem backdrop-filter) */
+.lp-hero, .lp-rack, .lp-end { transition: filter .45s ease; }
+html.lp-open .lp-hero, html.lp-open .lp-rack, html.lp-open .lp-end { filter: blur(6px); }
+
+/* 5. fim */
+.lp-end {
+  min-height: 70vh; display: grid; place-content: center; justify-items: center; gap: 28px;
+  padding: 80px 24px; text-align: center; background: var(--ink); color: #fff;
+}
+.lp-end__line { margin: 0; max-width: 20ch; font-family: var(--display); font-weight: 600; font-size: clamp(28px, 4.2vw, 56px); line-height: 1.05; }
+.lp-end__btn {
+  display: inline-flex; align-items: center; min-height: 50px; padding: 0 34px; border-radius: 999px;
+  background: #fff; color: var(--ink); text-decoration: none; font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+}
+
+/* 4. zoom e informações */
+.lp-zoom { position: fixed; inset: 0; z-index: 50; }
+.lp-zoom[hidden] { display: none; }
+.lp-zoom__backdrop { position: absolute; inset: 0; background: rgba(20, 18, 16, .6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.lp-zoom__stage { position: absolute; left: 3vw; top: 6vh; width: 50vw; height: 88vh; }
+.lp-zoom__stage img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 30px 40px rgba(0, 0, 0, .3)); }
+.lp-zoom__panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 42vw);
+  background: var(--bg); padding: 64px 36px 36px; overflow-y: auto; box-shadow: -20px 0 50px rgba(0, 0, 0, .15);
+}
+.lp-zoom__close {
+  all: unset; position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; display: grid; place-items: center;
+  font-size: 28px; line-height: 1; cursor: pointer; border-radius: 999px;
+}
+.lp-zoom__close:hover, .lp-zoom__close:focus-visible { background: rgba(0, 0, 0, .06); }
+.lp-p__kicker { margin: 0 0 10px; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--ink-soft); }
+.lp-p__name { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.02; text-transform: uppercase; }
+.lp-p__price { margin: 14px 0 0; font-size: 18px; display: flex; gap: 10px; align-items: baseline; }
+.lp-p__price del { color: var(--ink-soft); font-size: 15px; }
+.lp-p__price ins { text-decoration: none; color: #b3261e; }
+.lp-p__text { margin: 18px 0 0; font-size: 14px; line-height: 1.6; color: #3c3c3c; }
+.lp-p__label { margin: 22px 0 8px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.lp-p__label span { letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+.lp-p__sizes { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; }
+.lp-p__sizes label { position: relative; }
+.lp-p__sizes input { position: absolute; opacity: 0; pointer-events: none; }
+.lp-p__sizes span { display: grid; place-items: center; min-width: 46px; height: 42px; padding: 0 10px; border: 1px solid var(--line); font-size: 13px; cursor: pointer; background: #fff; }
+.lp-p__sizes input:checked + span { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.lp-p__sizes input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lp-p__sizes input:disabled + span { color: #b5b5b5; text-decoration: line-through; cursor: not-allowed; background: transparent; }
+.lp-p__meta { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
+.lp-p__add {
+  all: unset; box-sizing: border-box; margin-top: 26px; width: 100%; min-height: 52px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.lp-p__add:hover { background: #000; }
+.lp-p__add:active { transform: scale(.98); }
+.lp-p__add:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.lp-p__add.is-done { background: #1a7f37; }
+.lp-p__msg { min-height: 20px; margin: 12px 0 0; font-size: 13px; }
+.lp-p__msg.is-error { color: #b3261e; }
+.lp-p__msg a { color: inherit; }
+.lp-p__link { display: inline-block; margin-top: 16px; font-size: 13px; color: var(--ink); }
+
+/* 6. telemóvel: arara com o dedo e painel em folha por baixo */
+@media (max-width: 760px), (pointer: coarse) {
+  .lp-rack { height: auto; padding-bottom: 10px; }
+  .lp-rack__rail { top: 90px; }
+  .lp-rack__track {
+    position: relative; top: 92px; height: auto; padding: 0 18vw 140px;
+    overflow-x: auto; overflow-y: visible; scroll-snap-type: x mandatory; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .lp-rack__track::-webkit-scrollbar { display: none; }
+  .lp-item { width: 64vw; scroll-snap-align: center; }
+  .lp-piece__label { opacity: 1; transform: none; }
+  .lp-zoom__stage { left: 8vw; top: 4vh; width: 84vw; height: 40vh; }
+  .lp-zoom__panel { top: auto; left: 0; width: 100%; max-height: 58vh; padding: 40px 22px 28px; border-radius: 18px 18px 0 0; box-shadow: 0 -20px 50px rgba(0, 0, 0, .18); }
+  .lp-zoom__panel::before { content: ''; position: absolute; top: 10px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: #cfcfcf; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-hint i { animation: none; }
+  .lp-piece__lift, .lp-piece__label { transition-duration: .01s; }
+}
