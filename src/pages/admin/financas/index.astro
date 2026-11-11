@@ -43,6 +43,40 @@ if (f) {
     await sql`delete from finance_entries where id = ${Number(str(f, 'id', 12)) || 0}`;
     return done(Astro, 'Apagado.');
   }
+  /* dívidas: registar, abater, apagar */
+  const day = str(f, 'day', 10);
+  const validDay = /^\d{4}-\d{2}-\d{2}$/.test(day);
+  const value = num(f, 'amount');
+  const validValue = value !== null && Number.isFinite(value) && value > 0;
+  if (action === 'debt-add') {
+    const creditor = str(f, 'creditor', 80);
+    if (!creditor) return done(Astro, 'Escreve a quem devem (por exemplo, o nome da pessoa ou do banco).', undefined, true);
+    if (!validDay) return done(Astro, 'Escolhe a data da dívida.', undefined, true);
+    if (!validValue) return done(Astro, 'Escreve o valor da dívida, por exemplo 1500.', undefined, true);
+    await sql`insert into finance_debts (creditor, description, amount, day, created_by)
+      values (${creditor}, ${str(f, 'description', 200)}, ${Math.round(value! * 100) / 100}, ${day}, ${Astro.locals.admin || ''})`;
+    return done(Astro, `Dívida de ${euro(value!)} a ${creditor} registada.`);
+  }
+  if (action === 'debt-pay') {
+    const id = Number(str(f, 'debt', 12)) || 0;
+    const [d] = await sql<any[]>`select d.*, d.amount - coalesce((select sum(amount) from finance_debt_payments p where p.debt_id = d.id), 0) as left from finance_debts d where id = ${id}`;
+    if (!d) return done(Astro, 'Essa dívida já não existe.', undefined, true);
+    if (!validDay) return done(Astro, 'Escolhe a data do pagamento.', undefined, true);
+    if (!validValue) return done(Astro, 'Escreve quanto pagaram, por exemplo 100.', undefined, true);
+    if (value! > Number(d.left) + 0.001) return done(Astro, `Só faltam ${euro(Number(d.left))} desta dívida.`, undefined, true);
+    await sql`insert into finance_debt_payments (debt_id, day, amount, note, created_by)
+      values (${id}, ${day}, ${Math.round(value! * 100) / 100}, ${str(f, 'note', 200)}, ${Astro.locals.admin || ''})`;
+    const left = Number(d.left) - value!;
+    return done(Astro, left > 0.004 ? `Abatidos ${euro(value!)}. Faltam ${euro(left)} a ${d.creditor}.` : `Dívida a ${d.creditor} paga por completo.`);
+  }
+  if (action === 'debt-pay-delete') {
+    await sql`delete from finance_debt_payments where id = ${Number(str(f, 'id', 12)) || 0}`;
+    return done(Astro, 'Pagamento apagado.');
+  }
+  if (action === 'debt-delete') {
+    await sql`delete from finance_debts where id = ${Number(str(f, 'id', 12)) || 0}`;
+    return done(Astro, 'Dívida apagada.');
+  }
 }
 
 /* período: um mês ou o ano inteiro */
@@ -67,6 +101,18 @@ const orders = await sql<any[]>`
   order by day`;
 const entries = await sql<any[]>`
   select * from finance_entries where day >= ${from}::date and day < ${to}::date order by day desc, id desc`;
+/* dívidas: todas, com o que já foi pago (as pagas por completo ficam no fim) */
+const debts = await sql<any[]>`
+  select d.*, coalesce(sum(p.amount), 0) as paid,
+    coalesce(json_agg(json_build_object('id', p.id, 'day', p.day, 'amount', p.amount, 'note', p.note) order by p.day desc, p.id desc)
+      filter (where p.id is not null), '[]') as payments
+  from finance_debts d left join finance_debt_payments p on p.debt_id = d.id
+  group by d.id order by (d.amount - coalesce(sum(p.amount), 0) <= 0.004), d.day`;
+const debtTotal = debts.reduce((t, d) => t + Number(d.amount), 0);
+const debtPaid = debts.reduce((t, d) => t + Number(d.paid), 0);
+const debtLeft = debtTotal - debtPaid;
+const [{ paidPeriod }] = await sql<any[]>`
+  select coalesce(sum(amount), 0) as "paidPeriod" from finance_debt_payments where day >= ${from}::date and day < ${to}::date`;
 
 const net = (o: any) => Number(o.total) - Number(o.refunded);
 const bySource = new Map<string, { n: number; value: number; shipping: number }>();
@@ -160,6 +206,7 @@ const next = month ? (month === 12 ? link(year + 1, 1) : link(year, month + 1)) 
     <div class="card kpi"><p>Despesas</p><strong>{euro(totalExpenses)}</strong><small>{expenses.length} {expenses.length === 1 ? 'registo' : 'registos'}{estFees ? ' + comissões estimadas' : ''}</small></div>
     <div class="card kpi"><p>Resultado</p><strong style={result < 0 ? 'color:#b42318' : 'color:#1a7f37'}>{euro(result)}</strong><small>receitas menos despesas</small></div>
     <div class="card kpi"><p>Vendas</p><strong>{orders.length}</strong><small>{orders.length ? `valor médio ${euro((online + offline) / orders.length)}` : 'neste período'}</small></div>
+    {debts.length > 0 && <a class="card kpi" href="#dividas" style="text-decoration:none"><p>Dívidas por pagar</p><strong>{euro(debtLeft)}</strong><small>{Number(paidPeriod) ? `abatidos ${euro(Number(paidPeriod))} neste período` : `${Math.round((debtPaid / (debtTotal || 1)) * 100)}% já pago`}</small></a>}
   </div>
 
   <section class="card" style="margin-top:14px">
@@ -232,6 +279,61 @@ const next = month ? (month === 12 ? link(year + 1, 1) : link(year, month + 1)) 
     ) : <p class="empty">Ainda não há despesas nem receitas registadas neste período.</p>}
   </section>
 
+  <section class="card" style="margin-top:14px" id="dividas">
+    <h2 style="margin-top:0">Dívidas e empréstimos</h2>
+    <p class="note" style="margin-top:0">O que a Mekie deve (stock, registo da marca, empréstimos). Não conta nas despesas nem no resultado: aqui vê-se só quanto falta pagar. Quando pagarem uma parte, registem-na em "Abater".</p>
+    {debts.length > 0 && (
+      <div class="grid kpis" style="margin-bottom:14px">
+        <div class="card kpi"><p>Total em dívida</p><strong>{euro(debtTotal)}</strong><small>{debts.length} {debts.length === 1 ? 'dívida' : 'dívidas'}</small></div>
+        <div class="card kpi"><p>Já abatido</p><strong style="color:#1a7f37">{euro(debtPaid)}</strong><small>{Math.round((debtPaid / (debtTotal || 1)) * 100)}% do total</small></div>
+        <div class="card kpi"><p>Falta pagar</p><strong style={debtLeft > 0 ? 'color:#b42318' : 'color:#1a7f37'}>{euro(debtLeft)}</strong><small>{Number(paidPeriod) ? `abatidos ${euro(Number(paidPeriod))} em ${periodName}` : `nada abatido em ${periodName}`}</small></div>
+      </div>
+    )}
+    {debts.map((d) => {
+      const left = Number(d.amount) - Number(d.paid);
+      const done_ = left <= 0.004;
+      return (
+        <div class="debt">
+          <div class="debt__head">
+            <div><strong>{d.creditor}</strong>{d.description && <span class="muted"> · {d.description}</span>}<br /><span class="muted">desde {date(d.day)} · {euro(Number(d.amount))}</span></div>
+            <div class="debt__left">{done_ ? <span class="badge ok">Paga</span> : <><span class="muted">falta</span> <strong>{euro(left)}</strong></>}</div>
+          </div>
+          <div class="debt__bar"><span style={`width:${Math.min(100, (Number(d.paid) / Number(d.amount)) * 100)}%`}></span></div>
+          {!done_ && (
+            <form method="post" class="fin-form debt__pay">
+              <input type="hidden" name="action" value="debt-pay" /><input type="hidden" name="debt" value={d.id} />
+              <label>Data<input type="date" name="day" value={today} required /></label>
+              <label>Valor (€)<input name="amount" inputmode="decimal" required placeholder="0,00" style="width:110px" /></label>
+              <label class="fin-form__wide">Nota<input name="note" maxlength="200" placeholder="Ex.: transferência de novembro" /></label>
+              <button class="btn">Abater</button>
+            </form>
+          )}
+          {d.payments.length > 0 && (
+            <details class="debt__hist">
+              <summary>{d.payments.length} {d.payments.length === 1 ? 'pagamento' : 'pagamentos'} · {euro(Number(d.paid))}</summary>
+              <table><tbody>{d.payments.map((p: any) => (
+                <tr><td class="muted">{date(p.day)}</td><td>{p.note || <span class="muted">—</span>}</td><td class="num">{euro(Number(p.amount))}</td>
+                  <td><form method="post" class="inline" onsubmit="return confirm('Apagar este pagamento?')"><input type="hidden" name="action" value="debt-pay-delete" /><input type="hidden" name="id" value={p.id} /><button class="btn ghost small">Apagar</button></form></td></tr>
+              ))}</tbody></table>
+            </details>
+          )}
+          <form method="post" class="inline debt__del" onsubmit="return confirm('Apagar esta dívida e todos os pagamentos dela?')"><input type="hidden" name="action" value="debt-delete" /><input type="hidden" name="id" value={d.id} /><button class="btn ghost small">Apagar dívida</button></form>
+        </div>
+      );
+    })}
+    <details class="debt__new" open={debts.length === 0}>
+      <summary>Registar uma dívida</summary>
+      <form method="post" class="fin-form" style="margin-top:12px">
+        <input type="hidden" name="action" value="debt-add" />
+        <label>A quem devem<input name="creditor" maxlength="80" required placeholder="Ex.: Rafael, banco" /></label>
+        <label class="fin-form__wide">Para quê<input name="description" maxlength="200" placeholder="Ex.: stock inicial e registo da marca" /></label>
+        <label>Desde<input type="date" name="day" value={today} required /></label>
+        <label>Valor (€)<input name="amount" inputmode="decimal" required placeholder="0,00" style="width:110px" /></label>
+        <button class="btn">Registar dívida</button>
+      </form>
+    </details>
+  </section>
+
   <section class="card" style="margin-top:14px">
     <h2 style="margin-top:0">{year}, mês a mês</h2>
     <div class="table"><table>
@@ -279,4 +381,15 @@ const next = month ? (month === 12 ? link(year + 1, 1) : link(year, month + 1)) 
   .fin-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; }
   .fin-key:first-child { margin-left: 0; }
   tr.fin-on td { background: #f6f3ec; }
+  .debt { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; display: grid; gap: 10px; }
+  .debt__head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .debt__left { text-align: right; font-size: 18px; }
+  .debt__left .muted { font-size: 12px; }
+  .debt__bar { height: 8px; border-radius: 99px; background: #f0e3e5; overflow: hidden; }
+  .debt__bar span { display: block; height: 100%; background: #1a7f37; border-radius: 99px; }
+  .debt__hist summary, .debt__new summary { cursor: pointer; font-size: 13px; }
+  .debt__hist table { margin-top: 8px; }
+  .debt__del { justify-self: start; }
+  .debt__new { margin-top: 6px; }
+  .debt__new summary { font-weight: 600; }
 </style>

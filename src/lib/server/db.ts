@@ -87,6 +87,25 @@ create table if not exists finance_entries (
   created_at timestamptz not null default now()
 );
 create index if not exists finance_entries_day on finance_entries (day);
+/* dívidas e empréstimos da marca (não contam nas despesas): o valor em dívida e os pagamentos que o vão abatendo */
+create table if not exists finance_debts (
+  id serial primary key,
+  creditor text not null default '',
+  description text not null default '',
+  amount numeric(10,2) not null,
+  day date not null,
+  created_by text not null default '',
+  created_at timestamptz not null default now()
+);
+create table if not exists finance_debt_payments (
+  id serial primary key,
+  debt_id integer not null references finance_debts(id) on delete cascade,
+  day date not null,
+  amount numeric(10,2) not null,
+  note text not null default '',
+  created_by text not null default '',
+  created_at timestamptz not null default now()
+);
 /* campanhas da newsletter: quem já recebeu cada uma (para nunca sair duas vezes) */
 create table if not exists campaign_sends (
   campaign text not null,
