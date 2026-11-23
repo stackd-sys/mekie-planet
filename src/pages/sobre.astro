@@ -5,8 +5,19 @@ import { langOf, href } from '../i18n';
 import { useT } from '../i18n/ui';
 const lang = langOf(Astro.url.pathname);
 const t = useT(lang);
+/* página "sobre" como entidade: o Google e os assistentes de IA ligam-na à marca (Organization) */
+const aboutLd = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  url: new URL(href(lang, '/sobre/'), site.url).href,
+  name: t('ab.seo'),
+  inLanguage: lang === 'pt' ? 'pt-PT' : lang,
+  mainEntity: { '@id': new URL('/#org', site.url).href },
+};
+const facts = [t('ab.f1'), t('ab.f2'), t('ab.f3'), t('ab.f4', { n: site.freeShippingFrom })];
 ---
 <Base title={t('ab.seo')} description={t('ab.desc')} image="/images/lookbook/mushrooms-duo.webp">
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(aboutLd)} />
   <section class="ab-hero">
     <img src="/images/site/hero.webp" alt={t('ab.heroAlt')} width="1536" height="1024" />
     <div class="ab-hero__shade"></div>
@@ -27,6 +38,8 @@ const t = useT(lang);
       <p>{t('ab.p2')}</p>
       <p>{t('ab.p3')}</p>
       <p>{t('ab.p4')}</p>
+      <h2 class="ab__factsTitle">{t('ab.factsTitle')}</h2>
+      <ul class="ab__facts">{facts.map((f) => <li set:html={f} />)}</ul>
       <div class="ab__actions">
         <a href={href(lang, '/loja/')} class="pill">{t('shop.go')}</a>
         <a href={site.instagram} class="pill pill--outline" target="_blank" rel="noopener">Instagram</a>
@@ -49,6 +62,9 @@ const t = useT(lang);
   .ab__word strong { color: var(--ink); }
   .ab__text { border-top: 1px solid var(--ink); padding-top: 24px; }
   .ab__text > p { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.65; margin: 0 0 1.1em; max-width: 640px; }
+  .ab__factsTitle { margin: 34px 0 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .ab__facts { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); max-width: 640px; }
+  .ab__facts li { padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
   .ab__actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
   @media (max-width: 860px) { .ab { grid-template-columns: 1fr; } }
 </style>

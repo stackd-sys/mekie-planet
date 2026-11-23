@@ -3,7 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Collection from '../../components/Collection.astro';
 import { site } from '../../data/site';
 import { categories, productsIn, lowStock } from '../../data/products';
-import { breadcrumbLd, categoryTrail } from '../../data/seo';
+import { breadcrumbLd, categoryTrail, collectionLd, faqPageLd } from '../../data/seo';
+import { categoryAnswers } from '../../data/answers';
 import { langOf, href, amount } from '../../i18n';
 import { useT } from '../../i18n/ui';
 import { trCategory } from '../../i18n/catalog';
@@ -28,5 +29,7 @@ const trail = cat
 ---
 <Base title={seoTitle} description={`${intro} ${t('meta.shipFree', { n: amount(site.freeShippingFrom, lang) })}`}>
   <script type="application/ld+json" slot="head" set:html={JSON.stringify(breadcrumbLd(trail))} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(collectionLd(seoTitle, intro, trail[trail.length - 1].path, items.filter((p) => !p.hidden), lang))} />
+  {cat && categoryAnswers(cat.slug, lang).length > 0 && <script type="application/ld+json" slot="head" set:html={JSON.stringify(faqPageLd(categoryAnswers(cat.slug, lang)))} />}
   <Collection title={title} intro={intro} products={items} current={categoria} />
 </Base>

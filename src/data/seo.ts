@@ -17,12 +17,26 @@ export const organizationLd = {
   name: site.name,
   alternateName: site.shortName,
   url: site.url,
-  logo: abs('/images/site/logo.png'),
+  logo: { '@type': 'ImageObject', url: abs('/images/site/logo.png'), width: 800, height: 267 },
   image: abs('/images/site/hero.webp'),
+  description: 'Marca portuguesa de roupa e acessórios com um mood descontraído: hoodies, crewnecks e t-shirts bordados, caps, bucket hats, meias, tote bags e scrunchies e malas de crochet feitos à mão. Loja online com envio para Portugal e para a União Europeia.',
   email: site.email,
   slogan: site.tagline,
+  foundingDate: '2024-11-03',
+  founder: [
+    { '@type': 'Person', name: 'Rita Silva' },
+    { '@type': 'Person', name: 'Rafael Marques' },
+  ],
+  address: { '@type': 'PostalAddress', addressLocality: 'Ericeira', postalCode: '2655-420', addressCountry: 'PT' },
+  contactPoint: {
+    '@type': 'ContactPoint', contactType: 'customer service', email: site.email,
+    availableLanguage: ['Portuguese', 'English', 'Spanish'], areaServed: ['PT', 'EU'],
+  },
+  knowsAbout: ['roupa bordada', 'streetwear', 'hoodies', 't-shirts oversized', 'crochet feito à mão', 'malas de crochet', 'scrunchies'],
   sameAs: [site.instagram],
   areaServed: ['PT', 'EU'],
+  currenciesAccepted: 'EUR',
+  paymentAccepted: 'MB WAY, Multibanco, Visa, Mastercard, Apple Pay, Google Pay',
   get hasMerchantReturnPolicy() {
     return returnPolicyLd;
   },
@@ -34,9 +48,38 @@ export const websiteLd = {
   '@id': abs('/#website'),
   name: site.name,
   url: site.url,
-  inLanguage: 'pt-PT',
+  inLanguage: ['pt-PT', 'en', 'es'],
+  description: 'Loja online da Mekie Planet: roupa bordada e acessórios feitos à mão, com envio para Portugal e para a União Europeia.',
   publisher: { '@id': abs('/#org') },
 };
+
+/** Página de categoria: a lista das peças (para o Google e para os assistentes de IA perceberem o que há em cada uma) */
+export const collectionLd = (name: string, description: string, path: string, items: Product[], lang: Lang = 'pt') => ({
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name,
+  description,
+  url: abs(path),
+  inLanguage: lang === 'pt' ? 'pt-PT' : lang,
+  isPartOf: { '@id': abs('/#website') },
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: items.length,
+    itemListElement: items.map((p, i) => ({
+      '@type': 'ListItem', position: i + 1, url: abs(href(lang, `/produto/${p.slug}/`)), name: fullName(p),
+    })),
+  },
+});
+
+/** Perguntas e respostas (página de perguntas frequentes e categorias) */
+export const faqPageLd = (items: { q: string; a: string }[]) => ({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((x) => ({
+    '@type': 'Question', name: x.q,
+    acceptedAnswer: { '@type': 'Answer', text: x.a.replace(/<[^>]+>/g, '') },
+  })),
+});
 
 export const returnPolicyLd = {
   '@type': 'MerchantReturnPolicy',

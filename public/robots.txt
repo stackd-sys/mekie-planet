@@ -1,8 +1,39 @@
+# Mekie Planet. Os motores de busca e os assistentes de IA podem ler a loja toda,
+# menos o checkout, o CRM e a API. Resumo para assistentes de IA: https://mekie-planet.com/llms.txt
+
 User-agent: *
 Allow: /
 Disallow: /checkout/
 Disallow: /admin/
 Disallow: /api/
 Disallow: /encomenda-recebida/
+Disallow: /en/order-received/
+Disallow: /es/pedido-recibido/
+Disallow: /teste-landing/
+
+# Assistentes e motores de IA: bem-vindos (pesquisa, respostas e citações)
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot
+User-agent: Applebot-Extended
+User-agent: Bingbot
+User-agent: DuckAssistBot
+User-agent: meta-externalagent
+User-agent: MistralAI-User
+Allow: /
+Disallow: /checkout/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /encomenda-recebida/
+Disallow: /en/order-received/
+Disallow: /es/pedido-recibido/
+Disallow: /teste-landing/
 
 Sitemap: https://mekie-planet.com/sitemap-index.xml

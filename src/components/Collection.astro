@@ -7,6 +7,7 @@ import { useT } from '../i18n/ui';
 import { shop } from '../i18n/data';
 import Countdown from './Countdown.astro';
 import { categorySeo } from '../data/i18n/category-seo';
+import { categoryAnswers } from '../data/answers';
 import { site } from '../data/site';
 import { promo, promoActive } from '../data/promo';
 interface Props { title: string; intro?: string; products: Product[]; current: string; image?: string }
@@ -19,6 +20,8 @@ const products = Astro.props.products.map(s.tr);
 const volume = promoActive() && current === 'scrunchies' && promo.volume.length > 0;
 /* texto da categoria no fundo da página */
 const seo = categorySeo[current]?.[lang];
+/* perguntas e respostas curtas, calculadas com os dados da loja (preço, tamanhos, material, entrega, devoluções) */
+const answers = categoryAnswers(current, lang);
 const chips = [
   { href: href(lang, '/loja/'), label: t('grid.everything'), key: '' },
   ...(s.lowStock().length ? [{ href: href(lang, '/loja/ultimas-unidades/'), label: t('last'), key: 'ultimas-unidades' }] : []),
@@ -98,6 +101,18 @@ const chips = [
   <section class="seo-text container">
     <h2 class="seo-text__title">{seo.h}</h2>
     {seo.p.map((x) => <p>{x.replace('{free}', amount(site.freeShippingFrom, lang))}</p>)}
+  </section>
+)}
+
+{answers.length > 0 && (
+  <section class="seo-faq container" aria-labelledby="seo-faq-title">
+    <h2 class="seo-text__title" id="seo-faq-title">{t('cat.faq', { name: title })}</h2>
+    {answers.map((x) => (
+      <details class="seo-faq__item">
+        <summary>{x.q}</summary>
+        <p>{x.a}</p>
+      </details>
+    ))}
   </section>
 )}
 
@@ -199,4 +214,11 @@ const chips = [
   .soon__title { font-size: 40px; margin: 0 0 8px; }
   .soon p { margin: 0; color: var(--ink-soft); }
   .soon__actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+  .seo-faq { max-width: 760px; margin: 0 auto clamp(48px, 7vw, 90px); }
+  .seo-faq__item { border-bottom: 1px solid var(--line); }
+  .seo-faq__item summary { cursor: pointer; list-style: none; padding: 16px 28px 16px 0; font-size: 15px; font-weight: 500; position: relative; }
+  .seo-faq__item summary::-webkit-details-marker { display: none; }
+  .seo-faq__item summary::after { content: '+'; position: absolute; right: 2px; top: 13px; font-size: 18px; font-weight: 300; }
+  .seo-faq__item[open] summary::after { content: '−'; }
+  .seo-faq__item p { margin: 0 0 16px; color: var(--ink-soft); font-size: 14.5px; line-height: 1.6; }
 </style>
