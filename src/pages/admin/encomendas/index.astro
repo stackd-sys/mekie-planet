@@ -69,7 +69,7 @@ const pieces = (lines: any[]) => lines.reduce((n, l) => n + l.qty, 0);
               <td><a class="row-link" href={`/admin/encomendas/${o.number}/`}>{o.number}</a></td>
               <td>{date(o.created_at, true)}</td>
               <td>{o.name}<br /><span class="muted">{o.email}</span></td>
-              <td>{o.address ? o.address.pais : <span class="muted">Digital</span>}</td>
+              <td>{o.address ? o.address.pais : <span class="muted">{o.lines.some((l: any) => !l.digital) ? 'Sem envio' : 'Digital'}</span>}</td>
               <td class="num">{pieces(o.lines)}</td>
               <td class="num">{euro(o.total)}</td>
               <td><Status status={o.status} />{o.tracking && <><br /><span class="muted">{o.tracking}</span></>}{o.recovery_sent_at && <><br /><span class="muted">Email de recuperação a {date(o.recovery_sent_at, true)}</span></>}</td>

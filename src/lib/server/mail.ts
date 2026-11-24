@@ -20,6 +20,9 @@ export function layout(title: string, body: string, lang: Lang = 'pt') {
 }
 
 export async function sendMail(to: string, subject: string, html: string, replyTo = site.inbox) {
+  /* vendas registadas à mão podem não ter email do cliente: não há para onde enviar */
+  if (!to || !to.includes('@')) return false;
+  if (!replyTo || !replyTo.includes('@')) replyTo = site.inbox;
   if (!hasMail()) {
     console.warn(`[Mekie] Email não enviado (falta RESEND_API_KEY): "${subject}" para ${to}`);
     return false;

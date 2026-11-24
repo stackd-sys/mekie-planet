@@ -243,8 +243,10 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
     localidade: clean(body?.customer?.localidade, 80),
     pais: clean(body?.customer?.pais, 60),
   };
-  if (!isEmail(c.email)) return { error: t('err.email') };
-  if (!c.nome || !c.phone) return { error: t('err.namePhone') };
+  /* venda registada à mão no CRM (feira, em mão, mensagem): o cliente pode ficar sem email, telemóvel, nome e morada */
+  const manual = source !== 'site';
+  if ((c.email || !manual) && !isEmail(c.email)) return { error: t('err.email') };
+  if (!manual && (!c.nome || !c.phone)) return { error: t('err.namePhone') };
 
   const priced = await priceOrder(body?.lines, c.pais, body?.code ?? '', body?.gift ?? '', c.email, lang);
   if (priced.errors.length) return { error: priced.errors.join(' ') };
@@ -262,13 +264,17 @@ export async function createOrder(body: any, opts: { source?: string; emails?: b
   }
 
   const sql = await db();
-  const name = `${c.nome} ${c.apelido}`.trim();
+  const name = `${c.nome} ${c.apelido}`.trim() || 'Cliente sem dados';
   const order = await sql.begin(async (tx: any) => {
-    const [cust] = await tx`
-      insert into customers (email, name, phone, nif) values (${c.email}, ${name}, ${c.phone}, ${c.nif})
-      on conflict (email) do update set name = excluded.name, phone = excluded.phone,
-        nif = case when excluded.nif <> '' then excluded.nif else customers.nif end, updated_at = now()
-      returning id`;
+    /* sem email não há ficha de cliente (a ficha é por email); a encomenda fica registada na mesma */
+    const [cust] = c.email
+      ? await tx`
+        insert into customers (email, name, phone, nif) values (${c.email}, ${name}, ${c.phone}, ${c.nif})
+        on conflict (email) do update set name = excluded.name,
+          phone = case when excluded.phone <> '' then excluded.phone else customers.phone end,
+          nif = case when excluded.nif <> '' then excluded.nif else customers.nif end, updated_at = now()
+        returning id`
+      : [{ id: null }];
     const [{ n }] = await tx`select nextval('order_number_seq') as n`;
     const number = `MK-${n}`;
     const address = physical && hasAddress ? { morada: c.morada, codigo_postal: c.codigo_postal, localidade: c.localidade, pais: priced.dest.name, zone: priced.dest.zone } : null;

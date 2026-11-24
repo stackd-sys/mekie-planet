@@ -52,10 +52,11 @@ const options = products;
     </section>
     <section class="card stack">
       <h2 style="margin:0">Cliente</h2>
+      <p class="note" style="margin:0">Tudo opcional. Numa venda em mão ou numa feira podes deixar o email, o telemóvel, o nome e a morada em branco. Sem morada não há portes. Com email, o cliente fica na lista de Clientes e pode receber o resumo.</p>
       <div class="fields">
-        <label>Email<input name="email" type="email" required /></label>
-        <label>Telemóvel<input name="phone" required /></label>
-        <label>Nome<input name="nome" required /></label>
+        <label>Email<input name="email" type="email" /></label>
+        <label>Telemóvel<input name="phone" /></label>
+        <label>Nome<input name="nome" /></label>
         <label>Apelido<input name="apelido" /></label>
         <label>NIF<input name="nif" /></label>
       </div>
@@ -72,7 +73,7 @@ const options = products;
         <label>Estado<select name="status"><option value="pendente">A aguardar pagamento</option><option value="paga" selected>Paga</option><option value="entregue">Entregue em mão</option></select></label>
         <label>Onde foi a venda<select name="source"><option value="manual">Mensagem / Instagram</option><option value="feira">Feira / evento</option><option value="loja">Em mão</option></select></label>
       </div>
-      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="emails" /> Enviar ao cliente o email com o resumo</label>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="emails" /> Enviar ao cliente o email com o resumo (só se tiver email)</label>
       <div><button class="btn">Registar encomenda</button></div>
     </section>
   </form>

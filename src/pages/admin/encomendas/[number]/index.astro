@@ -142,8 +142,8 @@ import { sourceName, mediumName } from '../../../../lib/server/sources';
       <h2 style="margin-top:0">Cliente</h2>
       <dl class="kv">
         <dt>Nome</dt><dd>{cust ? <a href={`/admin/clientes/${cust.id}/`}>{o.name}</a> : o.name}{cust && cust.n > 1 && <span class="badge info" style="margin-left:6px">{cust.n}.ª encomenda</span>}</dd>
-        <dt>Email</dt><dd><a href={`mailto:${o.email}?subject=${encodeURIComponent(`A tua encomenda ${o.number}`)}`}>{o.email}</a></dd>
-        <dt>Telemóvel</dt><dd><a href={`tel:${o.phone}`}>{o.phone}</a></dd>
+        <dt>Email</dt><dd>{o.email ? <a href={`mailto:${o.email}?subject=${encodeURIComponent(`A tua encomenda ${o.number}`)}`}>{o.email}</a> : <span class="muted">Sem email</span>}</dd>
+        <dt>Telemóvel</dt><dd>{o.phone ? <a href={`tel:${o.phone}`}>{o.phone}</a> : <span class="muted">Sem telemóvel</span>}</dd>
         {o.lang && o.lang !== 'pt' && <><dt>Língua</dt><dd>{o.lang === 'en' ? 'Inglês' : 'Espanhol'} <span class="muted">(os emails seguem nesta língua)</span></dd></>}
         {o.nif && <><dt>NIF</dt><dd>{o.nif}</dd></>}
         <dt>Origem</dt><dd>{o.utm?.source || o.utm?.ref ? (
@@ -155,7 +155,7 @@ import { sourceName, mediumName } from '../../../../lib/server/sources';
         ) : <span class="muted">{o.source === 'site' ? 'Direto ou sem consentimento de cookies' : 'Criada no CRM'}</span>}</dd>
         {o.address ? (
           <><dt>Morada</dt><dd>{o.address.morada}<br />{o.address.codigo_postal} {o.address.localidade}<br />{o.address.pais}</dd></>
-        ) : <><dt>Envio</dt><dd>Só cartões presente (por email)</dd></>}
+        ) : <><dt>Envio</dt><dd>{o.lines.some((l: any) => !l.digital) ? 'Sem envio: entregue em mão' : 'Só cartões presente (por email)'}</dd></>}
       </dl>
     </section>
   </div>
