@@ -11,6 +11,7 @@ import { setStatus, sendShipped, sendGiftCard, moveStock, sendRefunded, afterRef
 import { hasStripe, paymentIntentOf, createRefund } from '../../../../lib/server/stripe';
 import { hasMail } from '../../../../lib/server/mail';
 import { rebuildSite } from '../../../../lib/server/deploy';
+import { destinations } from '../../../../data/shipping';
 
 const sql = await db();
 const number = Astro.params.number!;
@@ -35,6 +36,44 @@ if (f) {
     }
     if (action === 'resend-shipped') {
       return (await sendShipped(cur)) ? done(Astro, 'Email de envio reenviado.') : done(Astro, 'O email não saiu. Falta configurar o envio de emails (RESEND_API_KEY).', undefined, true);
+    }
+    /* corrigir os dados do cliente: nome, email, telemóvel, NIF e morada (podem ficar vazios numa venda feita à mão) */
+    if (action === 'customer') {
+      const email = str(f, 'email', 160).toLowerCase();
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return done(Astro, 'Esse email não parece válido. Deixa vazio se não houver.', undefined, true);
+      if (!email && cur.source === 'site') return done(Astro, 'As encomendas feitas no site têm de manter o email.', undefined, true);
+      const name = str(f, 'name', 160) || 'Cliente sem dados';
+      const phone = str(f, 'phone', 40), nif = str(f, 'nif', 20);
+      const morada = str(f, 'morada', 200), cp = str(f, 'codigo_postal', 20), loc = str(f, 'localidade', 80);
+      const dest = destinations.find((d) => d.name === str(f, 'pais', 60)) ?? destinations[0];
+      const address = morada && cp && loc ? { morada, codigo_postal: cp, localidade: loc, pais: dest.name, zone: dest.zone } : null;
+      if (!address && (morada || cp || loc)) return done(Astro, 'Para guardar a morada preenche a rua, o código postal e a localidade. Para não ter morada, apaga os três.', undefined, true);
+      /* venda à mão sem morada: pode deixar de ter portes */
+      const dropShipping = !address && cur.source !== 'site' && Number(cur.shipping) > 0 && f.get('noshipping') === 'on';
+      const oldCustomer = cur.customer_id;
+      await sql.begin(async (tx: any) => {
+        let customerId: number | null = null;
+        if (email) {
+          const [c] = await tx`
+            insert into customers (email, name, phone, nif) values (${email}, ${name}, ${phone}, ${nif})
+            on conflict (email) do update set name = excluded.name, phone = excluded.phone, nif = excluded.nif, updated_at = now()
+            returning id`;
+          customerId = c.id;
+        }
+        await tx`update orders set name = ${name}, email = ${email}, phone = ${phone}, nif = ${nif},
+          address = ${address ? tx.json(address) : null}, customer_id = ${customerId},
+          shipping = case when ${dropShipping} then 0 else shipping end,
+          total = case when ${dropShipping} then total - shipping else total end
+          where id = ${cur.id}`;
+        /* a ficha antiga fica sem encomendas (ex.: email inventado): sai da lista de clientes, se não estiver na newsletter */
+        if (oldCustomer && oldCustomer !== customerId) {
+          await tx`delete from customers c where c.id = ${oldCustomer}
+            and not exists (select 1 from orders o where o.customer_id = c.id)
+            and not exists (select 1 from subscribers s where s.email = c.email and s.unsubscribed_at is null)`;
+        }
+        await tx`insert into order_events (order_id, text, by) values (${cur.id}, ${`Dados do cliente corrigidos${dropShipping ? ' (sem morada e sem portes)' : ''}`}, ${by})`;
+      });
+      return done(Astro, dropShipping ? `Dados guardados. Os portes (${euro(cur.shipping)}) foram retirados do total.` : 'Dados do cliente guardados.');
     }
     if (action === 'note') {
       await sql`update orders set notes = ${str(f, 'notes', 2000)} where id = ${cur.id}`;
@@ -157,6 +196,29 @@ import { sourceName, mediumName } from '../../../../lib/server/sources';
           <><dt>Morada</dt><dd>{o.address.morada}<br />{o.address.codigo_postal} {o.address.localidade}<br />{o.address.pais}</dd></>
         ) : <><dt>Envio</dt><dd>{o.lines.some((l: any) => !l.digital) ? 'Sem envio: entregue em mão' : 'Só cartões presente (por email)'}</dd></>}
       </dl>
+      <details class="edit-cust" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+        <summary style="cursor:pointer;font-weight:600">Corrigir dados do cliente</summary>
+        <form method="post" class="stack" style="margin-top:12px">
+          <input type="hidden" name="action" value="customer" />
+          <p class="note" style="margin:0">{o.source === 'site' ? 'Encomenda feita no site: o email tem de ficar.' : 'Venda feita à mão: podes apagar o email, o telemóvel e a morada.'}</p>
+          <div class="fields">
+            <label>Nome<input name="name" value={o.name === 'Cliente sem dados' ? '' : o.name} /></label>
+            <label>Email<input name="email" type="email" value={o.email} /></label>
+            <label>Telemóvel<input name="phone" value={o.phone} /></label>
+            <label>NIF<input name="nif" value={o.nif} /></label>
+          </div>
+          <div class="fields">
+            <label>Morada<input name="morada" value={o.address?.morada ?? ''} /></label>
+            <label>Código postal<input name="codigo_postal" value={o.address?.codigo_postal ?? ''} /></label>
+            <label>Localidade<input name="localidade" value={o.address?.localidade ?? ''} /></label>
+            <label>País<select name="pais">{destinations.map((d) => <option selected={o.address?.pais === d.name}>{d.name}</option>)}</select></label>
+          </div>
+          {o.source !== 'site' && Number(o.shipping) > 0 && (
+            <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="noshipping" checked /> Sem morada, retirar os portes ({euro(o.shipping)}) do total</label>
+          )}
+          <div><button class="btn">Guardar dados</button></div>
+        </form>
+      </details>
     </section>
   </div>
 
