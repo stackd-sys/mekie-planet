@@ -11,7 +11,8 @@ import { db } from './db';
 import { pushNotify } from './push';
 
 type Text = [string, string, string];
-type Campaign = { id: string; date: string; label: string; subject: Text; title: Text; body: Text; button: Text };
+/* intro: abertura curta antes dos preços; malas: bloco da novidade; natal: nota sobre os prazos de Natal */
+type Campaign = { id: string; date: string; label: string; subject: Text; title: Text; body: Text; button: Text; intro?: Text; malas?: boolean; natal?: Text };
 
 export const campaigns: Campaign[] = [
   {
@@ -31,14 +32,25 @@ export const campaigns: Campaign[] = [
     id: 'bn-black-friday',
     date: '2026-11-27',
     label: 'Fim de semana Black Friday',
-    subject: ['Fim de semana Black Friday na Mekie', 'Black Friday weekend at Mekie', 'Fin de semana Black Friday en Mekie'],
+    subject: ['Black Friday: -15% até segunda (e uma novidade)', 'Black Friday: 15% off until Monday (plus something new)', 'Black Friday: -15% hasta el lunes (y una novedad)'],
     title: ['É o fim de semana Black Friday', "It's Black Friday weekend", 'Es el fin de semana Black Friday'],
+    intro: [
+      'Este é o fim de semana em que toda a gente te enche a caixa de correio com descontos. O nosso é simples: já está nos preços, não precisas de código e acaba segunda-feira à meia-noite.',
+      'This is the weekend everyone floods your inbox with deals. Ours is simple: it is already in the prices, you need no code, and it ends Monday at midnight.',
+      'Este es el fin de semana en que todo el mundo te llena el correo de descuentos. El nuestro es sencillo: ya está en los precios, no necesitas código y termina el lunes a medianoche.',
+    ],
     body: [
-      'Os -15% e os packs continuam, mas só até segunda-feira, 30 de novembro. Depois disso, tudo volta ao preço normal. Se andavas a pensar naquele hoodie, é agora. E há peças com poucas unidades em alguns tamanhos.',
-      'The 15% off and the bundles are still on, but only until Monday 30 November. After that, everything goes back to full price. If you had your eye on that hoodie, now is the time. Some sizes are running low.',
-      'El -15% y los packs siguen, pero solo hasta el lunes 30 de noviembre. Después, todo vuelve al precio normal. Si le tenías ganas a esa hoodie, es ahora. Y en algunas tallas quedan pocas unidades.',
+      'Hoodies, crewnecks e t-shirts com -15% e packs de duas peças com até 22% de desconto. Se andavas a pensar naquele hoodie, é agora: há tamanhos com poucas unidades. Depois de segunda, tudo volta ao preço normal.',
+      'Hoodies, crewnecks and T-shirts at 15% off, and two-piece bundles up to 22% off. If you had your eye on that hoodie, now is the time: some sizes are running low. After Monday, everything goes back to full price.',
+      'Hoodies, crewnecks y camisetas con -15% y packs de dos prendas con hasta un 22% de descuento. Si le tenías ganas a esa hoodie, es ahora: en algunas tallas quedan pocas unidades. Después del lunes, todo vuelve al precio normal.',
     ],
     button: ['Aproveitar agora', 'Shop now', 'Aprovechar ahora'],
+    malas: true,
+    natal: [
+      'A pensar no Natal? As encomendas feitas até segunda chegam muito antes do dia 24. E se o tamanho não servir, tens 14 dias para trocar.',
+      'Thinking about Christmas? Orders placed by Monday arrive well before the 24th. And if the size is not right, you have 14 days to exchange it.',
+      '¿Pensando en Navidad? Los pedidos hechos hasta el lunes llegan mucho antes del día 24. Y si la talla no es la tuya, tienes 14 días para cambiarla.',
+    ],
   },
   {
     id: 'bn-ultimas-horas',
@@ -58,7 +70,20 @@ export const campaigns: Campaign[] = [
 const ix = (lang: Lang) => (lang === 'en' ? 1 : lang === 'es' ? 2 : 0);
 const utm = (id: string) => `utm_source=newsletter&utm_medium=email&utm_campaign=${id}`;
 const show: Partial<Record<Kind, string>> = { hoodie: 'hoodie-cogumelos', crewneck: 'crewneck-mekie-preta', tshirt: 'tshirt-black-cogumelos', cap: 'cap-mekie-black' };
-const imageOf = (k: Kind) => (products.find((p) => p.slug === show[k]) ?? products.find((p) => kindOf(p) === k))!.images[0];
+/* nos emails vão as versões em JPG (o Outlook e alguns programas de email não mostram WebP) */
+const jpg = (src: string) => src.replace(/^\/images\/(products|lookbook)\/(.+)\.webp$/, '/images/meta/$1/$2.jpg');
+const imageOf = (k: Kind) => jpg((products.find((p) => p.slug === show[k]) ?? products.find((p) => kindOf(p) === k))!.images[0]);
+const MALAS = {
+  kicker: ['Novidade', 'New', 'Novedad'],
+  title: ['Malas de crochet', 'Crochet bags', 'Bolsos de ganchillo'],
+  text: [
+    'Feitas à mão, ponto a ponto, uma a uma. A S leva-se na mão e cabe o básico. A M vai ao ombro e leva mais uns extras. Escolhe uma das que já estão feitas ou cria a tua com as cores que quiseres.',
+    'Handmade, stitch by stitch, one at a time. The S is carried in your hand and fits the basics. The M goes on your shoulder and takes a few extras. Pick one that is ready or make yours in the colours you want.',
+    'Hechos a mano, punto a punto, uno a uno. El S se lleva en la mano y cabe lo básico. El M va al hombro y lleva unos cuantos extras. Elige uno de los que ya están hechos o crea el tuyo con los colores que quieras.',
+  ],
+  from: ['Desde 25€', 'From €25', 'Desde 25 €'],
+  button: ['Ver as malas', 'See the bags', 'Ver los bolsos'],
+};
 
 /** HTML do email numa língua; `leave` é o link pessoal para sair da newsletter */
 export function campaignHtml(c: Campaign, lang: Lang, leave: string) {
@@ -81,9 +106,20 @@ export function campaignHtml(c: Campaign, lang: Lang, leave: string) {
   const rows = [list.slice(0, 2), list.slice(2, 4)].map((r) => `<tr>${r.map(cell).join('')}</tr>`).join('');
   const body = `
     <p style="margin:0 0 18px;padding:12px 14px;background:#e10600;color:#ffffff;font-weight:bold;text-align:center;letter-spacing:1px;font-size:14px">BLACK NOVEMBER · -15% · ${escapeHtml(t('bf.until').toUpperCase())}</p>
+    ${c.intro ? `<p style="font-size:17px;line-height:1.55;margin:0 0 16px">${escapeHtml(c.intro[i])}</p>` : ''}
     <p>${escapeHtml(c.body[i])}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">${rows}</table>
     <p style="text-align:center;margin:26px 0 8px"><a href="${home}" style="display:inline-block;background:#e10600;color:#ffffff;text-decoration:none;padding:15px 30px;border-radius:999px;font-size:13px;letter-spacing:1.5px;font-weight:bold">${escapeHtml(c.button[i].toUpperCase())}</a></p>
+    ${c.malas ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:34px 0 0;background:#f2f1ed;border-radius:6px"><tr><td align="center" style="padding:24px 20px 26px">
+      <p style="margin:0 0 6px"><span style="display:inline-block;background:#1f1f1f;color:#ffffff;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 9px">${MALAS.kicker[i]}</span></p>
+      <p style="margin:0 0 12px;font-size:24px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px">${MALAS.title[i]}</p>
+      <a href="${site.url}${href(lang, '/loja/malas/')}?${utm(c.id)}"><img src="${site.url}/images/meta/products/mala-personalizada-1.jpg" width="360" alt="${escapeHtml(MALAS.title[i])}" style="display:block;width:100%;max-width:360px;height:auto;border:0;margin:0 auto"></a>
+      <p style="margin:14px 0 6px;font-size:15px;line-height:1.55">${MALAS.text[i]}</p>
+      <p style="margin:0 0 16px;font-weight:bold">${MALAS.from[i]}</p>
+      <a href="${site.url}${href(lang, '/loja/malas/')}?${utm(c.id)}" style="display:inline-block;background:#1f1f1f;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:999px;font-size:12px;letter-spacing:1.5px;font-weight:bold">${MALAS.button[i].toUpperCase()}</a>
+    </td></tr></table>` : ''}
+    ${c.natal ? `<p style="margin:28px 0 0;padding:14px 16px;border-left:3px solid #1f1f1f;background:#f5f5f4;font-size:14.5px;line-height:1.55">${escapeHtml(c.natal[i])}</p>` : ''}
     <p style="font-size:12px;color:#5c5c5c;margin-top:28px">${useT(lang)('bf.auto')}</p>
     <p style="font-size:12px;color:#5c5c5c">${whyText(lang, leave)}</p>`;
   return layout(c.title[i], body, lang);

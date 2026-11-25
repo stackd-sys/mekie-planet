@@ -277,7 +277,7 @@ async function setup() {
         slug: p.slug,
         name: p.name,
         color: p.color,
-        price: p.price,
+        price: p.regularPrice,
         stock: p.sizeStock ? null : p.stock ?? null,
         size_stock: p.sizeStock ? db.json(p.sizeStock) : null,
       } as Record<string, unknown>)}
