@@ -6,6 +6,7 @@ import { db } from '../../../lib/server/db';
 import { date } from '../../../lib/server/format';
 import { postForm, done, str } from '../../../lib/server/admin';
 import { sendMail, layout, escapeHtml, hasMail } from '../../../lib/server/mail';
+import { sendWelcome } from '../../../lib/server/newsletter';
 import { allProducts as products } from '../../../data/products';
 import { site } from '../../../data/site';
 import { href } from '../../../i18n';
@@ -33,10 +34,34 @@ if (f) {
     await sql`update subscribers set unsubscribed_at = now() where email = ${str(f, 'email').toLowerCase()}`;
     return done(Astro, 'Email retirado da newsletter.');
   }
+  /* importar emails: colados à mão ou o ficheiro de contactos do formulário da Meta (CSV, também em UTF-16 com tabulações) */
   if (action === 'add') {
-    const emails = str(f, 'emails', 100000).split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-    for (const e of emails) await sql`insert into subscribers (email, source, consent) values (${e}, 'importado', 'true') on conflict (email) do nothing`;
-    return done(Astro, `${emails.length} emails importados (os que já existiam ficaram iguais).`);
+    let text = str(f, 'emails', 200000);
+    const file = f.get('file');
+    if (file && typeof file === 'object' && 'arrayBuffer' in file && file.size > 0) {
+      if (file.size > 5_000_000) return done(Astro, 'O ficheiro é grande demais (máximo 5 MB).', undefined, true);
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const utf16 = (buf[0] === 0xff && buf[1] === 0xfe) || (buf.length > 3 && buf[1] === 0 && buf[3] === 0);
+      text += '\n' + new TextDecoder(utf16 ? 'utf-16le' : 'utf-8').decode(buf);
+    }
+    const emails = [...new Set((text.match(/[^\s@,;"'<>()\t]+@[^\s@,;"'<>()\t]+\.[a-z]{2,}/gi) ?? []).map((e) => e.toLowerCase()))].slice(0, 5000);
+    if (!emails.length) return done(Astro, 'Não encontrei emails. Cola um por linha ou escolhe o ficheiro descarregado da Meta.', undefined, true);
+    const meta = str(f, 'source') === 'meta';
+    const source = meta ? 'formulario-meta' : 'importado';
+    const consent = meta ? 'formulario-meta' : 'true';
+    const added: string[] = [];
+    for (const e of emails) {
+      const [row] = await sql<any[]>`insert into subscribers (email, source, consent) values (${e}, ${source}, ${consent})
+        on conflict (email) do update set unsubscribed_at = subscribers.unsubscribed_at returning (xmax = 0) as fresh`;
+      if (row?.fresh) added.push(e);
+    }
+    /* email de boas-vindas só para os novos, se pedido (quem saiu da newsletter nunca volta a receber) */
+    let welcomed = 0;
+    if (f.get('welcome') === 'on') for (const e of added) if (await sendWelcome(sql, e)) welcomed++;
+    const msg = `${added.length} ${added.length === 1 ? 'contacto novo' : 'contactos novos'} na newsletter` +
+      (emails.length > added.length ? `, ${emails.length - added.length} já estavam na lista (ficaram iguais)` : '') +
+      (f.get('welcome') === 'on' ? `. Boas-vindas enviadas a ${welcomed}.` : '.');
+    return done(Astro, msg);
   }
   if (action === 'notified') {
     await sql`update notify_requests set notified_at = now() where product = ${str(f, 'product')} and size = ${str(f, 'size')} and notified_at is null`;
@@ -129,12 +154,17 @@ const [{ total, month }] = await sql<any[]>`select count(*)::int as total, count
           del.addEventListener('click', (e) => { if (!confirm('Apagar os emails selecionados da lista? Não dá para desfazer.')) e.preventDefault(); });
         })();
       </script>
-      <details class="card" style="margin-top:14px">
-        <summary style="cursor:pointer;font-weight:600">Importar emails (por exemplo, da antiga Google Sheet)</summary>
-        <form method="post" class="stack" style="margin-top:12px">
+      <details class="card" style="margin-top:14px" open={Astro.url.searchParams.has('importar')}>
+        <summary style="cursor:pointer;font-weight:600">Importar contactos (formulário da Meta ou outra lista)</summary>
+        <form method="post" enctype="multipart/form-data" class="stack" style="margin-top:12px">
           <input type="hidden" name="action" value="add" />
-          <textarea name="emails" rows="6" placeholder="Um email por linha"></textarea>
-          <p class="note">Importa só emails de pessoas que aceitaram receber a newsletter.</p>
+          <label>De onde vêm
+            <select name="source" style="max-width:320px"><option value="meta">Formulário da Meta (anúncios)</option><option value="lista">Outra lista</option></select>
+          </label>
+          <label>Ficheiro descarregado da Meta (CSV)<input type="file" name="file" accept=".csv,.tsv,.txt,text/csv,text/plain" /></label>
+          <label>Ou cola os emails, um por linha<textarea name="emails" rows="5" placeholder="ana@exemplo.pt"></textarea></label>
+          <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" name="welcome" checked /> Enviar o email de boas-vindas aos contactos novos</label>
+          <p class="note">Importa só pessoas que aceitaram receber a newsletter (no formulário da Meta, a caixa de consentimento). Quem já está na lista fica igual e quem saiu da newsletter não volta a entrar. Na Meta: Meta Business Suite, Todas as ferramentas, Centro de contactos (ou a Página, Ferramentas de publicação, Formulários), Transferir.</p>
           <div><button class="btn">Importar</button></div>
         </form>
       </details>
