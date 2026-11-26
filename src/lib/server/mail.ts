@@ -9,8 +9,9 @@ export const escapeHtml = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Moldura simples, com o logótipo, para todos os emails */
-export function layout(title: string, body: string, lang: Lang = 'pt') {
+export function layout(title: string, body: string, lang: Lang = 'pt', preheader = '') {
   return `<!doctype html><html lang="${htmlLang[lang]}"><body style="margin:0;background:#f5f5f4;font-family:Helvetica,Arial,sans-serif;color:#1f1f1f">
+${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}${'&#8199;&#847;'.repeat(40)}</div>` : ''}
 <div style="max-width:560px;margin:0 auto;padding:32px 20px">
 <img src="${site.url}/images/site/logo.png" alt="Mekie" width="120" style="display:block;margin:0 0 28px">
 <h1 style="font-size:20px;font-weight:600;margin:0 0 16px">${escapeHtml(title)}</h1>

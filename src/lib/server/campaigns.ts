@@ -1,7 +1,9 @@
 /* Campanhas da newsletter (Black November): três emails prontos, enviados a partir do CRM (Campanhas).
    Cada subscritor recebe na sua língua e cada campanha só sai uma vez por pessoa (tabela campaign_sends). */
 import { site } from '../../data/site';
-import { products } from '../../data/products';
+import { products, isSoldOut, type Product } from '../../data/products';
+import { reviewsByName } from '../../data/reviews';
+import { trName, trColor } from '../../i18n/catalog';
 import { kindOf, type Kind } from '../../data/promo';
 import { packs } from '../../data/packs';
 import { layout, escapeHtml, sendBatch, sendMail } from './mail';
@@ -12,7 +14,12 @@ import { pushNotify } from './push';
 
 type Text = [string, string, string];
 /* intro: abertura curta antes dos preços; malas: bloco da novidade; natal: nota sobre os prazos de Natal */
-type Campaign = { id: string; date: string; label: string; subject: Text; title: Text; body: Text; button: Text; intro?: Text; malas?: boolean; natal?: Text };
+/* versão "loja" (sexta): imagem de abertura, peças com preço, últimas unidades, garantias, uma opinião e assinatura */
+type Campaign = {
+  id: string; date: string; label: string; subject: Text; title: Text; body: Text; button: Text;
+  intro?: Text; malas?: boolean; natal?: Text;
+  preheader?: Text; hero?: string; picks?: string[]; trust?: boolean; review?: [string, number]; sign?: Text;
+};
 
 export const campaigns: Campaign[] = [
   {
@@ -32,19 +39,29 @@ export const campaigns: Campaign[] = [
     id: 'bn-black-friday',
     date: '2026-11-27',
     label: 'Fim de semana Black Friday',
-    subject: ['Black Friday: -15% até segunda (e uma novidade)', 'Black Friday: 15% off until Monday (plus something new)', 'Black Friday: -15% hasta el lunes (y una novedad)'],
-    title: ['É o fim de semana Black Friday', "It's Black Friday weekend", 'Es el fin de semana Black Friday'],
+    subject: ['Hoodies a 59€, só até segunda', 'Hoodies for €59, only until Monday', 'Hoodies a 59 €, solo hasta el lunes'],
+    preheader: [
+      'Black Friday Mekie: -15% em hoodies, crewnecks e t-shirts e packs até 22%. Acaba segunda à meia-noite.',
+      'Mekie Black Friday: 15% off hoodies, crewnecks and T-shirts, bundles up to 22% off. Ends Monday at midnight.',
+      'Black Friday Mekie: -15% en hoodies, crewnecks y camisetas y packs hasta un 22%. Termina el lunes a medianoche.',
+    ],
+    title: ['Black Friday: só até segunda', 'Black Friday: only until Monday', 'Black Friday: solo hasta el lunes'],
+    hero: '/images/email/bf-hero.jpg',
     intro: [
-      'Este é o fim de semana em que toda a gente te enche a caixa de correio com descontos. O nosso é simples: já está nos preços, não precisas de código e acaba segunda-feira à meia-noite.',
-      'This is the weekend everyone floods your inbox with deals. Ours is simple: it is already in the prices, you need no code, and it ends Monday at midnight.',
-      'Este es el fin de semana en que todo el mundo te llena el correo de descuentos. El nuestro es sencillo: ya está en los precios, no necesitas código y termina el lunes a medianoche.',
+      'Toda a gente te está a encher a caixa de correio com descontos. O nosso é simples: já está nos preços, não precisas de código e acaba segunda-feira à meia-noite.',
+      'Everyone is filling your inbox with deals. Ours is simple: it is already in the prices, you need no code, and it ends Monday at midnight.',
+      'Todo el mundo te está llenando el correo de descuentos. El nuestro es sencillo: ya está en los precios, no necesitas código y termina el lunes a medianoche.',
     ],
     body: [
-      'Hoodies, crewnecks e t-shirts com -15% e packs de duas peças com até 22% de desconto. Se andavas a pensar naquele hoodie, é agora: há tamanhos com poucas unidades. Depois de segunda, tudo volta ao preço normal.',
-      'Hoodies, crewnecks and T-shirts at 15% off, and two-piece bundles up to 22% off. If you had your eye on that hoodie, now is the time: some sizes are running low. After Monday, everything goes back to full price.',
-      'Hoodies, crewnecks y camisetas con -15% y packs de dos prendas con hasta un 22% de descuento. Si le tenías ganas a esa hoodie, es ahora: en algunas tallas quedan pocas unidades. Después del lunes, todo vuelve al precio normal.',
+      'Estas são as peças que mais saem. Bordadas, feitas para durar e com -15% até segunda.',
+      'These are our most popular pieces. Embroidered, made to last, and 15% off until Monday.',
+      'Estas son las prendas que más salen. Bordadas, hechas para durar y con -15% hasta el lunes.',
     ],
-    button: ['Aproveitar agora', 'Shop now', 'Aprovechar ahora'],
+    button: ['Ver a Black Friday', 'Shop Black Friday', 'Ver la Black Friday'],
+    picks: ['hoodie-cogumelos', 'hoodie-amarelo-pastel-esqueleto', 'crewneck-mekie-preta', 'tshirt-khaki-cogumelos', 'hoodie-amarelo-pastel-cogumelos', 'tshirt-black-cogumelos', 'hoodie-black-esqueleto'],
+    trust: true,
+    review: ['Hoodie Cogumelos', 0],
+    sign: ['Até segunda,<br><strong>Rita e Rafael, da Mekie</strong>', 'See you Monday,<br><strong>Rita and Rafael, from Mekie</strong>', 'Hasta el lunes,<br><strong>Rita y Rafael, de Mekie</strong>'],
     malas: true,
     natal: [
       'A pensar no Natal? As encomendas feitas até segunda chegam muito antes do dia 24. E se o tamanho não servir, tens 14 dias para trocar.',
@@ -85,6 +102,41 @@ const MALAS = {
   button: ['Ver as malas', 'See the bags', 'Ver los bolsos'],
 };
 
+const TXT = {
+  off: ['-15%', '-15%', '-15%'],
+  buy: ['Comprar', 'Buy', 'Comprar'],
+  packs: ['Ou leva duas peças num pack', 'Or take two pieces in a bundle', 'O llévate dos prendas en un pack'],
+  last: ['Últimas unidades', 'Almost gone', 'Últimas unidades'],
+  left: (n: number, size: string, name: string, lang: Lang) => [
+    `${name}: ${n === 1 ? 'só resta 1' : `só restam ${n}`} no tamanho ${size}`,
+    `${name}: only ${n} left in size ${size}`,
+    `${name}: ${n === 1 ? 'solo queda 1' : `solo quedan ${n}`} en la talla ${size}`,
+  ][ix(lang)],
+  trust: [
+    ['Envio grátis em Portugal a partir de 65€', '14 dias para trocar ou devolver', 'MB WAY, Multibanco e cartão'],
+    ['Free shipping in Portugal over €65', '14 days to exchange or return', 'MB WAY, Multibanco and card'],
+    ['Envío gratis en Portugal desde 65 €', '14 días para cambiar o devolver', 'MB WAY, Multibanco y tarjeta'],
+  ],
+  banner: ['-15% EM HOODIES, CREWNECKS E T-SHIRTS', '15% OFF HOODIES, CREWNECKS AND T-SHIRTS', '-15% EN HOODIES, CREWNECKS Y CAMISETAS'],
+  ends: ['Acaba segunda, 30 de novembro, às 23:59', 'Ends Monday 30 November at 23:59', 'Termina el lunes 30 de noviembre a las 23:59'],
+};
+
+/* peças em destaque: as da lista que não estão esgotadas, até 4 */
+function pickProducts(slugs: string[]) {
+  return slugs.map((s) => products.find((p) => p.slug === s)).filter((p): p is Product => !!p && !isSoldOut(p)).slice(0, 4);
+}
+/* tamanhos com 1 ou 2 unidades nas peças em promoção (até 3 linhas) */
+function lowStockLines(lang: Lang) {
+  const out: string[] = [];
+  for (const p of products) {
+    if (!p.sizeStock || !(p.price < p.regularPrice)) continue;
+    for (const [size, n] of Object.entries(p.sizeStock)) {
+      if (n > 0 && n <= 2) out.push(TXT.left(n, size, `${trName(p.name, lang)} ${trColor(p.color, lang)}`, lang));
+    }
+  }
+  return out.slice(0, 3);
+}
+
 /** HTML do email numa língua; `leave` é o link pessoal para sair da newsletter */
 export function campaignHtml(c: Campaign, lang: Lang, leave: string) {
   const t = useT(lang);
@@ -104,13 +156,66 @@ export function campaignHtml(c: Campaign, lang: Lang, leave: string) {
   };
   const list = packs();
   const rows = [list.slice(0, 2), list.slice(2, 4)].map((r) => `<tr>${r.map(cell).join('')}</tr>`).join('');
+  const shopBtn = (label: string, url = home, color = '#e10600') =>
+    `<p style="text-align:center;margin:22px 0 6px"><a href="${url}" style="display:inline-block;background:${color};color:#ffffff;text-decoration:none;padding:15px 32px;border-radius:999px;font-size:13px;letter-spacing:1.5px;font-weight:bold">${escapeHtml(label.toUpperCase())}</a></p>`;
+  if (c.picks) {
+    const picks = pickProducts(c.picks);
+    const card = (p: Product) => {
+      const url = `${site.url}${href(lang, `/produto/${p.slug}/`)}?${utm(c.id)}`;
+      const sale = p.price < p.regularPrice;
+      return `<td width="50%" style="padding:6px;vertical-align:top">
+        <a href="${url}" style="display:block;text-decoration:none;color:#1f1f1f;background:#ffffff;border:1px solid #e2e2df;border-radius:6px;overflow:hidden">
+          <span style="display:block;background:#f2f1ed;position:relative">
+            <img src="${site.url}${jpg(p.images[0])}" width="260" alt="${escapeHtml(`${trName(p.name, lang)} ${trColor(p.color, lang)}`)}" style="display:block;width:100%;height:auto;border:0">
+          </span>
+          <span style="display:block;padding:12px 12px 14px">
+            <span style="display:block;font-size:14px;font-weight:bold">${escapeHtml(trName(p.name, lang))}</span>
+            <span style="display:block;font-size:12px;color:#5c5c5c;margin-top:2px">${escapeHtml(trColor(p.color, lang))}</span>
+            <span style="display:block;margin-top:8px;font-size:18px;font-weight:bold;color:${sale ? '#e10600' : '#1f1f1f'}">${amount(p.price, lang)}${sale ? ` <s style="font-size:13px;color:#9d9d98;font-weight:normal">${amount(p.regularPrice, lang)}</s> <span style="display:inline-block;background:#e10600;color:#fff;font-size:11px;padding:2px 6px;vertical-align:middle">${TXT.off[i]}</span>` : ''}</span>
+            <span style="display:inline-block;margin-top:10px;font-size:12px;letter-spacing:1px;font-weight:bold;text-decoration:underline">${TXT.buy[i].toUpperCase()}</span>
+          </span>
+        </a></td>`;
+    };
+    const pickRows = [picks.slice(0, 2), picks.slice(2, 4)].filter((r) => r.length).map((r) => `<tr>${r.map(card).join('')}${r.length === 1 ? '<td width="50%"></td>' : ''}</tr>`).join('');
+    const low = lowStockLines(lang);
+    const rv = c.review ? reviewsByName[c.review[0]]?.[c.review[1]] : undefined;
+    const body = `
+    ${c.hero ? `<a href="${home}"><img src="${site.url}${c.hero}" width="520" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:6px;margin:0 0 16px"></a>` : ''}
+    <p style="margin:0 0 18px;padding:13px 14px;background:#e10600;color:#ffffff;font-weight:bold;text-align:center;letter-spacing:1px;font-size:14px;line-height:1.4">${TXT.banner[i]}<br><span style="font-weight:normal;font-size:12.5px;letter-spacing:.5px">${TXT.ends[i]}</span></p>
+    ${c.intro ? `<p style="font-size:17px;line-height:1.55;margin:0 0 6px">${escapeHtml(c.intro[i])}</p>` : ''}
+    ${shopBtn(c.button[i])}
+    <p style="margin:26px 0 8px">${escapeHtml(c.body[i])}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 6px">${pickRows}</table>
+    ${low.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 0;background:#fff4f3;border:1px solid #f3c7c3;border-radius:6px"><tr><td style="padding:12px 14px;font-size:13.5px;line-height:1.6">
+      <strong style="color:#e10600;letter-spacing:1px;font-size:12px">${TXT.last[i].toUpperCase()}</strong><br>${low.map((l) => escapeHtml(l)).join('<br>')}</td></tr></table>` : ''}
+    <p style="margin:30px 0 8px;font-size:16px;font-weight:bold">${TXT.packs[i]}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 6px">${rows}</table>
+    <p style="font-size:12px;color:#5c5c5c;margin:6px 0 0">${t('bf.auto')}</p>
+    ${shopBtn(c.button[i])}
+    ${c.trust ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0;border-top:1px solid #e2e2df;border-bottom:1px solid #e2e2df"><tr>${TXT.trust[i].map((x) => `<td width="33%" style="padding:14px 6px;text-align:center;font-size:12px;line-height:1.4;color:#1f1f1f">${x}</td>`).join('')}</tr></table>` : ''}
+    ${rv ? `<p style="margin:26px 0 0;text-align:center;font-size:15px;line-height:1.6;font-style:italic">“${escapeHtml(rv.text)}”</p><p style="margin:6px 0 0;text-align:center;font-size:12.5px;color:#5c5c5c"><span style="color:#e1a400;letter-spacing:2px">★★★★★</span> ${escapeHtml(rv.author)}, ${escapeHtml(trName(c.review![0], lang))}</p>` : ''}
+    ${c.malas ? malasBlock(c, lang) : ''}
+    ${c.natal ? `<p style="margin:28px 0 0;padding:14px 16px;border-left:3px solid #1f1f1f;background:#f5f5f4;font-size:14.5px;line-height:1.55">${escapeHtml(c.natal[i])}</p>` : ''}
+    ${c.sign ? `<p style="margin:30px 0 0;font-size:15px;line-height:1.6">${c.sign[i]}</p>` : ''}
+    <p style="font-size:12px;color:#5c5c5c;margin-top:28px">${whyText(lang, leave)}</p>`;
+    return layout(c.title[i], body, lang, c.preheader?.[i] ?? '');
+  }
   const body = `
     <p style="margin:0 0 18px;padding:12px 14px;background:#e10600;color:#ffffff;font-weight:bold;text-align:center;letter-spacing:1px;font-size:14px">BLACK NOVEMBER · -15% · ${escapeHtml(t('bf.until').toUpperCase())}</p>
     ${c.intro ? `<p style="font-size:17px;line-height:1.55;margin:0 0 16px">${escapeHtml(c.intro[i])}</p>` : ''}
     <p>${escapeHtml(c.body[i])}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">${rows}</table>
     <p style="text-align:center;margin:26px 0 8px"><a href="${home}" style="display:inline-block;background:#e10600;color:#ffffff;text-decoration:none;padding:15px 30px;border-radius:999px;font-size:13px;letter-spacing:1.5px;font-weight:bold">${escapeHtml(c.button[i].toUpperCase())}</a></p>
-    ${c.malas ? `
+    ${c.malas ? malasBlock(c, lang) : ''}
+    ${c.natal ? `<p style="margin:28px 0 0;padding:14px 16px;border-left:3px solid #1f1f1f;background:#f5f5f4;font-size:14.5px;line-height:1.55">${escapeHtml(c.natal[i])}</p>` : ''}
+    <p style="font-size:12px;color:#5c5c5c;margin-top:28px">${useT(lang)('bf.auto')}</p>
+    <p style="font-size:12px;color:#5c5c5c">${whyText(lang, leave)}</p>`;
+  return layout(c.title[i], body, lang);
+}
+
+function malasBlock(c: Campaign, lang: Lang) {
+  const i = ix(lang);
+  return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:34px 0 0;background:#f2f1ed;border-radius:6px"><tr><td align="center" style="padding:24px 20px 26px">
       <p style="margin:0 0 6px"><span style="display:inline-block;background:#1f1f1f;color:#ffffff;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 9px">${MALAS.kicker[i]}</span></p>
       <p style="margin:0 0 12px;font-size:24px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px">${MALAS.title[i]}</p>
@@ -118,11 +223,7 @@ export function campaignHtml(c: Campaign, lang: Lang, leave: string) {
       <p style="margin:14px 0 6px;font-size:15px;line-height:1.55">${MALAS.text[i]}</p>
       <p style="margin:0 0 16px;font-weight:bold">${MALAS.from[i]}</p>
       <a href="${site.url}${href(lang, '/loja/malas/')}?${utm(c.id)}" style="display:inline-block;background:#1f1f1f;color:#ffffff;text-decoration:none;padding:12px 26px;border-radius:999px;font-size:12px;letter-spacing:1.5px;font-weight:bold">${MALAS.button[i].toUpperCase()}</a>
-    </td></tr></table>` : ''}
-    ${c.natal ? `<p style="margin:28px 0 0;padding:14px 16px;border-left:3px solid #1f1f1f;background:#f5f5f4;font-size:14.5px;line-height:1.55">${escapeHtml(c.natal[i])}</p>` : ''}
-    <p style="font-size:12px;color:#5c5c5c;margin-top:28px">${useT(lang)('bf.auto')}</p>
-    <p style="font-size:12px;color:#5c5c5c">${whyText(lang, leave)}</p>`;
-  return layout(c.title[i], body, lang);
+    </td></tr></table>`;
 }
 
 const whyText = (lang: Lang, leave: string) => [
