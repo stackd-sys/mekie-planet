@@ -178,10 +178,10 @@ const chips = [
   .view__btn svg { fill: currentColor; }
   .view__btn.is-active, .view__btn:hover { color: var(--ink); }
   .toolbar__count { margin: 0; font-size: 10.5px; color: var(--ink-soft); }
-  .sort { justify-self: end; display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--ink-soft); }
+  .sort { justify-self: end; min-width: 0; max-width: 100%; display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--ink-soft); }
   .sort select {
     border: 0; background: transparent; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
-    padding: 6px 2px; cursor: pointer; color: var(--ink);
+    padding: 6px 2px; cursor: pointer; color: var(--ink); max-width: 100%; min-width: 0;
   }
   .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-top: 12px; padding-bottom: 12px; border-top: 1px solid var(--line); }
   .chips::-webkit-scrollbar { display: none; }
@@ -203,6 +203,8 @@ const chips = [
   @media (max-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 700px) {
     .sort > span { display: none; }
+    .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
+    .toolbar__count { text-align: center; }
     .toolbar__count { font-size: 10px; }
     .grid, .grid[data-cols="2"] { grid-template-columns: repeat(2, 1fr); gap: 32px 12px; }
     .grid[data-cols="2"] { grid-template-columns: 1fr; }

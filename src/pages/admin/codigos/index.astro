@@ -110,7 +110,7 @@ const d = (v: unknown) => (v ? new Date(v as string).toISOString().slice(0, 10) 
       <label>Nome da campanha<input data-k="campaign" placeholder="Ex.: drop-outubro, joana" /></label>
     </div>
     <div class="bar" style="margin-top:12px">
-      <input data-out readonly style="flex:1;min-width:260px" />
+      <textarea data-out readonly rows="2" style="flex:1 1 260px;min-width:0;width:100%;font-family:monospace;font-size:12.5px;word-break:break-all;resize:none"></textarea>
       <button type="button" class="btn small" data-copy>Copiar</button>
     </div>
   </section>

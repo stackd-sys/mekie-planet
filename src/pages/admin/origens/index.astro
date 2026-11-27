@@ -95,7 +95,7 @@ const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace
   <section class="card" style="margin-top:14px">
     <h2 style="margin-top:0">Links para os anúncios da Meta</h2>
     <p style="margin-top:0">No anúncio, em <strong>Parâmetros de URL</strong>, cola isto. A Meta preenche sozinha a rede (Facebook ou Instagram), a campanha, o conjunto e o anúncio:</p>
-    <input readonly value="utm_source={{site_source_name}}&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}" style="width:100%;font-family:monospace;font-size:12.5px" onclick="this.select()" />
+    <textarea readonly rows="3" style="width:100%;font-family:monospace;font-size:12.5px;word-break:break-all;resize:none" onclick="this.select()">{'utm_source={{site_source_name}}&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}'}</textarea>
     <p class="note" style="margin-bottom:0">Para outros links (bio do Instagram, influencers, parcerias) usa o criador de links em <a href="/admin/codigos/">Códigos e links</a>.</p>
   </section>
 </Admin>
