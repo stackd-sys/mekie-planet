@@ -58,7 +58,7 @@ const PURCHASE = ['offsite_conversion.fb_pixel_purchase', 'omni_purchase', 'purc
 const CART = ['offsite_conversion.fb_pixel_add_to_cart', 'omni_add_to_cart', 'add_to_cart'];
 const CHECKOUT = ['offsite_conversion.fb_pixel_initiate_checkout', 'omni_initiated_checkout', 'initiate_checkout'];
 const VIEW = ['offsite_conversion.fb_pixel_view_content', 'omni_view_content', 'view_content'];
-const LEAD = ['offsite_conversion.fb_pixel_lead', 'lead', 'offsite_conversion.fb_pixel_complete_registration'];
+const LEAD = ['onsite_conversion.lead_grouped', 'leadgen_grouped', 'lead', 'offsite_conversion.fb_pixel_lead', 'offsite_conversion.fb_pixel_complete_registration'];
 
 const METRICS = 'spend,impressions,reach,frequency,clicks,inline_link_clicks,ctr,inline_link_click_ctr,cpc,cpm,actions,action_values';
 
@@ -96,21 +96,27 @@ const insights = (params: Record<string, string>, days: number) =>
 
 export async function metaAds(days: number) {
   return cached(`ads:${days}`, async () => {
-    const [total, daily, campaigns, campaignInfo, ads, age, platform, country, device] = await Promise.all([
+    const [total, daily, campaigns, campaignInfo, ads, age, platform, country, device, adsets, adsetInfo, adInfo] = await Promise.all([
       insights({}, days),
       insights({ time_increment: '1', fields: 'spend,impressions,inline_link_clicks,actions,action_values' }, days),
       insights({ level: 'campaign', fields: `campaign_id,campaign_name,${METRICS}` }, days),
       settle(graphAll(`${account()}/campaigns`, { fields: 'id,name,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time', limit: '100' })),
-      settle(insights({ level: 'ad', fields: `ad_id,ad_name,campaign_name,${METRICS}`, sort: 'spend_descending', limit: '12' }, days)),
+      settle(insights({ level: 'ad', fields: `ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,${METRICS}`, sort: 'spend_descending', limit: '200' }, days)),
       settle(insights({ breakdowns: 'age,gender' }, days)),
       settle(insights({ breakdowns: 'publisher_platform,platform_position' }, days)),
       settle(insights({ breakdowns: 'country' }, days)),
       settle(insights({ breakdowns: 'impression_device' }, days)),
+      settle(insights({ level: 'adset', fields: `adset_id,adset_name,campaign_id,campaign_name,${METRICS}` }, days)),
+      settle(graphAll(`${account()}/adsets`, { fields: 'id,name,effective_status,daily_budget,lifetime_budget,optimization_goal,end_time', limit: '200' })),
+      settle(graphAll(`${account()}/ads`, { fields: 'id,effective_status', limit: '300' })),
     ]);
+    const adsetMeta = new Map((adsetInfo.ok ? adsetInfo.data : []).map((x: any) => [x.id, x]));
+    const adStatus = new Map((adInfo.ok ? adInfo.data : []).map((x: any) => [x.id, x.effective_status]));
     const info = new Map((campaignInfo.ok ? campaignInfo.data : []).map((c: any) => [c.id, c]));
 
     /* miniaturas dos anúncios com mais gasto */
-    const topAds = ads.ok ? ads.data.slice(0, 12) : [];
+    const allAds = ads.ok ? ads.data : [];
+    const topAds = allAds.slice(0, 40);
     let thumbs: Record<string, string> = {};
     if (topAds.length) {
       const t = await settle(graph('', { ids: topAds.map((a: any) => a.ad_id).join(','), fields: 'creative{thumbnail_url,image_url}' }));
@@ -123,7 +129,19 @@ export async function metaAds(days: number) {
       campaigns: campaigns.map((c: any) => ({ id: c.campaign_id, name: c.campaign_name, status: info.get(c.campaign_id)?.effective_status ?? '', objective: info.get(c.campaign_id)?.objective ?? '', ...shape(c) }))
         .sort((a: any, b: any) => b.spend - a.spend),
       active: (campaignInfo.ok ? campaignInfo.data : []).filter((c: any) => c.effective_status === 'ACTIVE').length,
-      ads: topAds.map((a: any) => ({ id: a.ad_id, name: a.ad_name, campaign: a.campaign_name, thumb: thumbs[a.ad_id] || '', ...shape(a) })),
+      ads: allAds.map((a: any) => ({
+        id: a.ad_id, name: a.ad_name, campaign: a.campaign_name, campaignId: a.campaign_id, adset: a.adset_name, adsetId: a.adset_id,
+        status: adStatus.get(a.ad_id) ?? '', thumb: thumbs[a.ad_id] || '', ...shape(a),
+      })),
+      adsets: (adsets.ok ? adsets.data : []).map((x: any) => {
+        const m: any = adsetMeta.get(x.adset_id) ?? {};
+        return {
+          id: x.adset_id, name: x.adset_name, campaign: x.campaign_name, campaignId: x.campaign_id, status: m.effective_status ?? '',
+          dailyBudget: m.daily_budget ? Number(m.daily_budget) / 100 : 0, lifetimeBudget: m.lifetime_budget ? Number(m.lifetime_budget) / 100 : 0,
+          goal: m.optimization_goal ?? '', end: m.end_time ?? '', ...shape(x),
+        };
+      }).sort((a: any, b: any) => b.spend - a.spend),
+      campaignBudgets: Object.fromEntries((campaignInfo.ok ? campaignInfo.data : []).map((c: any) => [c.id, { daily: c.daily_budget ? Number(c.daily_budget) / 100 : 0, lifetime: c.lifetime_budget ? Number(c.lifetime_budget) / 100 : 0, stop: c.stop_time ?? '' }])),
       age: rows(age).map((r: any) => ({ age: r.age, gender: r.gender, ...shape(r) })),
       platform: rows(platform).map((r: any) => ({ platform: r.publisher_platform, position: r.platform_position, ...shape(r) })),
       country: rows(country).map((r: any) => ({ country: r.country, ...shape(r) })),

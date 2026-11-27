@@ -7,6 +7,8 @@ import { date } from '../../../lib/server/format';
 import { postForm, done, str } from '../../../lib/server/admin';
 import { campaigns, campaignHtml, campaignStats, sendCampaign, sendCampaignTest, scheduleCampaign, cancelSchedule, schedules, lisbonToDate, toLisbonInput, maybeSendScheduled } from '../../../lib/server/campaigns';
 import { site } from '../../../data/site';
+import { euro } from '../../../lib/server/format';
+import { newsletterAdvice } from '../../../lib/server/advice';
 
 const sql = await db();
 const f = await postForm(Astro);
@@ -45,6 +47,18 @@ const stats = await campaignStats(sql);
 const sched = await schedules(sql);
 const [{ active }] = await sql<any[]>`select count(*)::int as active from subscribers where unsubscribed_at is null`;
 const today = new Date().toISOString().slice(0, 10);
+/* resultados de cada campanha: visitas ao site (contagem própria, com ou sem cookies) e encomendas pagas que vieram do email */
+const visitRows = await sql<any[]>`select dim, sum(n)::int as n from stats where metric = 'campanha' group by dim`;
+const orderRows = await sql<any[]>`select lower(utm->>'campaign') as c, count(*)::int as n, coalesce(sum(total - refunded), 0) as v from orders
+  where status in ('paga','enviada','entregue') and utm->>'campaign' is not null group by 1`;
+const results = campaigns.map((c) => {
+  const sent = stats[c.id]?.n ?? 0;
+  const visits = visitRows.find((r) => r.dim === c.id)?.n ?? 0;
+  const o = orderRows.find((r) => r.c === c.id);
+  return { id: c.id, label: c.label, sent, visits, orders: o?.n ?? 0, revenue: Number(o?.v ?? 0) };
+});
+const nlNotes = newsletterAdvice(results, active);
+const pc = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1).replace('.', ',')}%` : '—');
 const view = Astro.url.searchParams.get('ver') ?? '';
 const lang = (['pt', 'en', 'es'] as const).find((l) => l === Astro.url.searchParams.get('l')) ?? 'pt';
 const preview = campaigns.find((c) => c.id === view);
@@ -54,6 +68,19 @@ const preview = campaigns.find((c) => c.id === view);
   <p class="sub">Emails para a newsletter, já escritos e traduzidos. Cada subscritor recebe na sua língua e nunca recebe a mesma campanha duas vezes. Subscritores ativos: <strong>{active}</strong>.</p>
   <p class="note">Podes agendar cada campanha para um dia e uma hora (hora de Lisboa). Sai para quem estiver subscrito nesse momento, normalmente nos minutos seguintes à hora marcada. Recebes uma notificação quando sair.</p>
   <Flash />
+
+  <section class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">Resultados das campanhas</h2>
+    <div class="table" style="overflow-x:auto"><table>
+      <thead><tr><th>Campanha</th><th class="num">Enviados</th><th class="num">Visitas ao site</th><th class="num">% que visitou</th><th class="num">Encomendas</th><th class="num">Vendas</th><th class="num">Conversão das visitas</th><th class="num">Vendas por email</th></tr></thead>
+      <tbody>{results.map((r) => (
+        <tr><td><strong>{r.label}</strong></td><td class="num">{r.sent || '—'}</td><td class="num">{r.visits || '—'}</td><td class="num">{r.sent ? pc(r.visits, r.sent) : '—'}</td>
+          <td class="num">{r.orders || '—'}</td><td class="num">{r.revenue ? euro(r.revenue) : '—'}</td><td class="num">{r.visits ? pc(r.orders, r.visits) : '—'}</td><td class="num">{r.sent && r.revenue ? euro(r.revenue / r.sent) : '—'}</td></tr>
+      ))}</tbody>
+    </table></div>
+    <p class="note">As visitas contam toda a gente que entrou no site por um link do email (com ou sem cookies). As encomendas são as pagas em que o último link com etiqueta foi o deste email. Referências para lojas de moda: 2% a 5% dos enviados visitam o site e 1% a 3% das visitas compram. As aberturas não aparecem de propósito: desde 2021 o iPhone marca quase todos os emails como abertos, por isso não são de confiança.</p>
+    <ol class="nl-notes">{nlNotes.map((x) => <li class={`nl-${x.tone}`}><strong>{x.title}</strong><p>{x.text}</p>{x.action && <p><b>O que fazer:</b> {x.action}</p>}</li>)}</ol>
+  </section>
 
   {campaigns.map((c) => {
     const s = stats[c.id];
@@ -120,6 +147,10 @@ const preview = campaigns.find((c) => c.id === view);
 </Admin>
 
 <style>
+  .nl-notes { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .nl-notes li { border-left: 4px solid #cfcfcb; padding: 8px 12px; background: #fafaf9; border-radius: 0 8px 8px 0; }
+  .nl-notes li p { margin: 4px 0 0; }
+  .nl-notes .nl-ok { border-color: var(--ok); } .nl-notes .nl-warn { border-color: #e8a33a; } .nl-notes .nl-off { border-color: var(--bad); } .nl-notes .nl-info { border-color: #6c93c4; }
   .sched { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .sched p { width: 100%; }
   .sched__on { margin: 0; color: #1a7f37; }

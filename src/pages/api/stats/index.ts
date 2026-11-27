@@ -29,6 +29,9 @@ export const POST: APIRoute = async ({ request, url }) => {
     /* entrada no site: veio de fora (ou abriu diretamente), não de outra página da loja */
     if (ref !== own) {
       const source = clip(b.u, 40) || (ref ? ref.replace(/^(l|m|lm)\.(facebook|instagram)\.com$/, '$2.com') : 'direto');
+      /* campanha (utm_campaign): para medir cada email da newsletter e cada campanha de anúncios */
+      const campaign = clip(b.k, 60);
+      if (campaign) rows.push(['campanha', campaign]);
       rows.push(['entrada', source], ['aparelho', /Mobi|Android|iPhone|iPod/i.test(ua) ? 'telemóvel' : /iPad|Tablet/i.test(ua) ? 'tablet' : 'computador']);
     }
   } else if (b?.t === 'event' && EVENTS.includes(b.e)) {

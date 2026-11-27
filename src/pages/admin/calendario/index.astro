@@ -1,0 +1,149 @@
+---
+export const prerender = false;
+/* Calendário de publicações: o que publicar, quando, com que criativo e como medir. Marca-se o que já foi feito. */
+import Admin from '../../../layouts/Admin.astro';
+import Flash from '../../../components/admin/Flash.astro';
+import { db } from '../../../lib/server/db';
+import { postForm, str } from '../../../lib/server/admin';
+import { plan, rules, CHANNEL, type PlanItem } from '../../../data/marketing-plan';
+import { campaigns } from '../../../lib/server/campaigns';
+
+const sql = await db();
+const f = await postForm(Astro);
+if (f) {
+  const id = str(f, 'id', 40);
+  if (plan.some((p) => p.id === id)) {
+    if (str(f, 'action') === 'undo') await sql`delete from marketing_done where id = ${id}`;
+    else await sql`insert into marketing_done (id, by) values (${id}, ${Astro.locals.admin || ''}) on conflict (id) do nothing`;
+  }
+  return Astro.redirect(`${Astro.url.pathname}${Astro.url.search}#${id}`);
+}
+const doneIds = new Set((await sql<any[]>`select id from marketing_done`).map((r) => r.id));
+/* newsletters agendadas no CRM também aparecem no calendário */
+const sched = await sql<any[]>`select campaign, send_at, done_at from campaign_schedule`;
+
+const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+const filter = Astro.url.searchParams.get('canal') || '';
+const months = [...new Set(plan.map((p) => p.date.slice(0, 7)))];
+const monthParam = Astro.url.searchParams.get('mes');
+const month = months.includes(monthParam ?? '') ? monthParam! : (months.find((m) => m >= today.slice(0, 7)) ?? months[0]);
+
+type Row = PlanItem & { done: boolean; auto?: boolean };
+const extra: Row[] = sched.map((s) => {
+  const c = campaigns.find((x) => x.id === s.campaign);
+  const d = new Date(s.send_at);
+  return {
+    id: `sched-${s.campaign}`, date: d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' }),
+    time: d.toLocaleTimeString('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit' }),
+    channel: 'newsletter', title: `Agendada no CRM: ${c?.label ?? s.campaign}`, creative: 'Já está pronta em Campanhas.', copy: c ? `Assunto: "${c.subject[0]}"` : '',
+    goal: 'Vendas', kpi: 'Resultados em Campanhas', done: Boolean(s.done_at), auto: true,
+  };
+});
+const rows: Row[] = [...plan.map((p) => ({ ...p, done: doneIds.has(p.id) })), ...extra]
+  .filter((p) => p.date.startsWith(month) && (!filter || p.channel === filter))
+  .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+/* semanas de segunda a domingo */
+const weekOf = (d: string) => { const x = new Date(`${d}T12:00:00Z`); const wd = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - wd); return x.toISOString().slice(0, 10); };
+const weeks = [...new Set(rows.map((r) => weekOf(r.date)))];
+const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtWeek = (d: string) => { const e = new Date(`${d}T12:00:00Z`); e.setUTCDate(e.getUTCDate() + 6); return `${fmtDay(d)} a ${fmtDay(e.toISOString().slice(0, 10))}`; };
+const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/* resumo: o que é para hoje e quanto já foi feito */
+const all = plan.map((p) => ({ ...p, done: doneIds.has(p.id) }));
+const todayItems = all.filter((p) => p.date === today);
+const late = all.filter((p) => p.date < today && !p.done);
+const progress = all.filter((p) => p.date.startsWith(month));
+---
+<Admin title="Calendário de publicações" wide>
+  <h1>Calendário de publicações</h1>
+  <p class="sub">O que publicar, quando, com que criativo e como medir. Vocês fazem os criativos; aqui está o que fazer em cada um. Marquem cada publicação quando estiver feita.</p>
+  <Flash />
+
+  <div class="grid kpis" style="margin-bottom:14px">
+    <div class="card kpi"><p>Hoje</p><strong>{todayItems.length}</strong><small>{todayItems.length ? todayItems.map((x) => CHANNEL[x.channel].label).join(', ') : 'nada planeado'}</small></div>
+    <div class="card kpi" style={late.length ? 'border-color:#e8c37a' : ''}><p>Em atraso</p><strong>{late.length}</strong><small>{late.length ? 'publicações por fazer de dias anteriores' : 'tudo em dia'}</small></div>
+    <div class="card kpi"><p>{monthName(month).replace(/^./, (c) => c.toUpperCase())}</p><strong>{progress.filter((p) => p.done).length} de {progress.length}</strong><small>publicações feitas</small></div>
+  </div>
+
+  <nav class="tabs">{months.map((m) => <a href={`?mes=${m}${filter ? `&canal=${filter}` : ''}`} class:list={{ 'is-on': m === month }}>{monthName(m).replace(/^./, (c) => c.toUpperCase())}</a>)}</nav>
+  <nav class="tabs" aria-label="Canal">
+    <a href={`?mes=${month}`} class:list={{ 'is-on': !filter }}>Tudo</a>
+    {Object.entries(CHANNEL).map(([k, v]) => <a href={`?mes=${month}&canal=${k}`} class:list={{ 'is-on': filter === k }}><span class="dot" style={`background:${v.color}`}></span>{v.label}</a>)}
+  </nav>
+
+  {weeks.map((w) => (
+    <section class="cal-week">
+      <h2>Semana de {fmtWeek(w)}</h2>
+      <div class="cal-list">
+        {rows.filter((r) => weekOf(r.date) === w).map((r) => (
+          <article class:list={['card cal-item', { 'is-done': r.done, 'is-today': r.date === today, 'is-late': !r.done && r.date < today }]} id={r.id}>
+            <div class="cal-item__when">
+              <strong>{fmtDay(r.date)}</strong>
+              <span class="muted">{r.time}</span>
+              <span class="cal-chip" style={`background:${CHANNEL[r.channel].color}`}>{CHANNEL[r.channel].label}</span>
+            </div>
+            <div class="cal-item__body">
+              <h3>{r.title}</h3>
+              <dl>
+                <dt>Criativo</dt><dd>{r.creative}</dd>
+                {r.copy && <><dt>Texto</dt><dd>{r.copy}</dd></>}
+                <dt>Objetivo</dt><dd>{r.goal}</dd>
+                <dt>Medir</dt><dd>{r.kpi}</dd>
+              </dl>
+            </div>
+            <div class="cal-item__done">
+              {r.auto ? <span class={`badge ${r.done ? 'ok' : 'info'}`}>{r.done ? 'Enviada' : 'Agendada'}</span> : (
+                <form method="post">
+                  <input type="hidden" name="id" value={r.id} />
+                  {r.done
+                    ? <><span class="badge ok">Feito</span><button class="btn ghost small" name="action" value="undo" style="margin-top:6px">Desfazer</button></>
+                    : <button class="btn small" name="action" value="done">Marcar como feito</button>}
+                </form>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  ))}
+  {!rows.length && <p class="card empty">Nada planeado para este filtro.</p>}
+
+  <h2 style="margin-top:30px">Regras da casa</h2>
+  <div class="grid two">
+    {rules.map((g) => (
+      <section class="card">
+        <h2 style="margin-top:0">{g.title}</h2>
+        <ul class="cal-rules">{g.items.map((i) => <li>{i}</li>)}</ul>
+      </section>
+    ))}
+  </div>
+  <p class="note">As horas e as proporções são um bom ponto de partida para marcas de moda em Portugal. Ao fim de um mês, os números da Mekie (Instagram, CRM e anúncios) dizem o que ajustar.</p>
+</Admin>
+
+<style>
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+  .cal-week h2 { margin: 22px 0 10px; }
+  .cal-list { display: grid; gap: 10px; }
+  .cal-item { display: grid; grid-template-columns: 130px minmax(0, 1fr) 150px; gap: 16px; align-items: start; scroll-margin-top: 20px; }
+  .cal-item.is-today { border-color: #1f1f1f; box-shadow: 0 0 0 1px #1f1f1f; }
+  .cal-item.is-late { border-color: #e8c37a; }
+  .cal-item.is-done { opacity: .6; }
+  .cal-item__when { display: grid; gap: 4px; justify-items: start; text-transform: capitalize; }
+  .cal-chip { color: #fff; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; text-transform: none; }
+  .cal-item h3 { margin: 0 0 8px; font-size: 15px; }
+  .cal-item dl { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 5px 12px; margin: 0; font-size: 13px; }
+  .cal-item dt { color: var(--soft); }
+  .cal-item dd { margin: 0; }
+  .cal-item__done { display: grid; justify-items: end; }
+  .cal-item__done form { display: grid; justify-items: end; }
+  .cal-rules { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  @media (max-width: 860px) {
+    .cal-item { grid-template-columns: 1fr; gap: 10px; }
+    .cal-item__when { grid-auto-flow: column; justify-content: start; align-items: center; gap: 10px; }
+    .cal-item__done, .cal-item__done form { justify-items: start; }
+    .cal-item dl { grid-template-columns: 1fr; }
+    .cal-item dt { margin-top: 4px; }
+  }
+</style>

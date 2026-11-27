@@ -5,6 +5,7 @@ import { db } from '../../../lib/server/db';
 import { euro, date } from '../../../lib/server/format';
 import { hasGa, gaReport, rows, range } from '../../../lib/server/google';
 import MetaReport from '../../../components/admin/MetaReport.astro';
+import GoogleAdsPlan from '../../../components/admin/GoogleAdsPlan.astro';
 import WorldMap from '../../../components/admin/WorldMap.astro';
 import worldmap from '../../../data/worldmap.json';
 const countryName = Object.fromEntries((worldmap.countries as [string, string, string][]).map(([c, name]) => [c, name]));
@@ -90,6 +91,14 @@ const own = {
   ev: (e: string) => sumBy('evento', (r) => r.dim === e),
   sources: topOf('entrada'), pagesTop: topOf('pagina', 12), devices: topOf('aparelho', 3),
 };
+/* entradas no site vindas de anúncios e redes da Meta (contagem própria, com ou sem cookies) */
+const metaOrders = await sql<any[]>`select count(*)::int as n from orders
+  where status in ('paga','enviada','entregue') and created_at > now() - ${days + ' days'}::interval
+    and lower(coalesce(utm->>'source', utm->>'ref', '')) ~ '(facebook|instagram|^fb|^ig|meta)'`;
+const crmMeta = {
+  visits: sumBy('entrada', (r) => /facebook|instagram|^fb$|^ig$|meta/i.test(r.dim)),
+  carts: own.ev('add_to_cart'), checkouts: own.ev('begin_checkout'), orders: metaOrders[0]?.n ?? 0,
+};
 const funnelSteps = ga ? [
   ['Viram uma peça', ga.ev.view_item?.totalUsers ?? 0],
   ['Puseram no carrinho', ga.ev.add_to_cart?.totalUsers ?? 0],
@@ -97,8 +106,13 @@ const funnelSteps = ga ? [
   ['Encomendas pagas (CRM)', sales.orders],
 ] as [string, number][] : [];
 const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any) => a + r.advertiserAdCost, 0) : 0;
+const adsClicks = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any) => a + r.advertiserAdClicks, 0) : 0;
+const adsImpr = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any) => a + r.advertiserAdImpressions, 0) : 0;
+const [googleOrders] = secao === 'google-ads' ? await sql<any[]>`select count(*)::int as n, coalesce(sum(total), 0) as v from orders
+  where status in ('paga','enviada','entregue') and created_at > now() - ${days + ' days'}::interval
+    and (utm ? 'gclid' or (lower(coalesce(utm->>'source', '')) like '%google%' and lower(coalesce(utm->>'medium', '')) in ('cpc','paid','ppc')))` : [{ n: 0, v: 0 }];
 ---
-<Admin title={title}>
+<Admin title={title} wide={secao === 'meta' || secao === 'google-ads'}>
   <div class="bar" style="justify-content:space-between">
     <div><h1>{title}</h1><p class="sub">{intro}</p></div>
     <nav class="tabs">{[7, 30, 90].map((d) => <a href={`?dias=${d}`} class:list={{ 'is-on': d === days }}>{d} dias</a>)}</nav>
@@ -227,7 +241,7 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
 
   </>)}
 
-  {secao === 'meta' && <MetaReport days={days} sales={sales} />}
+  {secao === 'meta' && <MetaReport days={days} sales={sales} crm={crmMeta} />}
 
   {secao === 'google-ads' && (<>
   <h2>Campanhas</h2>
@@ -235,16 +249,20 @@ const adsTotal = ga && Array.isArray(ga.ads) ? ga.ads.reduce((a: number, r: any)
     <div class="card setup"><p style="margin:0">Aparecem aqui depois de ligar o Google Analytics (página Google Analytics) e de ligar o Google Ads ao Google Analytics: no Analytics, Administração &gt; Ligações de produtos &gt; Ligações do Google Ads.</p></div>
   ) : gaError ? null : 'error' in (ga.ads ?? {}) ? <p class="msg err">Google Ads: {ga.ads.error}</p> : ga.ads.length ? (
     <>
-      <div class="grid kpis"><div class="card kpi"><p>Gasto</p><strong>{euro(adsTotal)}</strong></div></div>
-      <div class="table" style="margin-top:14px">
+      <div class="grid kpis">
+        <div class="card kpi"><p>Gasto</p><strong>{euro(adsTotal)}</strong><small>{euro(adsTotal / days)} por dia</small></div>
+        <div class="card kpi"><p>Cliques</p><strong>{n(adsClicks)}</strong><small>CTR {pct(adsClicks, adsImpr)} · {adsClicks ? euro(adsTotal / adsClicks) : '—'} por clique</small></div>
+        <div class="card kpi"><p>Encomendas do Google (CRM)</p><strong>{n(googleOrders.n)}</strong><small>{euro(Number(googleOrders.v))} · retorno {adsTotal ? `${(Number(googleOrders.v) / adsTotal).toFixed(1).replace('.', ',')}×` : '—'}</small></div>
+      </div>
+      <div class="table" style="margin-top:14px;overflow-x:auto">
         <table>
-          <thead><tr><th>Campanha</th><th class="num">Gasto</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Custo por clique</th></tr></thead>
-          <tbody>{ga.ads.map((r: any) => <tr><td>{r.sessionGoogleAdsCampaignName}</td><td class="num">{euro(r.advertiserAdCost)}</td><td class="num">{n(r.advertiserAdImpressions)}</td><td class="num">{n(r.advertiserAdClicks)}</td><td class="num">{r.advertiserAdClicks ? euro(r.advertiserAdCost / r.advertiserAdClicks) : '—'}</td></tr>)}</tbody>
+          <thead><tr><th>Campanha</th><th class="num">Gasto</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">Custo por clique</th></tr></thead>
+          <tbody>{ga.ads.map((r: any) => <tr><td>{r.sessionGoogleAdsCampaignName}</td><td class="num">{euro(r.advertiserAdCost)}</td><td class="num">{n(r.advertiserAdImpressions)}</td><td class="num">{n(r.advertiserAdClicks)}</td><td class="num">{pct(r.advertiserAdClicks, r.advertiserAdImpressions)}</td><td class="num">{r.advertiserAdClicks ? euro(r.advertiserAdCost / r.advertiserAdClicks) : '—'}</td></tr>)}</tbody>
         </table>
       </div>
     </>
   ) : <p class="card empty">Sem campanhas Google neste período. Se já têm campanhas, confirmem que o Google Ads está ligado ao Google Analytics.</p>}
-
+  <div style="margin-top:14px"><GoogleAdsPlan /></div>
   </>)}
 
   <p class="note" style="margin-top:22px">Vendas reais no CRM neste período: <strong>{sales.orders}</strong> encomendas pagas, <strong>{euro(sales.revenue)}</strong>. Vê também as vendas por origem em <a href="/admin/codigos/">Códigos e links</a>.{secao === 'meta' && ' As compras atribuídas pela Meta vêm do Pixel e não contam quem recusou os cookies.'}</p>

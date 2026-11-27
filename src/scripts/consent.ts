@@ -156,7 +156,7 @@ function beacon(data: Record<string, string>) {
 {
   let ref = '';
   try { ref = document.referrer ? new URL(document.referrer).host : ''; } catch {}
-  beacon({ t: 'pageview', p: location.pathname, r: ref, u: new URLSearchParams(location.search).get('utm_source') || '' });
+  beacon({ t: 'pageview', p: location.pathname, r: ref, u: new URLSearchParams(location.search).get('utm_source') || '', k: new URLSearchParams(location.search).get('utm_campaign') || '' });
 }
 
 /** Conta já o evento na contagem anónima, quando o envio para o Analytics fica à espera da resposta aos cookies */

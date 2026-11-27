@@ -87,6 +87,12 @@ create table if not exists finance_entries (
   created_at timestamptz not null default now()
 );
 create index if not exists finance_entries_day on finance_entries (day);
+/* calendário de marketing: o que já foi publicado */
+create table if not exists marketing_done (
+  id text primary key,
+  done_at timestamptz not null default now(),
+  by text not null default ''
+);
 /* dívidas e empréstimos da marca (não contam nas despesas): o valor em dívida e os pagamentos que o vão abatendo */
 create table if not exists finance_debts (
   id serial primary key,

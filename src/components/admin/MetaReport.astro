@@ -3,8 +3,9 @@
    Cada parte carrega à parte: se faltar uma permissão no token, só essa parte mostra o aviso. */
 import { hasMeta, metaAds, metaPage, metaInstagram } from '../../lib/server/meta';
 import { euro } from '../../lib/server/format';
-interface Props { days: number; sales: { orders: number; revenue: number } }
-const { days, sales } = Astro.props;
+import { metaAdvice, adVerdict, BENCH } from '../../lib/server/advice';
+interface Props { days: number; sales: { orders: number; revenue: number }; crm?: { visits: number; carts: number; checkouts: number; orders: number } }
+const { days, sales, crm } = Astro.props;
 
 const settle = async <T,>(p: Promise<T>) => { try { return { data: await p, error: '' }; } catch (e) { return { data: null as T | null, error: (e as Error).message }; } };
 const [ads, page, ig] = hasMeta()
@@ -40,13 +41,13 @@ const countryName = new Intl.DisplayNames(['pt-PT'], { type: 'region' });
 const a = ads?.data;
 const t = a?.total;
 const maxDay = a ? Math.max(0, ...a.daily.map((d: any) => d.spend)) : 0;
-const funnel = t ? [
-  ['Impressões', t.impressions], ['Cliques no link', t.linkClicks], ['Visitas ao site', t.landing],
-  ['Viram uma peça', t.views], ['Carrinho', t.carts], ['Checkout', t.checkouts], ['Compras', t.purchases],
-].filter(([, v], i) => i < 2 || (v as number) > 0) as [string, number][] : [];
+const funnel = t ? ([
+  ['Impressões', t.impressions, ''], ['Cliques no link', t.linkClicks, `${BENCH.ctr.low}–${BENCH.ctr.good}%`], ['Visitas ao site', t.landing, `${BENCH.landingRate.good}%+`],
+  ['Viram uma peça', t.views, ''], ['Carrinho', t.carts, ''], ['Checkout', t.checkouts, '30–50%'], ['Compras', t.purchases, '40–60%'],
+].filter(([, v], i) => i < 2 || (v as number) > 0) as [string, number, string][]) : [];
 const ageGroups = a ? Object.entries(a.age.reduce((m: Record<string, any>, r: any) => {
   const g = (m[r.age] ??= { age: r.age, spend: 0, impressions: 0, linkClicks: 0, purchases: 0, female: 0, male: 0 });
-  g.spend += r.spend; g.impressions += r.impressions; g.linkClicks += r.linkClicks; g.purchases += r.purchases;
+  g.spend += r.spend; g.impressions += r.impressions; g.linkClicks += r.linkClicks; g.purchases += r.purchases; g.carts = (g.carts ?? 0) + r.carts;
   if (r.gender === 'female') g.female += r.impressions; if (r.gender === 'male') g.male += r.impressions;
   return m;
 }, {})).map(([, v]) => v as any).sort((x, y) => x.age.localeCompare(y.age)) : [];
@@ -55,6 +56,19 @@ const genderTotal = genders.reduce((s, [, v]) => s + v, 0);
 const platforms = a ? [...a.platform].sort((x: any, y: any) => y.spend - x.spend) : [];
 const countries = a ? [...a.country].sort((x: any, y: any) => y.impressions - x.impressions).slice(0, 10) : [];
 const devices = a ? [...a.device].sort((x: any, y: any) => y.impressions - x.impressions) : [];
+const perDay = a ? (t?.spend ?? 0) / Math.max(1, a.daily.length || days) : 0;
+const maxClicks = a ? Math.max(0, ...a.daily.map((d: any) => d.linkClicks)) : 0;
+/* cor de um valor face à referência: verde bom, laranja atenção, vermelho mau */
+const tone = (v: number, low: number, good: number) => (v >= good ? 'is-ok' : v < low ? 'is-off' : '');
+const toneLow = (v: number, good: number, high: number) => (!v ? '' : v <= good ? 'is-ok' : v > high ? 'is-off' : '');
+const result = (c: any) => c.purchases ? `${euro(c.cpa)} / compra` : c.leads ? `${euro(c.spend / c.leads)} / contacto` : c.carts ? `${euro(c.spend / c.carts)} / carrinho` : c.landing ? `${euro(c.spend / c.landing)} / visita` : '—';
+const budget = (b?: { daily: number; lifetime: number }) => (b?.daily ? `${euro(b.daily)}/dia` : b?.lifetime ? `${euro(b.lifetime)} total` : 'nos conjuntos');
+const activeIn = (adsetId: string) => (a ? a.ads.filter((x: any) => x.adsetId === adsetId && x.status === 'ACTIVE').length : 0);
+const GOAL: Record<string, string> = {
+  OFFSITE_CONVERSIONS: 'Conversões no site', LINK_CLICKS: 'Cliques', LANDING_PAGE_VIEWS: 'Visitas à página', LEAD_GENERATION: 'Contactos (formulário)',
+  QUALITY_LEAD: 'Contactos de qualidade', REACH: 'Alcance', IMPRESSIONS: 'Impressões', THRUPLAY: 'Vídeo visto', POST_ENGAGEMENT: 'Interação', VALUE: 'Valor das compras',
+};
+const notes = a ? metaAdvice(a as any, days, crm) : [];
 const missing = (e: string) => /permission|permiss|scope|not authorized|\(#10\)|\(#200\)|\(#100\)/i.test(e);
 ---
 {!hasMeta() ? (
@@ -69,69 +83,123 @@ const missing = (e: string) => /permission|permiss|scope|not authorized|\(#10\)|
       <div class="card empty">Sem anúncios a correr neste período{a!.active ? ` (${a!.active === 1 ? 'há 1 campanha ativa' : `há ${a!.active} campanhas ativas`}, ainda sem resultados)` : ''}. Experimenta os 90 dias.</div>
     ) : (
       <>
-        <div class="grid kpis">
-          <div class="card kpi"><p>Gasto</p><strong>{euro(t!.spend)}</strong><small>{a!.active === 1 ? '1 campanha ativa' : `${a!.active} campanhas ativas`}</small></div>
+        <div class="grid mkpis">
+          <div class="card kpi"><p>Gasto</p><strong>{euro(t!.spend)}</strong><small>{euro(perDay)} por dia · {a!.active === 1 ? '1 campanha ativa' : `${a!.active} campanhas ativas`}</small></div>
           <div class="card kpi"><p>Alcance</p><strong>{n(t!.reach)}</strong><small>pessoas · {dec(t!.frequency, 1)} vezes cada</small></div>
-          <div class="card kpi"><p>Impressões</p><strong>{n(t!.impressions)}</strong><small>{euro(t!.cpm)} por 1000</small></div>
-          <div class="card kpi"><p>Cliques no link</p><strong>{n(t!.linkClicks)}</strong><small>CTR {dec(t!.ctr)}% · {t!.linkClicks ? euro(t!.cpc) : '—'} por clique</small></div>
+          <div class="card kpi"><p>Impressões</p><strong>{n(t!.impressions)}</strong><small>{euro(t!.cpm)} por mil</small></div>
+          <div class={`card kpi ${tone(t!.ctr, BENCH.ctr.low, BENCH.ctr.good)}`}><p>Cliques no link</p><strong>{n(t!.linkClicks)}</strong><small>CTR {dec(t!.ctr)}% (ref. {dec(BENCH.ctr.low, 1)} a {dec(BENCH.ctr.good, 1)}%)</small></div>
+          <div class={`card kpi ${toneLow(t!.cpc, BENCH.cpc.good, BENCH.cpc.high)}`}><p>Custo por clique</p><strong>{t!.linkClicks ? euro(t!.cpc) : '—'}</strong><small>ref. até {euro(BENCH.cpc.high)}</small></div>
+          <div class="card kpi"><p>Visitas à página</p><strong>{n(t!.landing)}</strong><small>{pct(t!.landing, t!.linkClicks)} dos cliques · {t!.landing ? euro(t!.spend / t!.landing) : '—'} cada</small></div>
+          <div class="card kpi"><p>Carrinhos</p><strong>{n(t!.carts)}</strong><small>{t!.carts ? `${euro(t!.spend / t!.carts)} cada · ${pct(t!.carts, t!.landing)} das visitas` : 'nenhum atribuído'}</small></div>
+          {t!.leads > 0 && <div class="card kpi"><p>Contactos</p><strong>{n(t!.leads)}</strong><small>{euro(t!.spend / t!.leads)} cada</small></div>}
           <div class="card kpi"><p>Compras (Pixel)</p><strong>{n(t!.purchases)}</strong><small>{t!.purchases ? `${euro(t!.cpa)} por compra` : 'sem compras atribuídas'}</small></div>
           <div class="card kpi"><p>Retorno</p><strong>{t!.spend && t!.value ? `${dec(t!.roas, 1)}×` : '—'}</strong><small>{euro(t!.value)} em vendas atribuídas</small></div>
         </div>
 
+        <section class="card notes" style="margin-top:14px">
+          <h2 style="margin-top:0">Diagnóstico e próximos passos</h2>
+          <ol class="notes__list">
+            {notes.map((x) => (
+              <li class={`note-${x.tone}`}>
+                <strong>{x.title}</strong>
+                <p>{x.text}</p>
+                {x.action && <p class="notes__do"><b>O que fazer:</b> {x.action}</p>}
+              </li>
+            ))}
+          </ol>
+          <p class="note" style="margin-bottom:0">As referências são médias para lojas de moda pequenas na Europa. Servem para orientar, não são garantias. Quanto mais tempo a Mekie anunciar, mais vale comparar com os seus próprios números.</p>
+        </section>
+
         <div class="grid two" style="margin-top:14px">
           <section class="card">
-            <h2 style="margin-top:0">Gasto por dia</h2>
+            <h2 style="margin-top:0">Gasto e cliques por dia</h2>
             <svg viewBox={`0 0 ${Math.max(a!.daily.length, 1) * 12} 100`} preserveAspectRatio="none" class="mchart" role="img" aria-label="Gasto por dia">
               {a!.daily.map((d: any, i: number) => {
                 const h = maxDay ? Math.max(1, d.spend / maxDay * 96) : 1;
-                return <rect x={i * 12 + 1} y={100 - h} width="10" height={h} rx="1.5"><title>{`${date(d.date)}: ${euro(d.spend)} · ${n(d.linkClicks)} cliques · ${n(d.purchases)} compras`}</title></rect>;
+                return <rect x={i * 12 + 1} y={100 - h} width="10" height={h} rx="1.5"><title>{`${date(d.date)}: ${euro(d.spend)} · ${n(d.linkClicks)} cliques · ${n(d.carts)} carrinhos · ${n(d.purchases)} compras`}</title></rect>;
               })}
+              {maxClicks > 0 && <polyline fill="none" stroke="#e1a400" stroke-width="2" vector-effect="non-scaling-stroke" points={a!.daily.map((d: any, i: number) => `${i * 12 + 6},${100 - (d.linkClicks / maxClicks) * 96}`).join(' ')} />}
             </svg>
-            <div class="bar" style="justify-content:space-between;margin:6px 0 0"><span class="note">{a!.daily[0] ? date(a!.daily[0].date) : ''}</span><span class="note">máximo {euro(maxDay)} num dia</span><span class="note">{a!.daily.at(-1) ? date(a!.daily.at(-1).date) : ''}</span></div>
+            <div class="bar" style="justify-content:space-between;margin:6px 0 0"><span class="note">{a!.daily[0] ? date(a!.daily[0].date) : ''}</span><span class="note"><span class="lg lg--b"></span>gasto (máx. {euro(maxDay)}) · <span class="lg lg--y"></span>cliques (máx. {n(maxClicks)})</span><span class="note">{a!.daily.at(-1) ? date(a!.daily.at(-1).date) : ''}</span></div>
           </section>
           <section class="card">
             <h2 style="margin-top:0">Do anúncio à compra</h2>
-            {funnel.map(([label, v], i) => (
+            {funnel.map(([label, v, ref], i) => (
               <div style="margin:0 0 9px">
-                <div class="bar" style="justify-content:space-between;margin:0 0 4px"><span>{label}</span><strong>{n(v)}{i > 0 && <span class="muted" style="font-weight:400"> · {pct(v, funnel[i - 1][1])}</span>}</strong></div>
+                <div class="bar" style="justify-content:space-between;margin:0 0 4px;flex-wrap:nowrap"><span>{label}</span><strong style="white-space:nowrap">{n(v)}{i > 0 && <span class="muted" style="font-weight:400"> · {pct(v, funnel[i - 1][1])}{ref && ` (ref. ${ref})`}</span>}</strong></div>
                 <div class="mbar"><i style={`width:${funnel[0][1] ? Math.max(1, (i === 0 ? 100 : Math.sqrt(v / funnel[0][1]) * 100)) : 1}%`}></i></div>
               </div>
             ))}
-            <p class="note">Barras em escala de raiz quadrada, para os passos pequenos se verem. Compras e visitas vêm do Pixel, só de quem aceitou os cookies de publicidade.</p>
+            <p class="note">Barras em escala de raiz quadrada, para os passos pequenos se verem. As visitas, carrinhos e compras vêm do Pixel: só contam quem aceitou os cookies de publicidade.</p>
           </section>
         </div>
 
         <h2>Campanhas</h2>
-        <div class="table">
+        <div class="table mtable">
           <table>
-            <thead><tr><th>Campanha</th><th>Estado</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Carrinhos</th><th class="num">Compras</th><th class="num">Custo/compra</th><th class="num">Retorno</th></tr></thead>
+            <thead><tr><th>Campanha</th><th>Estado</th><th class="num">Orçamento</th><th class="num">Gasto</th><th class="num">Impressões</th><th class="num">CPM</th><th class="num">Freq.</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Visitas</th><th class="num">Carrinhos</th><th class="num">Contactos</th><th class="num">Compras</th><th class="num">Custo por resultado</th><th class="num">Retorno</th></tr></thead>
             <tbody>{a!.campaigns.map((c: any) => (
               <tr>
-                <td><strong>{c.name}</strong>{c.objective && <><br /><span class="muted">{OBJECTIVE[c.objective] ?? c.objective}</span></>}</td>
+                <td class="mname"><strong>{c.name}</strong>{c.objective && <><br /><span class="muted">{OBJECTIVE[c.objective] ?? c.objective}</span></>}</td>
                 <td>{c.status && <span class={`badge ${(STATUS[c.status] ?? ['', 'done'])[1]}`}>{(STATUS[c.status] ?? [c.status])[0]}</span>}</td>
-                <td class="num">{euro(c.spend)}</td><td class="num">{n(c.reach)}</td><td class="num">{n(c.linkClicks)}</td>
-                <td class="num">{dec(c.ctr)}%</td><td class="num">{c.linkClicks ? euro(c.cpc) : '—'}</td>
-                <td class="num">{n(c.carts)}</td><td class="num">{n(c.purchases)}</td>
-                <td class="num">{c.purchases ? euro(c.cpa) : '—'}</td><td class="num">{c.value ? `${dec(c.roas, 1)}×` : '—'}</td>
+                <td class="num">{budget(a!.campaignBudgets?.[c.id])}</td>
+                <td class="num">{euro(c.spend)}</td><td class="num">{n(c.impressions)}</td><td class="num">{euro(c.cpm)}</td><td class="num">{dec(c.frequency, 1)}</td>
+                <td class="num">{n(c.linkClicks)}</td><td class={`num ${tone(c.ctr, BENCH.ctr.low, BENCH.ctr.good)}`}>{dec(c.ctr)}%</td><td class="num">{c.linkClicks ? euro(c.cpc) : '—'}</td>
+                <td class="num">{n(c.landing)}</td><td class="num">{n(c.carts)}</td><td class="num">{n(c.leads)}</td><td class="num">{n(c.purchases)}</td>
+                <td class="num">{result(c)}</td><td class="num">{c.value ? `${dec(c.roas, 1)}×` : '—'}</td>
               </tr>
             ))}</tbody>
           </table>
         </div>
 
+        {a!.adsets?.length > 0 && (
+          <>
+            <h2>Conjuntos de anúncios</h2>
+            <div class="table mtable">
+              <table>
+                <thead><tr><th>Conjunto</th><th>Estado</th><th class="num">Orçamento/dia</th><th>Otimiza para</th><th class="num">Gasto</th><th class="num">Alcance</th><th class="num">Freq.</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Visitas</th><th class="num">Carrinhos</th><th class="num">Contactos</th><th class="num">Compras</th><th class="num">Custo por resultado</th><th class="num">Anúncios ativos</th></tr></thead>
+                <tbody>{a!.adsets.map((x: any) => (
+                  <tr>
+                    <td class="mname"><strong>{x.name}</strong><br /><span class="muted">{x.campaign}</span></td>
+                    <td>{x.status && <span class={`badge ${(STATUS[x.status] ?? ['', 'done'])[1]}`}>{(STATUS[x.status] ?? [x.status])[0]}</span>}</td>
+                    <td class="num">{x.dailyBudget ? euro(x.dailyBudget) : x.lifetimeBudget ? `${euro(x.lifetimeBudget)} total` : 'da campanha'}</td>
+                    <td>{GOAL[x.goal] ?? (x.goal || '—')}</td>
+                    <td class="num">{euro(x.spend)}</td><td class="num">{n(x.reach)}</td><td class={`num ${x.frequency > BENCH.freq.high ? 'is-warn' : ''}`}>{dec(x.frequency, 1)}</td>
+                    <td class="num">{n(x.linkClicks)}</td><td class={`num ${tone(x.ctr, BENCH.ctr.low, BENCH.ctr.good)}`}>{dec(x.ctr)}%</td><td class="num">{x.linkClicks ? euro(x.cpc) : '—'}</td>
+                    <td class="num">{n(x.landing)}</td><td class="num">{n(x.carts)}</td><td class="num">{n(x.leads)}</td><td class="num">{n(x.purchases)}</td>
+                    <td class="num">{result(x)}</td>
+                    <td class={`num ${activeIn(x.id) > 6 ? 'is-warn' : ''}`}>{activeIn(x.id)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </>
+        )}
+
         {a!.ads.length > 0 && (
           <>
-            <h2>Anúncios com mais gasto</h2>
-            <div class="madgrid">
-              {a!.ads.map((ad: any) => (
-                <article class="card madcard">
-                  {ad.thumb ? <img src={ad.thumb} alt="" loading="lazy" /> : <div class="madcard__ph"></div>}
-                  <div>
-                    <strong>{cut(ad.name, 50)}</strong>
-                    <p class="note" style="margin:2px 0 8px">{cut(ad.campaign, 50)}</p>
-                    <dl class="kv"><dt>Gasto</dt><dd>{euro(ad.spend)}</dd><dt>Cliques</dt><dd>{n(ad.linkClicks)} · CTR {dec(ad.ctr)}%</dd><dt>Compras</dt><dd>{n(ad.purchases)}{ad.value ? ` · ${dec(ad.roas, 1)}×` : ''}</dd></dl>
-                  </div>
-                </article>
-              ))}
+            <h2>Anúncios, um a um</h2>
+            <p class="note" style="margin-top:-6px">Ordenados por gasto. A coluna "O que fazer" lê os números de cada anúncio e diz se é para escalar, manter, trocar ou pausar.</p>
+            <div class="table mtable">
+              <table>
+                <thead><tr><th>Anúncio</th><th>O que fazer</th><th class="num">Gasto</th><th class="num">Impressões</th><th class="num">Freq.</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Visitas</th><th class="num">% visitas</th><th class="num">Carrinhos</th><th class="num">Custo/carrinho</th><th class="num">Contactos</th><th class="num">Compras</th><th class="num">Retorno</th></tr></thead>
+                <tbody>{a!.ads.map((ad: any) => { const v = adVerdict(ad); return (
+                  <tr class={ad.status && ad.status !== 'ACTIVE' ? 'is-off' : ''}>
+                    <td class="mname">
+                      <div class="mad">
+                        {ad.thumb ? <img src={ad.thumb} alt="" loading="lazy" width="44" height="44" /> : <span class="mad__ph"></span>}
+                        <span><strong>{cut(ad.name, 60)}</strong><br /><span class="muted">{cut(ad.adset || ad.campaign, 50)}{ad.status && ad.status !== 'ACTIVE' ? ` · ${(STATUS[ad.status] ?? [ad.status])[0]}` : ''}</span></span>
+                      </div>
+                    </td>
+                    <td class="mwhy"><span class={`badge ${v.tone === 'off' ? 'off' : v.tone === 'warn' ? 'warn' : v.tone === 'ok' ? 'ok' : 'done'}`}>{v.label}</span><span class="mwhy__t">{v.why}</span></td>
+                    <td class="num">{euro(ad.spend)}</td><td class="num">{n(ad.impressions)}</td><td class={`num ${ad.frequency > BENCH.freq.high ? 'is-warn' : ''}`}>{dec(ad.frequency, 1)}</td>
+                    <td class="num">{n(ad.linkClicks)}</td><td class={`num ${tone(ad.ctr, BENCH.ctr.low, BENCH.ctr.good)}`}>{dec(ad.ctr)}%</td><td class="num">{ad.linkClicks ? euro(ad.cpc) : '—'}</td>
+                    <td class="num">{n(ad.landing)}</td><td class="num">{pct(ad.landing, ad.linkClicks)}</td>
+                    <td class="num">{n(ad.carts)}</td><td class="num">{ad.carts ? euro(ad.spend / ad.carts) : '—'}</td>
+                    <td class="num">{n(ad.leads)}</td><td class="num">{n(ad.purchases)}</td><td class="num">{ad.value ? `${dec(ad.roas, 1)}×` : '—'}</td>
+                  </tr>
+                ); })}</tbody>
+              </table>
             </div>
           </>
         )}
@@ -140,30 +208,43 @@ const missing = (e: string) => /permission|permiss|scope|not authorized|\(#10\)|
         <div class="grid two">
           <section class="card">
             <h2 style="margin-top:0">Idade</h2>
-            <table><thead><tr><th>Idade</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Gasto</th><th class="num">Compras</th></tr></thead>
-              <tbody>{ageGroups.map((g) => <tr><td>{g.age}</td><td class="num">{n(g.impressions)}</td><td class="num">{n(g.linkClicks)}</td><td class="num">{euro(g.spend)}</td><td class="num">{n(g.purchases)}</td></tr>)}</tbody>
-            </table>
+            <div class="table mtable mtable--flat"><table><thead><tr><th>Idade</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">CPC</th><th class="num">Gasto</th><th class="num">Carrinhos</th><th class="num">Compras</th></tr></thead>
+              <tbody>{ageGroups.map((g) => <tr><td>{g.age}</td><td class="num">{n(g.impressions)}</td><td class="num">{n(g.linkClicks)}</td><td class="num">{g.linkClicks ? euro(g.spend / g.linkClicks) : '—'}</td><td class="num">{euro(g.spend)}</td><td class="num">{n(g.carts)}</td><td class="num">{n(g.purchases)}</td></tr>)}</tbody>
+            </table></div>
             <p class="note">{genders.sort((x, y) => y[1] - x[1]).map(([g, v]) => `${GENDER[g] ?? g} ${pct(v, genderTotal)}`).join(' · ')}</p>
           </section>
           <section class="card">
             <h2 style="margin-top:0">Onde aparecem</h2>
-            <table><thead><tr><th>Sítio</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Gasto</th></tr></thead>
-              <tbody>{platforms.map((r: any) => <tr><td>{PLATFORM[r.platform] ?? r.platform} · {POSITION[r.position] ?? r.position}</td><td class="num">{n(r.impressions)}</td><td class="num">{n(r.linkClicks)}</td><td class="num">{euro(r.spend)}</td></tr>)}</tbody>
-            </table>
+            <div class="table mtable mtable--flat"><table><thead><tr><th>Sítio</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">CTR</th><th class="num">CPC</th><th class="num">Gasto</th></tr></thead>
+              <tbody>{platforms.map((r: any) => <tr><td>{PLATFORM[r.platform] ?? r.platform} · {POSITION[r.position] ?? r.position}</td><td class="num">{n(r.impressions)}</td><td class="num">{n(r.linkClicks)}</td><td class="num">{pct(r.linkClicks, r.impressions)}</td><td class="num">{r.linkClicks ? euro(r.spend / r.linkClicks) : '—'}</td><td class="num">{euro(r.spend)}</td></tr>)}</tbody>
+            </table></div>
           </section>
           <section class="card">
             <h2 style="margin-top:0">Países</h2>
-            <table><thead><tr><th>País</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Compras</th></tr></thead>
+            <div class="table mtable mtable--flat"><table><thead><tr><th>País</th><th class="num">Impressões</th><th class="num">Cliques</th><th class="num">Compras</th></tr></thead>
               <tbody>{countries.map((r: any) => <tr><td>{(() => { try { return countryName.of(r.country) ?? r.country; } catch { return r.country; } })()}</td><td class="num">{n(r.impressions)}</td><td class="num">{n(r.linkClicks)}</td><td class="num">{n(r.purchases)}</td></tr>)}</tbody>
-            </table>
+            </table></div>
           </section>
           <section class="card">
             <h2 style="margin-top:0">Aparelho</h2>
-            <table><thead><tr><th>Aparelho</th><th class="num">Impressões</th><th class="num">%</th><th class="num">Cliques</th></tr></thead>
+            <div class="table mtable mtable--flat"><table><thead><tr><th>Aparelho</th><th class="num">Impressões</th><th class="num">%</th><th class="num">Cliques</th></tr></thead>
               <tbody>{devices.map((r: any) => <tr><td>{DEVICE[r.device] ?? r.device}</td><td class="num">{n(r.impressions)}</td><td class="num muted">{pct(r.impressions, t!.impressions)}</td><td class="num">{n(r.linkClicks)}</td></tr>)}</tbody>
-            </table>
+            </table></div>
           </section>
         </div>
+
+        <details class="card gloss" style="margin-top:14px">
+          <summary>O que quer dizer cada número</summary>
+          <dl>
+            <dt>Alcance e frequência</dt><dd>Quantas pessoas diferentes viram os anúncios, e quantas vezes cada uma em média. Acima de 3 vezes os anúncios cansam.</dd>
+            <dt>CPM</dt><dd>Quanto custa mostrar o anúncio mil vezes. Sobe em novembro e dezembro porque toda a gente anuncia.</dd>
+            <dt>CTR</dt><dd>De cada 100 pessoas que veem o anúncio, quantas clicam no link. Mede se o criativo faz parar o scroll. Referência em moda: {dec(BENCH.ctr.low, 1)}% a {dec(BENCH.ctr.good, 1)}%.</dd>
+            <dt>CPC</dt><dd>Quanto custa cada clique no link. Referência: até {euro(BENCH.cpc.high)}.</dd>
+            <dt>Visitas e % visitas</dt><dd>Quantos cliques chegaram a abrir a página do site (registados pelo Pixel). Quem recusa os cookies não conta, por isso a percentagem real é mais alta.</dd>
+            <dt>Carrinhos, contactos e compras</dt><dd>Resultados que o Pixel e os formulários atribuem aos anúncios. O "custo por resultado" divide o gasto pelo resultado principal da campanha.</dd>
+            <dt>Retorno (ROAS)</dt><dd>Euros em vendas por cada euro gasto. Com as margens normais de roupa, abaixo de 2× costuma perder-se dinheiro e a partir de 3× vale a pena escalar.</dd>
+          </dl>
+        </details>
       </>
     )}
 
@@ -237,6 +318,33 @@ const missing = (e: string) => /permission|permiss|scope|not authorized|\(#10\)|
 
 
 <style>
+  .mkpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .kpi.is-ok { border-color: #9fd3b4; } .kpi.is-off { border-color: #e6a8a2; }
+  td.is-ok { color: var(--ok); font-weight: 600; } td.is-off { color: var(--bad); font-weight: 600; } td.is-warn { color: var(--warn); font-weight: 600; }
+  .notes__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .notes__list li { border-left: 4px solid #cfcfcb; padding: 8px 12px; background: #fafaf9; border-radius: 0 8px 8px 0; }
+  .notes__list li p { margin: 4px 0 0; }
+  .notes__list .note-ok { border-color: var(--ok); } .notes__list .note-warn { border-color: #e8a33a; } .notes__list .note-off { border-color: var(--bad); } .notes__list .note-info { border-color: #6c93c4; }
+  .notes__do { color: var(--ink); }
+  .mtable { overflow-x: auto; }
+  .mtable table { font-size: 12.5px; min-width: 100%; }
+  .mtable th, .mtable td { padding: 8px 9px; }
+  .mtable th { white-space: normal; min-width: 54px; vertical-align: bottom; }
+  .mtable td.mname { min-width: 190px; max-width: 280px; position: sticky; left: 0; background: var(--surface); z-index: 1; box-shadow: 1px 0 0 var(--line); }
+  .mtable th:first-child { position: sticky; left: 0; background: var(--surface); z-index: 2; }
+  .mtable--flat td, .mtable--flat th { position: static !important; box-shadow: none !important; }
+  .mtable tr.is-off td { opacity: .62; }
+  .mtable tr.is-off td.mname { opacity: 1; color: var(--soft); }
+  .mwhy { min-width: 220px; max-width: 300px; }
+  .mwhy__t { display: block; margin-top: 4px; font-size: 11.5px; color: var(--soft); line-height: 1.35; }
+  .mad { display: flex; gap: 8px; align-items: center; }
+  .mad img, .mad__ph { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: #ecebe8; flex: none; }
+  .lg { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .lg--b { background: #2f67a8; } .lg--y { background: #e1a400; }
+  .gloss summary { cursor: pointer; font-weight: 600; }
+  .gloss dl { margin: 12px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; }
+  .gloss dt { font-weight: 600; } .gloss dd { margin: 0; color: var(--soft); }
+  @media (max-width: 860px) { .gloss dl { grid-template-columns: 1fr; } .mtable td.mname { position: static; box-shadow: none; } }
   .mchart { width: 100%; height: 150px; display: block; }
   .mchart rect { fill: #2f67a8; }
   .mchart rect:hover { fill: #173f6e; }
